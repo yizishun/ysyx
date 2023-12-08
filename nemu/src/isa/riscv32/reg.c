@@ -15,7 +15,7 @@
 
 #include <isa.h>
 #include "local-include/reg.h"
-
+#define REGNUMBER ARRLEN(regs)
 const char *regs[] = {
   "$0", "ra", "sp", "gp", "tp", "t0", "t1", "t2",
   "s0", "s1", "a0", "a1", "a2", "a3", "a4", "a5",
@@ -24,8 +24,32 @@ const char *regs[] = {
 };
 
 void isa_reg_display() {
+  int i;
+  printf("dut-pc=%x\n",cpu.pc);
+  for(i = 0;i < REGNUMBER;i++){
+    if(cpu.gpr[i] >= 0x80000000)
+      printf("dut-%3s	%#x\n",regs[i],cpu.gpr[i]);
+    else
+      printf("dut-%3s      %d\n",regs[i],cpu.gpr[i]); }
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {
-  return 0;
+  int i;
+  for(i = 0;i < REGNUMBER;i++){
+    if(strcmp(regs[i],s+1) == 0)
+      break;
+  }
+  
+  if(i < REGNUMBER){
+    *success = true;
+    //printf("%3s		%d\n",regs[i],cpu.gpr[i]);
+  }
+  else {
+    if(strcmp("pc",s+1) == 0){
+	*success = true;
+	return cpu.pc;
+}
+    *success = false;
+}
+  return cpu.gpr[i];
 }
