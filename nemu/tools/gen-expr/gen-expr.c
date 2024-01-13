@@ -30,9 +30,38 @@ static char *code_format =
 "  printf(\"%%u\", result); "
 "  return 0; "
 "}";
+static int bufptr = 0;
+
+static int choose(int n){
+  return rand()%n;
+}
+
+static void gen_rand_op(){
+  int n = choose(4);
+  char op;
+  switch (n){
+    case 0:op = '+';break;
+    case 1:op = '-';break;
+    case 2:op = '*';break;
+    case 3:op = '/';break;
+    default: break;
+  }
+  buf[bufptr++] = op;
+} 
+
+static void gen_num(){
+  int num = rand()%10+48;
+  buf[bufptr++] = num;
+
+}
 
 static void gen_rand_expr() {
-  buf[0] = '\0';
+   switch (choose(3)) {
+    case 0: gen_num(); break;
+    case 1: buf[bufptr++] = '('; gen_rand_expr(); buf[bufptr++] = ')'; break;
+    default: gen_rand_expr(); gen_rand_op(); gen_rand_expr(); break;
+  }
+  buf[bufptr] = '\0';
 }
 
 int main(int argc, char *argv[]) {
@@ -44,6 +73,7 @@ int main(int argc, char *argv[]) {
   }
   int i;
   for (i = 0; i < loop; i ++) {
+    bufptr = 0;
     gen_rand_expr();
 
     sprintf(code_buf, code_format, buf);
@@ -53,7 +83,7 @@ int main(int argc, char *argv[]) {
     fputs(code_buf, fp);
     fclose(fp);
 
-    int ret = system("gcc /tmp/.code.c -o /tmp/.expr");
+    int ret = system("gcc -O2 -MMD -Wall -Werror /tmp/.code.c -o /tmp/.expr");
     if (ret != 0) continue;
 
     fp = popen("/tmp/.expr", "r");

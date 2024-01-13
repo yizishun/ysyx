@@ -50,6 +50,7 @@ static int cmd_c(char *args) {
 
 
 static int cmd_q(char *args) {
+	nemu_state.state = NEMU_QUIT;  
   return -1;
 }
 
@@ -68,7 +69,7 @@ static int cmd_info(char *args){
 	    isa_reg_display();
 	    break;	
     case 'w':
-            show_w();
+      show_w();
 	    break;	    
     default:
   	    printf("info r/w\n");}

@@ -14,7 +14,23 @@
 ***************************************************************************************/
 
 #include <common.h>
-
+#include "./monitor/sdb/sdb.h"
+void test_expr(){
+	FILE* fp = NULL;
+	int ref_result;
+	word_t dut_result;
+	bool success;
+	fp = fopen("./tools/gen-expr/input","r");
+	for(int i = 0;i < 69;i++){
+		char buf[200];
+		if(fscanf(fp,"%d",&ref_result));
+		if(fscanf(fp,"%s",buf));
+		dut_result = expr(buf,&success);
+		if(!success) assert(0);
+		if(dut_result != ref_result) assert(0);
+		else printf("expr = %s dut = %d ref = %d\n",buf,dut_result,ref_result);}
+		fclose(fp);
+}
 void init_monitor(int, char *[]);
 void am_init_monitor();
 void engine_start();
@@ -27,9 +43,8 @@ int main(int argc, char *argv[]) {
 #else
   init_monitor(argc, argv);
 #endif
-
   /* Start engine. */
   engine_start();
-
+ // test_expr();	
   return is_exit_status_bad();
 }

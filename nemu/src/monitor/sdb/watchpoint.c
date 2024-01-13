@@ -56,7 +56,7 @@ void free_wp(WP *wp){
       if(last2 != NULL)
         last2 -> next = last1 -> next;
       else 
-	head = last1 -> next;
+				head = last1 -> next;
     }
     if(last1 -> NO > no)
       (last1 -> NO)--;
