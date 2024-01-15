@@ -25,7 +25,7 @@ extern "C" void npc_trap(){
 	m_trace->dump(contextp -> time());
 	contextp -> timeInc(1);
 	m_trace -> close();
-	printf("trap in %#x",dut.pc);
+	printf("trap in %#x\n",dut.pc);
 	exit(0);
 }
 int main(){
