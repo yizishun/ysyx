@@ -15,6 +15,7 @@
 
 #include <isa.h>
 #include <memory/paddr.h>
+#include <cpu/iringbuf.h>
 
 void init_rand();
 void init_log(const char *log_file);
@@ -124,6 +125,9 @@ void init_monitor(int argc, char *argv[]) {
 
   /* Initialize differential testing. */
   init_difftest(diff_so_file, img_size, difftest_port);
+
+	/* Initialize iringbuf. */
+	init_iringbuf(10);
 
   /* Initialize the simple debugger. */
   init_sdb();

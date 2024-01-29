@@ -19,6 +19,7 @@
 #include <common.h>
 #include <stdio.h>
 #include <utils.h>
+#include <cpu.iringbuf.h>
 
 #define Log(format, ...) \
     _Log(ANSI_FMT("[%s:%d %s] " format, ANSI_FG_BLUE) "\n", \
@@ -32,6 +33,8 @@
       IFNDEF(CONFIG_TARGET_AM, extern FILE* log_fp; fflush(log_fp)); \
       extern void assert_fail_msg(); \
       assert_fail_msg(); \
+			iringbuf_print(); \
+			iringbuf_free(); \
       assert(cond); \
     } \
   } while (0)

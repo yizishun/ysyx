@@ -16,8 +16,8 @@
 #include <cpu/cpu.h>
 #include <cpu/decode.h>
 #include <cpu/difftest.h>
+#include <cpu/iringbuf.h>
 #include <locale.h>
-#include </home/awaken/ics2023/nemu/src/monitor/sdb/sdb.h>
 
 /* The assembly code of instructions executed is only output to the screen
  * when the number of instructions executed is less than this value.
@@ -39,21 +39,15 @@ static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
 #endif
   if (g_print_step) { IFDEF(CONFIG_ITRACE, puts(_this->logbuf)); }
   IFDEF(CONFIG_DIFFTEST, difftest_step(_this->pc, dnpc));
-  
+  extern int check_w();
   int no = check_w();
   if(no != 0){
     nemu_state.state = NEMU_STOP;
     printf("NO.%d watchpoint has been trigger\n",no);
   }
 }
-
-static void exec_once(Decode *s, vaddr_t pc) {
-  s->pc = pc;
-  s->snpc = pc;
-  isa_exec_once(s);
-  cpu.pc = s->dnpc;
-#ifdef CONFIG_ITRACE
-  char *p = s->logbuf;
+void record_inst(char *p, Decode *s){
+	char *ps = p;
   p += snprintf(p, sizeof(s->logbuf), FMT_WORD ":", s->pc);
   int ilen = s->snpc - s->pc;
   int i;
@@ -70,11 +64,23 @@ static void exec_once(Decode *s, vaddr_t pc) {
 
 #ifndef CONFIG_ISA_loongarch32r
   void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
-  disassemble(p, s->logbuf + sizeof(s->logbuf) - p,
+  disassemble(p, ps + sizeof(s->logbuf) - p,
       MUXDEF(CONFIG_ISA_x86, s->snpc, s->pc), (uint8_t *)&s->isa.inst.val, ilen);
 #else
   p[0] = '\0'; // the upstream llvm does not support loongarch32r
 #endif
+}
+static void exec_once(Decode *s, vaddr_t pc) {
+  s->pc = pc;
+  s->snpc = pc;
+  isa_exec_once(s);
+  cpu.pc = s->dnpc;
+	char p2[128] = {0};
+	record_inst(p2 , s);
+	iringbuf_write(p2);
+#ifdef CONFIG_ITRACE
+  char *p = s->logbuf;
+	record_inst(p , s);
 #endif
 }
 
