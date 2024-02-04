@@ -46,7 +46,7 @@ static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
     printf("NO.%d watchpoint has been trigger\n",no);
   }
 }
-void record_inst(char *p, Decode *s){
+void record_inst_trace(char *p, Decode *s){
 	char *ps = p;
   p += snprintf(p, sizeof(s->logbuf), FMT_WORD ":", s->pc);
   int ilen = s->snpc - s->pc;
@@ -76,11 +76,11 @@ static void exec_once(Decode *s, vaddr_t pc) {
   isa_exec_once(s);
   cpu.pc = s->dnpc;
 	char p2[128] = {0};
-	record_inst(p2 , s);
+	record_inst_trace(p2 , s);
 	iringbuf_write(p2);
 #ifdef CONFIG_ITRACE
   char *p = s->logbuf;
-	record_inst(p , s);
+	record_inst_trace(p , s);
 #endif
 }
 

@@ -17,6 +17,7 @@
 #include <cpu/cpu.h>
 #include <cpu/ifetch.h>
 #include <cpu/decode.h>
+#include <cpu/ftrace.h>
 #include <stdio.h>
 
 #define R(i) gpr(i)
@@ -27,9 +28,31 @@
 enum {
   TYPE_I, TYPE_U, TYPE_S,
   TYPE_N, TYPE_J, TYPE_R,
-  TYPE_B,
+  TYPE_B 
 };
 
+void ftrace_check(int type,Decode *s,word_t imm, int rd){
+	#ifndef CONFIG_FTRACE
+	return;
+	#endif
+  uint32_t i = s->isa.inst.val;
+  int rs1 = BITS(i, 19, 15);
+	//printf("pc = %#x\n",s->pc);
+	char *prev_fname = ftrace_find_symbol(s->pc);
+	//printf("dnpc = %#x\n",s->dnpc);
+	char *now_fname  = ftrace_find_symbol(s->dnpc);
+	//printf("prev = %s\n",prev_fname);
+	//printf("now  = %s\n",now_fname);
+	if(strcmp(prev_fname,now_fname) == 0)	return;
+	//printf("rs1 = %u imm = %u rd = %u\n",rs1,imm,rd);
+	if(type == JAL) ftrace_write(CALL,now_fname,s->dnpc,s->pc);
+	else if(type == JALR){
+		if(rs1 == 1 && imm == 0 && rd == 0)
+			ftrace_write(RET,prev_fname,s->dnpc,s->pc);
+		else 
+			ftrace_write(CALL,now_fname,s->dnpc,s->pc);
+	}
+}
 #define src1R() do { *src1 = R(rs1); } while (0)
 #define src2R() do { *src2 = R(rs2); } while (0)
 #define immI() do { *imm = SEXT(BITS(i, 31, 20), 12); } while(0)
@@ -48,19 +71,12 @@ static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_
     case TYPE_I: src1R();          immI(); break;
     case TYPE_U:                   immU(); break;
     case TYPE_S: src1R(); src2R(); immS(); break;
-    case TYPE_J:		   immJ(); break;
-    case TYPE_R: src1R(); src2R(); 	 ; break;
+    case TYPE_J:		   						 immJ(); break;
+    case TYPE_R: src1R(); src2R();		 	 ; break;
     case TYPE_B: src1R(); src2R(); immB(); break;
   }
 }
 
-//static void check_al(int dnpc){
-  //if((3ull | dnpc) != 0){
-    //fflush(stdout);
-    //printf("instruction-address-misaligned exception:%x",dnpc);
-    //assert(0);
-  //} 
-//}
 
 static int decode_exec(Decode *s) {
   int rd = 0;
@@ -92,8 +108,8 @@ static int decode_exec(Decode *s) {
   INSTPAT("0000000 ????? ????? 001 ????? 00100 11", slli   , I, R(rd) = src1 << BITS(imm, 4 , 0));
   INSTPAT("0000000 ????? ????? 101 ????? 00100 11", srli   , I, R(rd) = src1 >> BITS(imm, 4 , 0));
   INSTPAT("0100000 ????? ????? 101 ????? 00100 11", srai   , I, R(rd) = (int32_t)src1 >> BITS(imm, 4 , 0));
-  INSTPAT("??????? ????? ????? ??? ????? 11011 11", jal    , J, s->dnpc = s->pc + imm; R(rd) = s->snpc);
-  INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr   , I, s->dnpc = (imm + src1) & ~1ull; R(rd) = s->snpc);
+  INSTPAT("??????? ????? ????? ??? ????? 11011 11", jal    , J, s->dnpc = s->pc + imm; R(rd) = s->snpc; ftrace_check(JAL,s,imm, rd); );
+  INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr   , I, s->dnpc = (imm + src1) & ~1ull; R(rd) = s->snpc; ftrace_check(JALR,s,imm, rd); );
   INSTPAT("0000000 ????? ????? 000 ????? 01100 11", add    , R, R(rd) = src1 + src2); 
   INSTPAT("0000000 ????? ????? 010 ????? 01100 11", slt    , R, R(rd) = (int32_t)src1 < (int32_t)src2? 1: 0); 
   INSTPAT("0000000 ????? ????? 011 ????? 01100 11", sltu   , R, R(rd) = src1 < src2? 1 : 0); 
