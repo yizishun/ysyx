@@ -12,4 +12,4 @@
 !init.sh
 /fceux-am
 !/am-kernels
-!/nvboard
+/nvboard
