@@ -9,4 +9,6 @@ sim: $(VSRCS) $(CTB)
 	$(VERILATOR) $(VERILATOR_FLAGS) \
 		--top-module $(TOPNAME) $^ \
 		--Mdir $(OBJ_DIR) --exe -o $(abspath $(BIN))
-	$(BIN) +trace	
+
+run: sim	
+	$(BIN) $(IMG)

@@ -7,6 +7,8 @@
 static Vysyx_23060171_cpu dut;
 VerilatedVcdC* m_trace = nullptr;
 VerilatedContext* contextp = nullptr;
+void init_monitor(int, char *[]);
+
 void single_cycle(){
 	dut.clk=0;dut.eval();
 	dut.clk=1;dut.eval();
@@ -24,8 +26,8 @@ extern "C" void npc_trap(){
 	printf("trap in %#x\n",dut.pc);
 	exit(0);
 }
-int main(){
-	init_mem(100000);
+int main(int argc, char *argv[]){
+	init_monitor(argc,argv);
 
 	Verilated::traceEverOn(true);
 	contextp = new VerilatedContext;	

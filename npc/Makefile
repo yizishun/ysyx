@@ -37,8 +37,5 @@ include ../Makefile
 
 .PHONY:clean run
 
-run:
-	$(NPC_HOME)/builds/$(TOPNAME)
-
 clean:
 	-rm -rf builds/* result top.dot top.png vsrc/*.png
