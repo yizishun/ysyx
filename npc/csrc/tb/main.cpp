@@ -25,8 +25,7 @@ extern "C" void npc_trap(){
 	exit(0);
 }
 int main(){
-	uint32_t *memory;
-	memory = init_mem(3);
+	init_mem(100000);
 
 	Verilated::traceEverOn(true);
 	contextp = new VerilatedContext;	
@@ -36,7 +35,7 @@ int main(){
 	
 	reset(10);
 	while(1){
-		dut.inst = pmem_read(memory,dut.pc);
+		dut.inst = pmem_read(dut.pc);
 		dut.eval();
 		single_cycle();
 		m_trace->dump(contextp -> time());

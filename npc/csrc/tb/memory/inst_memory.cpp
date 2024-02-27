@@ -8,14 +8,14 @@ static const uint32_t img[] = {
 	0b00000000010100001000000100010011, //addi x2 x1 5 0x8000000c
 	0b00000000000100000000000001110011  //ebreak       0x80000010  
 };
-uint32_t *init_mem(size_t size){
-	uint32_t* memory = (uint32_t*)malloc(size * sizeof(uint32_t));
-	memcpy(memory,img,sizeof(img));
-	if(memory==NULL){exit(0);}
-	return memory;
+static uint32_t *pmem = NULL;
+void init_mem(size_t size){
+	pmem = (uint32_t *)malloc(size * sizeof(uint32_t));
+	memcpy(pmem , img , sizeof(img));
+	if(pmem == NULL){exit(0);}
 }
-uint32_t guest_to_host(uint32_t addr){return addr-0x80000000;}
-uint32_t pmem_read(uint32_t * memory,uint32_t vaddr){
-	uint32_t paddr = guest_to_host(vaddr);
-	return memory[paddr/4];
+uint32_t *guest_to_host(uint32_t vaddr){return pmem + (vaddr - 0x80000000)/4;}
+uint32_t pmem_read(uint32_t vaddr){
+	uint32_t *inst_paddr = guest_to_host(vaddr);
+	return *inst_paddr;
 }
