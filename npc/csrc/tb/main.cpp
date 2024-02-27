@@ -1,16 +1,12 @@
 #include <Vysyx_23060171_cpu.h>
 #include <verilated.h>
 #include <verilated_vcd_c.h>
-#include <stdlib.h>
-#include <stdint.h>
 #include <svdpi.h>
 #include <Vysyx_23060171_cpu__Dpi.h>
+#include <memory.h>
 static Vysyx_23060171_cpu dut;
 VerilatedVcdC* m_trace = nullptr;
 VerilatedContext* contextp = nullptr;
-uint32_t *init_mem(size_t size);
-uint32_t guest_to_host(uint32_t addr);
-uint32_t pmem_read(uint32_t *memory,uint32_t vaddr);
 void single_cycle(){
 	dut.clk=0;dut.eval();
 	dut.clk=1;dut.eval();
