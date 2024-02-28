@@ -24,8 +24,8 @@ void test_expr(){
 	fp = fopen("./tools/gen-expr/input","r");
 	for(int i = 0;i < 69;i++){
 		char buf[200];
-		if(fscanf(fp,"%d",&ref_result));
-		if(fscanf(fp,"%s",buf));
+		if(fscanf(fp,"%d",&ref_result)){}
+		if(fscanf(fp,"%s",buf)){}
 		dut_result = expr(buf,&success);
 		if(!success) assert(0);
 		if(dut_result != ref_result) assert(0);
