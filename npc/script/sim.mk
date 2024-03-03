@@ -1,6 +1,7 @@
 #testbench
 CTB = $(shell find $(abspath $(NPC_HOME)/csrc/tb) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 VERILATOR_FLAGS += -CFLAGS "-I$(NPC_HOME)/csrc/tb/include"
+LDFLAGS = #bug fix
 #sim
 sim: $(VSRCS) $(CTB)
 	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!

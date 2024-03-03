@@ -18,6 +18,8 @@ static void reset(int n) {
 	dut.rst = 1;
  	while (n -- > 0) single_cycle();
 	dut.rst = 0;
+	m_trace->dump(contextp -> time());
+	contextp -> timeInc(1);
 }
 extern "C" void npc_trap(){
 	m_trace->dump(contextp -> time());
@@ -42,6 +44,7 @@ int main(int argc, char *argv[]){
 		single_cycle();
 		m_trace->dump(contextp -> time());
 		contextp -> timeInc(1);
+		printf("pc = %#x\n",dut.pc);
 	}
 	m_trace -> close();
 }
