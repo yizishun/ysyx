@@ -22,8 +22,6 @@ static long load_img() {
   fseek(fp, 0, SEEK_SET);
   int ret = fread(guest_to_host(RESET_VECTOR), size, 1, fp);
   assert(ret == 1);
-  printf("0x8000000 : %x\n",*guest_to_host(RESET_VECTOR));
-  fflush(stdout);
 
   fclose(fp);
   return size;
@@ -52,7 +50,7 @@ void init_monitor(int argc, char *argv[]){
   /* Parse arguments. */
   parse_args(argc, argv);
 
-  init_mem(10);
+  init_mem(3000);
 
   long img_size = load_img();
 }
