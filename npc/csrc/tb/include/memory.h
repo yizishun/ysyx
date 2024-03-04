@@ -9,5 +9,7 @@
 void init_mem(size_t size);
 uint32_t *guest_to_host(uint32_t addr);
 uint32_t pmem_read(uint32_t vaddr);
+void isa_reg_display();
+uint32_t isa_reg_str2val(const char *s, bool *success);
 
 #endif
