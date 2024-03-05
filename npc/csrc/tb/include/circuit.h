@@ -8,6 +8,7 @@
 extern Vysyx_23060171_cpu cpu;
 //circuit
 void single_cycle();
+void cpu_exec(uint32_t n);
 void reset(int n);
 //wave
 void init_wave();

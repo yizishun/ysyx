@@ -1,5 +1,5 @@
 #testbench in nvb
-CTB_NVB = $(shell find $(abspath $(NPC_HOME)/csrc/tb_nvb) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
+CTB_NVB = $(shell find $(abspath $(NPC_HOME)/csrc/tb_nvb) -name "*.c" -or -name "*.cc" -or -name "*.cpp" -or -name "*.cc")
 
 #nvb gcc compile flag
 INCFLAGS = $(addprefix -I, $(INC_PATH))

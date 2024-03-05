@@ -1,9 +1,12 @@
 #testbench
 CTB = $(shell find $(abspath $(NPC_HOME)/csrc/tb) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
+LDFLAGS += $(shell llvm-config --ldflags)
+LDFLAGS += $(shell llvm-config --libs)
 VERILATOR_FLAGS += -CFLAGS "-I$(NPC_HOME)/csrc/tb/include"
-LDFLAGS = #bug fix
+VERILATOR_FLAGS += -LDFLAGS "$(LDFLAGS) -lreadline"
+ARGS = 
 #sim
-sim: $(VSRCS) $(CTB)
+$(BIN): $(VSRCS) $(CTB)
 	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
 	@rm -rf $(OBJ_DIR)
 	@mkdir -p $(BUILD_DIR)
@@ -11,5 +14,5 @@ sim: $(VSRCS) $(CTB)
 		--top-module $(TOPNAME) $^ \
 		--Mdir $(OBJ_DIR) --exe -o $(abspath $(BIN))
 
-run: sim	
-	$(BIN) $(IMG)
+run: $(BIN)	
+	$(BIN) $(ARGS) $(IMG)

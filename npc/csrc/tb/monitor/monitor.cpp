@@ -1,9 +1,11 @@
 #include <memory.h>
 #include <unistd.h>
 #include <getopt.h>
-#include <stdio.h>
-#include <assert.h>
+#include <common.h>
 static char * img_file = NULL;
+void sdb_set_batch_mode();
+void init_sdb();
+extern "C" void init_disasm(const char *triple);
 static long load_img() {
   if (img_file == NULL) {
     printf("No image is given. Use the default build-in image.\n");
@@ -29,15 +31,18 @@ static long load_img() {
 
 static int parse_args(int argc,char *argv[]){
   const struct option table[] = {
+    {"batch"    , no_argument      , NULL, 'b'},
     {"help"     , no_argument      , NULL, 'h'},
     {0          , 0                , NULL,  0 },
   };
   int o;
-  while ( (o = getopt_long(argc, argv, "-h", table, NULL)) != -1) {
+  while ( (o = getopt_long(argc, argv, "-bh", table, NULL)) != -1) {
     switch (o) {
+      case 'b': sdb_set_batch_mode(); break;
       case 1: img_file = optarg; return 0;
       default:
         printf("Usage: %s [OPTION...] IMAGE [args]\n\n", argv[0]);
+        printf("\t-b,--batch              run with batch mode\n");
         printf("\n");
         exit(0);
     }
@@ -53,4 +58,8 @@ void init_monitor(int argc, char *argv[]){
   init_mem(3000);
 
   long img_size = load_img();
+
+  init_disasm("riscv32-pc-linux-gnu");
+
+  init_sdb();
 }
