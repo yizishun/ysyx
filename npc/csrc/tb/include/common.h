@@ -16,4 +16,5 @@ typedef uint32_t word_t;
 
 typedef word_t vaddr_t;
 typedef uint32_t paddr_t;
+#include <debug.h>
 #endif

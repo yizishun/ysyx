@@ -21,6 +21,10 @@ void reset(int n) {
 	dump_wave_inc();
 }
 
+void assert_fail_msg() {
+  isa_reg_display();
+}
+
 void record_inst_trace(char *p, uint8_t *inst ,uint32_t pc){
   char *ps = p;
   p += snprintf(p,128, "%#x:",pc);

@@ -4,7 +4,9 @@ LDFLAGS += $(shell llvm-config --ldflags)
 LDFLAGS += $(shell llvm-config --libs)
 VERILATOR_FLAGS += -CFLAGS "-I$(NPC_HOME)/csrc/tb/include"
 VERILATOR_FLAGS += -LDFLAGS "$(LDFLAGS) -lreadline"
-ARGS = 
+override ARGS ?= --log=$(BUILD_DIR)/npc-log.txt
+
+NPC_EXEC := $(BIN) $(ARGS) $(IMG)
 #sim
 $(BIN): $(VSRCS) $(CTB)
 	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
@@ -15,4 +17,4 @@ $(BIN): $(VSRCS) $(CTB)
 		--Mdir $(OBJ_DIR) --exe -o $(abspath $(BIN))
 
 run: $(BIN)	
-	$(BIN) $(ARGS) $(IMG)
+	$(NPC_EXEC)
