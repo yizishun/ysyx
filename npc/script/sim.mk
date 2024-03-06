@@ -1,6 +1,6 @@
 #testbench
 CTB = $(shell find $(abspath $(NPC_HOME)/csrc/tb) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
-LDFLAGS += $(shell llvm-config --ldflags)
+LDFLAGS = $(shell llvm-config --ldflags)
 LDFLAGS += $(shell llvm-config --libs)
 VERILATOR_FLAGS += -CFLAGS "-I$(NPC_HOME)/csrc/tb/include"
 VERILATOR_FLAGS += -LDFLAGS "$(LDFLAGS) -lreadline"

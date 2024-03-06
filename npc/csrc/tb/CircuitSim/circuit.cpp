@@ -1,11 +1,15 @@
 #include <circuit.h>
 #include <memory.h>
-#include <stdio.h>
-#include <string.h>
+#include <common.h>
+#include <ftrace.h>
 Vysyx_23060171_cpu cpu;
 extern "C" void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
+static void statistic();
 #define MAX_INST_TO_PRINT 10
+uint64_t g_nr_guest_inst = 0;
 static bool g_print_step = false;
+static word_t pc, snpc, dnpc;
+static uint8_t opcode;
 
 void single_cycle(){  //  0 --> 0 > 1 --> 1 > 0 this is a cycle in cpu
 	cpu.clk=0;   //negedge 1->0 no
@@ -23,6 +27,7 @@ void reset(int n) {
 
 void assert_fail_msg() {
   isa_reg_display();
+  statistic();
 }
 
 void record_inst_trace(char *p, uint8_t *inst ,uint32_t pc){
@@ -42,25 +47,58 @@ void record_inst_trace(char *p, uint8_t *inst ,uint32_t pc){
 
   disassemble(p, ps+128-p, (uint64_t)pc, inst, ilen);
 }
+
+static void trace_and_difftest(){
+	/* watchpoint check */
+	extern int check_w();
+  	int no = check_w();
+  	if(no != 0){
+    	printf("NO.%d watchpoint has been trigger\n",no);
+		return;
+  	}
+
+	/* trace(1):instruction trace */
+	char disasm_buf[128] = {0};
+	record_inst_trace(disasm_buf,(uint8_t *)&cpu.inst,cpu.pc);
+	//print to stdout
+	if(g_print_step) puts(disasm_buf);
+	//print to log file
+	log_write("%s\n", disasm_buf);
+
+	/* trace(2):function trace*/
+	extern char * elf_file;
+	if(elf_file == NULL) return;
+	opcode = BITS(cpu.inst, 6, 0);
+	if(opcode == JAL || opcode == JALR){
+		ftrace_check(opcode , pc, dnpc, cpu.inst);
+	}
+}
+
+/* cpu single cycle in exec */
+static void exec_once(){
+	cpu.inst = pmem_read(cpu.pc);
+	single_cycle();
+	dump_wave_inc();
+}
+
 void cpu_exec(uint32_t n){
+	//max inst to print to stdout
 	g_print_step = (n < MAX_INST_TO_PRINT);
 	while(n > 0){
-		cpu.inst = pmem_read(cpu.pc);
-		char p2[128] = {0};
-		record_inst_trace(p2,(uint8_t *)&cpu.inst,cpu.pc);
-		if(g_print_step)
-			puts(p2);
-		extern int check_w();
-  		int no = check_w();
-  		if(no != 0){
-    		printf("NO.%d watchpoint has been trigger\n",no);
-			return;
-  		}
-		single_cycle();
-		dump_wave_inc();
+		pc = cpu.pc;
+		snpc = cpu.pc + 4;
+		exec_once();
+		dnpc = cpu.pc;
+		g_nr_guest_inst ++;
+		trace_and_difftest();
 		n--;
 	}
 }
+
+static void statistic() {
+  Log("total guest instructions = %llu", g_nr_guest_inst);
+}
+
 extern "C" void npc_trap(){
 	dump_wave_inc();
 	close_wave();
@@ -71,5 +109,6 @@ extern "C" void npc_trap(){
 	else
 		printf("\033[1;31mHIT BAD TRAP\033[0m exit code = %d",code);
 	printf(" trap in %#x\n",cpu.pc);
+	statistic();
 	exit(0);
 }

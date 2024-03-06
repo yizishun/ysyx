@@ -4,10 +4,12 @@
 #include <common.h>
 static char * img_file = NULL;
 static char *log_file = NULL;
+char *elf_file = NULL;
 
 void sdb_set_batch_mode();
 void init_sdb();
 void init_log(const char *log_file);
+void init_ftrace(char *elf_file);
 extern "C" void init_disasm(const char *triple);
 
 static void welcome() {
@@ -21,8 +23,8 @@ static void welcome() {
 }
 
 static long load_img() {
-  if (img_file == NULL) {
-    printf("No image is given. Use the default build-in image.\n");
+  if (img_file == NULL) {    
+    Log("No image is given. Use the default build-in image.");
     return 40; // built-in image size
   }
 
@@ -32,7 +34,7 @@ static long load_img() {
   fseek(fp, 0, SEEK_END);
   long size = ftell(fp);
 
-  printf("The image is %s, size = %ld\n", img_file, size);
+  Log("The image is %s, size = %ld", img_file, size);
   fflush(stdout);
 
   fseek(fp, 0, SEEK_SET);
@@ -48,18 +50,21 @@ static int parse_args(int argc,char *argv[]){
     {"batch"    , no_argument      , NULL, 'b'},
     {"log"      , required_argument, NULL, 'l'},
     {"help"     , no_argument      , NULL, 'h'},
+    {"elf"			,	required_argument, NULL, 'e'},
     {0          , 0                , NULL,  0 },
   };
   int o;
-  while ( (o = getopt_long(argc, argv, "-bhl:", table, NULL)) != -1) {
+  while ( (o = getopt_long(argc, argv, "-bhl:e:", table, NULL)) != -1) {
     switch (o) {
       case 'b': sdb_set_batch_mode(); break;
       case 'l': log_file = optarg; break;
+      case 'e': elf_file = optarg; break;
       case 1: img_file = optarg; return 0;
       default:
         printf("Usage: %s [OPTION...] IMAGE [args]\n\n", argv[0]);
         printf("\t-b,--batch              run with batch mode\n");
         printf("\t-l,--log=FILE           output log to FILE\n");
+        printf("\t-e,--elf=FILE						ftrace load elf file to find sym");
         printf("\n");
         exit(0);
     }
@@ -72,15 +77,17 @@ void init_monitor(int argc, char *argv[]){
   /* Parse arguments. */
   parse_args(argc, argv);
 
+  init_log(log_file);
+
   init_mem(3000);
 
   long img_size = load_img();
 
+  init_ftrace(elf_file);
+
   init_disasm("riscv32-pc-linux-gnu");
 
   init_sdb();
-
-  init_log(log_file);
 
   welcome();
 }

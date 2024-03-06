@@ -1,4 +1,5 @@
 #include <memory.h>
+#include <common.h>
 static const uint32_t img[] = {
 	0b00000000110000000000001011101111, //jal   x5 12   0x80000000
 	0b00000000000000000001001000110111, //lui   x4 1    0x80000004
@@ -15,6 +16,7 @@ void init_mem(size_t size){
 	pmem = (uint32_t *)malloc(size * sizeof(uint32_t));
 	memcpy(pmem , img , sizeof(img));
 	if(pmem == NULL){exit(0);}
+	Log("inst physical memory area [%#x, %#x]",RESET_VECTOR, RESET_VECTOR + size * sizeof(uint32_t));
 }
 uint32_t *guest_to_host(uint32_t vaddr){return pmem + (vaddr - RESET_VECTOR)/4;}
 uint32_t pmem_read(uint32_t vaddr){

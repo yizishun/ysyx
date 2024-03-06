@@ -44,7 +44,7 @@ void ftrace_check(int type,Decode *s,word_t imm, int rd){
 	//printf("prev = %s\n",prev_fname);
 	//printf("now  = %s\n",now_fname);
 	if(strcmp(prev_fname,now_fname) == 0)	return;
-	//printf("rs1 = %u imm = %u rd = %u\n",rs1,imm,rd);
+	printf("rs1 = %u imm = %u rd = %u\n",rs1,imm,rd);
 	if(type == JAL) ftrace_write(CALL,now_fname,s->dnpc,s->pc);
 	else if(type == JALR){
 		if(rs1 == 1 && imm == 0 && rd == 0)

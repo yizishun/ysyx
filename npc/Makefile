@@ -16,7 +16,7 @@ VERILATOR = $(VERILATOR_ROOT)/bin/verilator
 endif
 
 #verilator flag
-VERILATOR_FLAGS += -MMD -cc -O3  --build --x-assign fast --x-initial fast --noassert
+VERILATOR_FLAGS += -MMD -cc -O3  --build --x-assign fast --x-initial fast --noassert -j 5
 VERILATOR_FLAGS += --trace
 
 #source code
