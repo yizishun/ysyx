@@ -49,7 +49,10 @@ module ysyx_23060171_idu(
 			`ENV: begin
 				case(f12)
 					`ebreak: npc_trap();
-					default:PCSrc = `pc_plus_4_1;
+					default:begin
+						PCSrc = `pc_plus_4_1;
+						RegwriteE = `NWRITE;
+					end
 				endcase
 			end
 			`IMMARITH:begin
@@ -62,7 +65,10 @@ module ysyx_23060171_idu(
 						RegwriteD = `Aluresult_1;
 						PCSrc = `pc_plus_4_1;
 					end
-				default:PCSrc = `pc_plus_4_1;
+				default:begin 
+					PCSrc = `pc_plus_4_1;
+					RegwriteE = `NWRITE;
+				end
 				endcase
 			end
 			`auipc:begin
@@ -95,7 +101,10 @@ module ysyx_23060171_idu(
 				RegwriteD = `pc_plus_4_2;
 				PCSrc = `addr;
 			end
-			default:PCSrc = `pc_plus_4_1;
+			default:begin 
+				PCSrc = `pc_plus_4_1;
+				RegwriteE = `NWRITE;
+			end
 		endcase
 	end
 endmodule

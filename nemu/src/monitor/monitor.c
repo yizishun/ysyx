@@ -21,7 +21,9 @@ void init_log(const char *log_file);
 void init_mem();
 void init_difftest(char *ref_so_file, long img_size, int port);
 void init_device();
+#ifndef CONFIG_TARGET_SHARE
 void init_sdb();
+#endif
 void init_disasm(const char *triple);
 void init_iringbuf(int length);
 void init_ftrace(char *elf_file);
@@ -41,7 +43,9 @@ static void welcome() {
 #ifndef CONFIG_TARGET_AM
 #include <getopt.h>
 
+#ifndef CONFIG_TARGET_SHARE
 void sdb_set_batch_mode();
+#endif
 
 static char *log_file = NULL;
 static char *diff_so_file = NULL;
@@ -85,7 +89,9 @@ static int parse_args(int argc, char *argv[]) {
   int o;
   while ( (o = getopt_long(argc, argv, "-bhl:d:e:p:", table, NULL)) != -1) {
     switch (o) {
+      #ifndef CONFIG_TARGET_SHARE
       case 'b': sdb_set_batch_mode(); break;
+      #endif
       case 'p': sscanf(optarg, "%d", &difftest_port); break;
       case 'l': log_file = optarg; break;
       case 'd': diff_so_file = optarg; break;
@@ -141,7 +147,9 @@ void init_monitor(int argc, char *argv[]) {
 	#endif
 
   /* Initialize the simple debugger. */
+  #ifndef CONFIG_TARGET_SHARE
   init_sdb();
+  #endif
 
 #ifndef CONFIG_ISA_loongarch32r
   IFDEF(CONFIG_ITRACE, init_disasm(

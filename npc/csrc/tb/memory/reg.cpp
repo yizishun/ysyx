@@ -1,8 +1,9 @@
 #include <memory.h>
 #include <Vysyx_23060171_cpu.h>
+#include <Vysyx_23060171_cpu___024root.h>
 #include <svdpi.h>
-uint32_t gpr[32];
-static int size = 32;
+#include <circuit.h>
+uint32_t gpr[REGNUM];
 void isa_reg_display();
 extern Vysyx_23060171_cpu cpu;
 const char *regs[] = {
@@ -12,16 +13,16 @@ const char *regs[] = {
   "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"
 };
 
-extern "C" void Get_reg(uint32_t rf[]){  //dpi-c
-    for (int i = 0; i < 32; ++i) {
-        gpr[i] = rf[i];
-    }
+void get_reg(){
+  int i;
+  for(i = 0;i < REGNUM; i++)
+    gpr[i] = cpu.rootp -> ysyx_23060171_cpu__DOT__gpr__DOT__rf[i];
 }
 
 void isa_reg_display() {
   int i;
   printf("\ndut-pc=%x\n",cpu.pc);
-  for(i = 0;i < size;i++){
+  for(i = 0;i < REGNUM;i++){
     if(gpr[i] >= 0x80000000){
       printf("dut-%3s = %-#11x",regs[i],gpr[i]);
       if(i % 3 == 0) printf("\n");
@@ -36,12 +37,12 @@ void isa_reg_display() {
 
 uint32_t isa_reg_str2val(const char *s, bool *success) {
   int i;
-  for(i = 0;i < size;i++){
+  for(i = 0;i < REGNUM;i++){
     if(strcmp(regs[i],s+1) == 0)
       break;
   }
   
-  if(i < size){
+  if(i < REGNUM){
     *success = true;
     //printf("%3s		%d\n",regs[i],gpr[i]);
   }

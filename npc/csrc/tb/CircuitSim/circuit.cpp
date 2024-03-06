@@ -5,13 +5,14 @@
 Vysyx_23060171_cpu cpu;
 extern "C" void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
 static void statistic();
+void difftest_step();
 #define MAX_INST_TO_PRINT 10
 uint64_t g_nr_guest_inst = 0;
 static bool g_print_step = false;
 static word_t pc, snpc, dnpc;
 static uint8_t opcode;
 
-void single_cycle(){  //  0 --> 0 > 1 --> 1 > 0 this is a cycle in cpu
+void single_cycle(){  //  0 --> 0 > 1 --> 1 > 0 this is a cycle in cpu  _|-|_|-
 	cpu.clk=0;   //negedge 1->0 no
     cpu.eval();  //process 0->0 refresh combination logic and make them stable
 	cpu.clk=1;   //posedge 0->1 refresh sequential logic
@@ -49,6 +50,10 @@ void record_inst_trace(char *p, uint8_t *inst ,uint32_t pc){
 }
 
 static void trace_and_difftest(){
+	/* DiffTest */
+	difftest_step();
+	//isa_reg_display(); //debug
+
 	/* watchpoint check */
 	extern int check_w();
   	int no = check_w();
@@ -59,7 +64,7 @@ static void trace_and_difftest(){
 
 	/* trace(1):instruction trace */
 	char disasm_buf[128] = {0};
-	record_inst_trace(disasm_buf,(uint8_t *)&cpu.inst,cpu.pc);
+	record_inst_trace(disasm_buf,(uint8_t *)&cpu.inst,pc);
 	//print to stdout
 	if(g_print_step) puts(disasm_buf);
 	//print to log file
@@ -67,11 +72,11 @@ static void trace_and_difftest(){
 
 	/* trace(2):function trace*/
 	extern char * elf_file;
-	if(elf_file == NULL) return;
 	opcode = BITS(cpu.inst, 6, 0);
 	if(opcode == JAL || opcode == JALR){
 		ftrace_check(opcode , pc, dnpc, cpu.inst);
 	}
+
 }
 
 /* cpu single cycle in exec */
@@ -89,6 +94,7 @@ void cpu_exec(uint32_t n){
 		snpc = cpu.pc + 4;
 		exec_once();
 		dnpc = cpu.pc;
+		get_reg();
 		g_nr_guest_inst ++;
 		trace_and_difftest();
 		n--;

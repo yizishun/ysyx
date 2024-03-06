@@ -32,7 +32,8 @@ static uint64_t g_timer = 0; // unit: us
 static bool g_print_step = false;
 
 void device_update();
-
+void record_inst_trace(char *p, Decode *s);
+#ifndef CONFIG_TARGET_SHARE
 static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
 #ifdef CONFIG_ITRACE_COND
   if (ITRACE_COND) { log_write("%s\n", _this->logbuf); }
@@ -45,7 +46,13 @@ static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
     nemu_state.state = NEMU_STOP;
     printf("NO.%d watchpoint has been trigger\n",no);
   }
+#ifndef CONFIG_TARGET_SHARE
+  char p2[128] = {0};
+	record_inst_trace(p2 , _this);
+#endif
+	iringbuf_write(p2);
 }
+#ifndef CONFIG_TARGET_SHARE
 void record_inst_trace(char *p, Decode *s){
 	char *ps = p;
   p += snprintf(p, sizeof(s->logbuf), FMT_WORD ":", s->pc);
@@ -70,14 +77,13 @@ void record_inst_trace(char *p, Decode *s){
   p[0] = '\0'; // the upstream llvm does not support loongarch32r
 #endif
 }
+#endif
+#endif
 static void exec_once(Decode *s, vaddr_t pc) {
   s->pc = pc;
   s->snpc = pc;
   isa_exec_once(s);
   cpu.pc = s->dnpc;
-	char p2[128] = {0};
-	record_inst_trace(p2 , s);
-	iringbuf_write(p2);
 #ifdef CONFIG_ITRACE
   char *p = s->logbuf;
 	record_inst_trace(p , s);
@@ -89,7 +95,9 @@ static void execute(uint64_t n) {
   for (;n > 0; n --) {
     exec_once(&s, cpu.pc);
     g_nr_guest_inst ++;
+    #ifndef CONFIG_TARGET_SHARE
     trace_and_difftest(&s, cpu.pc);
+    #endif
     if (nemu_state.state != NEMU_RUNNING) break;
     IFDEF(CONFIG_DEVICE, device_update());
   }

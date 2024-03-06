@@ -11,7 +11,7 @@ int count = 0;
 int space = 0;
 static char *ftrace_find_symbol(vaddr_t addr);
 static void ftrace_write(int type,char *fname, vaddr_t caddr, vaddr_t addr);
-
+/* ftrace */
 void ftrace_check(uint8_t type,paddr_t pc,paddr_t dnpc,word_t i){
   	extern char * elf_file;
   	if(elf_file == NULL) return;
@@ -78,7 +78,7 @@ static void ftrace_write(int type,char *fname, vaddr_t caddr, vaddr_t addr){
 }
 void init_ftrace(char *elf_file){ 
 	if(elf_file == NULL) { 
-		Log("No elf is given.");
+		Log("No elf is given. Have turned off ftrace autometically");
 		return;
 	}
 	Log("The ELF is %s", elf_file);

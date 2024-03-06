@@ -4,7 +4,7 @@ LDFLAGS = $(shell llvm-config --ldflags)
 LDFLAGS += $(shell llvm-config --libs)
 VERILATOR_FLAGS += -CFLAGS "-I$(NPC_HOME)/csrc/tb/include"
 VERILATOR_FLAGS += -LDFLAGS "$(LDFLAGS) -lreadline"
-override ARGS ?= --log=$(BUILD_DIR)/npc-log.txt
+override ARGS ?= --log=$(BUILD_DIR)/npc-log.txt --diff=$(NPC_HOME)/tools/nemu-diff/riscv32-nemu-interpreter-so
 
 NPC_EXEC := $(BIN) $(ARGS) $(IMG)
 #sim

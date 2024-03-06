@@ -12,13 +12,14 @@
 *
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
-
 #include <isa.h>
 #include <cpu/cpu.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "sdb.h"
 #include "memory/paddr.h"
+#include <common.h>
+#ifndef CONFIG_TARGET_SHARE
 
 static int is_batch_mode = false;
 
@@ -218,3 +219,4 @@ void init_sdb() {
   /* Initialize the watchpoint pool. */
   init_wp_pool();
 }
+#endif

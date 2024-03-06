@@ -16,7 +16,7 @@ void init_mem(size_t size){
 	pmem = (uint32_t *)malloc(size * sizeof(uint32_t));
 	memcpy(pmem , img , sizeof(img));
 	if(pmem == NULL){exit(0);}
-	Log("inst physical memory area [%#x, %#x]",RESET_VECTOR, RESET_VECTOR + size * sizeof(uint32_t));
+	Log("inst physical memory area [%#x, %#lx]",RESET_VECTOR, RESET_VECTOR + size * sizeof(uint32_t));
 }
 uint32_t *guest_to_host(uint32_t vaddr){return pmem + (vaddr - RESET_VECTOR)/4;}
 uint32_t pmem_read(uint32_t vaddr){

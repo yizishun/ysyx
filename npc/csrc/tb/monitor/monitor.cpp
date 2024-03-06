@@ -4,12 +4,14 @@
 #include <common.h>
 static char * img_file = NULL;
 static char *log_file = NULL;
+static char *diff_so_file = NULL;
 char *elf_file = NULL;
 
 void sdb_set_batch_mode();
 void init_sdb();
 void init_log(const char *log_file);
 void init_ftrace(char *elf_file);
+void init_difftest(char *ref_so_file, long img_size);
 extern "C" void init_disasm(const char *triple);
 
 static void welcome() {
@@ -25,7 +27,7 @@ static void welcome() {
 static long load_img() {
   if (img_file == NULL) {    
     Log("No image is given. Use the default build-in image.");
-    return 40; // built-in image size
+    return 72; // built-in image size
   }
 
   FILE *fp = fopen(img_file, "rb");
@@ -51,19 +53,22 @@ static int parse_args(int argc,char *argv[]){
     {"log"      , required_argument, NULL, 'l'},
     {"help"     , no_argument      , NULL, 'h'},
     {"elf"			,	required_argument, NULL, 'e'},
+    {"diff"     , required_argument, NULL, 'd'},
     {0          , 0                , NULL,  0 },
   };
   int o;
-  while ( (o = getopt_long(argc, argv, "-bhl:e:", table, NULL)) != -1) {
+  while ( (o = getopt_long(argc, argv, "-bhl:d:e:", table, NULL)) != -1) {
     switch (o) {
       case 'b': sdb_set_batch_mode(); break;
       case 'l': log_file = optarg; break;
+      case 'd': diff_so_file = optarg; break;
       case 'e': elf_file = optarg; break;
       case 1: img_file = optarg; return 0;
       default:
         printf("Usage: %s [OPTION...] IMAGE [args]\n\n", argv[0]);
         printf("\t-b,--batch              run with batch mode\n");
         printf("\t-l,--log=FILE           output log to FILE\n");
+        printf("\t-d,--diff=REF_SO        run DiffTest with reference REF_SO\n");
         printf("\t-e,--elf=FILE						ftrace load elf file to find sym");
         printf("\n");
         exit(0);
@@ -88,6 +93,8 @@ void init_monitor(int argc, char *argv[]){
   init_disasm("riscv32-pc-linux-gnu");
 
   init_sdb();
+
+  init_difftest(diff_so_file , img_size);
 
   welcome();
 }
