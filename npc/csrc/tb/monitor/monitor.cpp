@@ -84,7 +84,7 @@ void init_monitor(int argc, char *argv[]){
 
   init_log(log_file);
 
-  init_mem(3000);
+  init_mem(0x7ffffff);
 
   long img_size = load_img();
 

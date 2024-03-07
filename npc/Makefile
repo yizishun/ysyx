@@ -31,7 +31,7 @@ include $(NPC_HOME)/script/yosys-sta.mk
 include $(NPC_HOME)/script/sim.mk
 
 #nvb
-#include $(NPC_HOME)/script/sim_nvb.mk 
+include $(NPC_HOME)/script/sim_nvb.mk 
 
 #main makefile in all project
 include ../Makefile

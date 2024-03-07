@@ -9,7 +9,7 @@ void difftest_step();
 #define MAX_INST_TO_PRINT 10
 uint64_t g_nr_guest_inst = 0;
 static bool g_print_step = false;
-static word_t pc, snpc, dnpc;
+word_t pc, snpc, dnpc,inst , prev_pc;
 static uint8_t opcode;
 
 void single_cycle(){  //  0 --> 0 > 1 --> 1 > 0 this is a cycle in cpu  _|-|_|-
@@ -52,7 +52,6 @@ void record_inst_trace(char *p, uint8_t *inst ,uint32_t pc){
 static void trace_and_difftest(){
 	/* DiffTest */
 	difftest_step();
-	//isa_reg_display(); //debug
 
 	/* watchpoint check */
 	extern int check_w();
@@ -64,7 +63,7 @@ static void trace_and_difftest(){
 
 	/* trace(1):instruction trace */
 	char disasm_buf[128] = {0};
-	record_inst_trace(disasm_buf,(uint8_t *)&cpu.inst,pc);
+	record_inst_trace(disasm_buf,(uint8_t *)&inst,pc);
 	//print to stdout
 	if(g_print_step) puts(disasm_buf);
 	//print to log file
@@ -72,16 +71,15 @@ static void trace_and_difftest(){
 
 	/* trace(2):function trace*/
 	extern char * elf_file;
-	opcode = BITS(cpu.inst, 6, 0);
+	opcode = BITS(inst, 6, 0);
 	if(opcode == JAL || opcode == JALR){
-		ftrace_check(opcode , pc, dnpc, cpu.inst);
+		ftrace_check(opcode ,prev_pc, dnpc, inst);
 	}
 
 }
 
 /* cpu single cycle in exec */
 static void exec_once(){
-	cpu.inst = pmem_read(cpu.pc);
 	single_cycle();
 	dump_wave_inc();
 }
@@ -90,10 +88,12 @@ void cpu_exec(uint32_t n){
 	//max inst to print to stdout
 	g_print_step = (n < MAX_INST_TO_PRINT);
 	while(n > 0){
-		pc = cpu.pc;
-		snpc = cpu.pc + 4;
+		prev_pc = cpu.rootp -> ysyx_23060171_cpu__DOT__pc;
+		snpc = pc + 4;
+		inst = cpu.rootp -> ysyx_23060171_cpu__DOT__inst;
 		exec_once();
-		dnpc = cpu.pc;
+		pc = cpu.rootp -> ysyx_23060171_cpu__DOT__pc;
+		dnpc = cpu.rootp -> ysyx_23060171_cpu__DOT__pc;
 		get_reg();
 		g_nr_guest_inst ++;
 		trace_and_difftest();
@@ -114,7 +114,7 @@ extern "C" void npc_trap(){
 		printf("\033[1;32mHIT GOOD TRAP\033[0m");
 	else
 		printf("\033[1;31mHIT BAD TRAP\033[0m exit code = %d",code);
-	printf(" trap in %#x\n",cpu.pc);
+	printf(" trap in %#x\n",snpc);
 	statistic();
 	exit(0);
 }

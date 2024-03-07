@@ -15,5 +15,5 @@ $(BIN): $(VSRCS) $(CTB)
 	@make -s -C $(OBJ_DIR) -f $(REWRITE)
 
 run: $(BIN)	
-	@echo "$(COLOR_YELLOW)[Run CPU]$(COLOR_NONE)" $(notdir $(BUILD_DIR))/$(notdir $(BIN))
+	@echo "$(COLOR_YELLOW)[Run CPU]$(COLOR_NONE)"
 	$(NPC_EXEC)

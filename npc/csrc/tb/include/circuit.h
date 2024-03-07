@@ -5,7 +5,10 @@
 #include <verilated_vcd_c.h>
 #include <svdpi.h>
 #include <Vysyx_23060171_cpu__Dpi.h>
+#include <Vysyx_23060171_cpu___024root.h>
+#include <common.h>
 extern Vysyx_23060171_cpu cpu;
+extern word_t inst,pc;
 //circuit
 void single_cycle();
 void cpu_exec(uint32_t n);

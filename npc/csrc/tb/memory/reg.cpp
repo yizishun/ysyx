@@ -1,6 +1,4 @@
 #include <memory.h>
-#include <Vysyx_23060171_cpu.h>
-#include <Vysyx_23060171_cpu___024root.h>
 #include <svdpi.h>
 #include <circuit.h>
 uint32_t gpr[REGNUM];
@@ -21,7 +19,7 @@ void get_reg(){
 
 void isa_reg_display() {
   int i;
-  printf("\ndut-pc=%x\n",cpu.pc);
+  printf("\ndut-pc=%x\n",pc);
   for(i = 0;i < REGNUM;i++){
     if(gpr[i] >= 0x80000000){
       printf("dut-%3s = %-#11x",regs[i],gpr[i]);
@@ -49,7 +47,7 @@ uint32_t isa_reg_str2val(const char *s, bool *success) {
   else {
     if(strcmp("pc",s+1) == 0){
 	*success = true;
-	return cpu.pc;
+	return pc;
     }
     *success = false;
 }

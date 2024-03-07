@@ -11,15 +11,26 @@ static const uint32_t img[] = {
 	0b00000000000001010000010100010011, //addi x10 x10 0 0x8000001c mv a0,a0;
 	0b00000000000100000000000001110011  //ebreak        0x80000020  
 };
-static uint32_t *pmem = NULL;
+static uint8_t *pmem = NULL;
 void init_mem(size_t size){
-	pmem = (uint32_t *)malloc(size * sizeof(uint32_t));
+	pmem = (uint8_t *)malloc(size * sizeof(uint8_t));
 	memcpy(pmem , img , sizeof(img));
 	if(pmem == NULL){exit(0);}
-	Log("inst physical memory area [%#x, %#lx]",RESET_VECTOR, RESET_VECTOR + size * sizeof(uint32_t));
+	Log("npc physical memory area [%#x, %#lx]",RESET_VECTOR, RESET_VECTOR + size * sizeof(uint8_t));
 }
-uint32_t *guest_to_host(uint32_t vaddr){return pmem + (vaddr - RESET_VECTOR)/4;}
-uint32_t pmem_read(uint32_t vaddr){
-	uint32_t *inst_paddr = guest_to_host(vaddr);
+uint8_t *guest_to_host(uint32_t paddr){return pmem + (paddr - RESET_VECTOR);}
+extern "C" uint32_t pmem_read(uint32_t paddr){
+	uint32_t *inst_paddr = (uint32_t *)guest_to_host(paddr & ~0x3u);
 	return *inst_paddr;
+}
+
+extern "C" void pmem_write(int waddr, int wdata, char wmask){
+	uint8_t *vaddr = guest_to_host(waddr & ~0x3u);
+	int i;
+	for(i = 0;i < 4;i++){
+		if(wmask & (1 << i)){
+			vaddr += i;
+			*vaddr = (wdata >> (i * 8)) & 0xFF;
+		}
+	}
 }

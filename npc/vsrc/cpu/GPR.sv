@@ -13,7 +13,6 @@ module ysyx_23060171_gpr #(ADDR_WIDTH = 5, DATA_WIDTH = 32) (
   always @(posedge clk) begin
     if (wen) begin 
       rf[waddr] <= wdata;
-      //Get_reg(rf);
     end
 		rf[0] <= 32'b0;
   end

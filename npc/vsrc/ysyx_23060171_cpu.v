@@ -1,8 +1,6 @@
 module ysyx_23060171_cpu(
-	input [31:0]inst,
 	input clk,
-	input rst,
-	output [31:0]pc
+	input rst
 );
 	//control signal
 	wire [2:0]alucontrol;
@@ -12,6 +10,8 @@ module ysyx_23060171_cpu(
 	wire [1:0]RegwriteD;
 	wire [1:0]PCSrc;
 	//pc
+	wire [31:0]pc;
+	wire [31:0]inst;
 	wire [31:0]nextpc;
 	wire [31:0]pc_plus_4;
 	wire [31:0]addr;
@@ -31,6 +31,10 @@ module ysyx_23060171_cpu(
 		.next_pc(nextpc),
 		.pc(pc)
 	);
+	ysyx_23060171_inst_memory inst_memory(
+		.pc(pc),
+		.inst(inst)
+	);
 	ysyx_23060171_MuxKey #(3,2,32) pcmux(nextpc,PCSrc,{
 		2'b00,pc_plus_4,
 		2'b01,aluresult,
@@ -46,7 +50,7 @@ module ysyx_23060171_cpu(
 		.waddr(inst[11:7]),
 		.raddr1(inst[19:15]),
 		.raddr2(inst[24:20]),
-		.wdata(wd),
+		.wdata(wd), 
 		.rdata1(rd1),
 		.rdata2(rd2)
 	);
