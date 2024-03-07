@@ -32,6 +32,7 @@ module ysyx_23060171_cpu(
 		.pc(pc)
 	);
 	ysyx_23060171_inst_memory inst_memory(
+		.valid(rst),
 		.pc(pc),
 		.inst(inst)
 	);
