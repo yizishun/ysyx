@@ -31,9 +31,9 @@ void assert_fail_msg() {
   statistic();
 }
 
-void record_inst_trace(char *p, uint8_t *inst ,uint32_t pc){
+void record_inst_trace(char *p, uint8_t *inst){
   char *ps = p;
-  p += snprintf(p,128, "%#x:",pc);
+  p += snprintf(p,128, "%#x:",prev_pc);
   int ilen = 4;
   int i;
   for (i = ilen - 1; i >= 0; i --) {
@@ -46,7 +46,7 @@ void record_inst_trace(char *p, uint8_t *inst ,uint32_t pc){
   memset(p, ' ', space_len);
   p += space_len;
 
-  disassemble(p, ps+128-p, (uint64_t)pc, inst, ilen);
+  disassemble(p, ps+128-p, (uint64_t)prev_pc, inst, ilen);
 }
 
 static void trace_and_difftest(){
@@ -63,7 +63,7 @@ static void trace_and_difftest(){
 
 	/* trace(1):instruction trace */
 	char disasm_buf[128] = {0};
-	record_inst_trace(disasm_buf,(uint8_t *)&inst,pc);
+	record_inst_trace(disasm_buf,(uint8_t *)&inst);
 	//print to stdout
 	if(g_print_step) puts(disasm_buf);
 	//print to log file
@@ -90,8 +90,8 @@ void cpu_exec(uint32_t n){
 	while(n > 0){
 		prev_pc = cpu.rootp -> ysyx_23060171_cpu__DOT__pc;
 		snpc = pc + 4;
-		inst = cpu.rootp -> ysyx_23060171_cpu__DOT__inst;
 		exec_once();
+		inst = cpu.rootp -> ysyx_23060171_cpu__DOT__inst;
 		pc = cpu.rootp -> ysyx_23060171_cpu__DOT__pc;
 		dnpc = cpu.rootp -> ysyx_23060171_cpu__DOT__pc;
 		get_reg();
@@ -114,7 +114,7 @@ extern "C" void npc_trap(){
 		printf("\033[1;32mHIT GOOD TRAP\033[0m");
 	else
 		printf("\033[1;31mHIT BAD TRAP\033[0m exit code = %d",code);
-	printf(" trap in %#x\n",snpc);
+	printf(" trap in %#x\n",pc);
 	statistic();
 	exit(0);
 }

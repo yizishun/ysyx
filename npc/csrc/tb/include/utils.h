@@ -3,6 +3,8 @@
 
 #include <common.h>
 
+extern FILE* log_fp;
+
 // ----------- log -----------
 
 #define ANSI_FG_BLACK   "\33[1;30m"
@@ -27,7 +29,6 @@
 
 #define log_write(...) \
   do { \
-    extern FILE* log_fp; \
     fprintf(log_fp, __VA_ARGS__); \
     fflush(log_fp); \
   } while (0)

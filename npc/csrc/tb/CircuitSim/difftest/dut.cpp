@@ -65,6 +65,7 @@ bool static checkregs(struct CPU_state *ref_r){
         if(i % 3 == 0) printf("\n");
         } 
     }
+    printf("\n");
   }
   return flag;
 }

@@ -4,12 +4,9 @@ module ysyx_23060171_inst_memory(
     output reg [31:0] inst
 );
     import "DPI-C" function int pmem_read(input int raddr);
-    always @(*) begin
-        if(~valid) begin
-        inst =  pmem_read(pc);
-        end
-        else begin
-            inst = 0;
+    always_latch @(*) begin  // a latch to make sim env to record the inst
+        if(valid) begin
+            inst =  pmem_read(pc);
         end
     end
 endmodule
