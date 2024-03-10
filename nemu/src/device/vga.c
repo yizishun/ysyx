@@ -36,7 +36,7 @@ static uint32_t *vgactl_port_base = NULL;
 
 #ifdef CONFIG_VGA_SHOW_SCREEN
 #ifndef CONFIG_TARGET_AM
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 static SDL_Renderer *renderer = NULL;
 static SDL_Texture *texture = NULL;
@@ -56,7 +56,7 @@ static void init_screen() {
   SDL_RenderPresent(renderer);
 }
 
-static inline void update_screen() {
+static inline  __attribute__((unused)) void update_screen() {
   SDL_UpdateTexture(texture, NULL, vmem, SCREEN_W * sizeof(uint32_t));
   SDL_RenderClear(renderer);
   SDL_RenderCopy(renderer, texture, NULL, NULL);

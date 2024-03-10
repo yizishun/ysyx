@@ -17,7 +17,7 @@
 #include <utils.h>
 #include <device/alarm.h>
 #ifndef CONFIG_TARGET_AM
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #endif
 
 void init_map();
