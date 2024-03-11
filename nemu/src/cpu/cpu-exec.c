@@ -47,12 +47,15 @@ static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
     printf("NO.%d watchpoint has been trigger\n",no);
   }
 #ifndef CONFIG_TARGET_SHARE
+#ifdef CONFIG_ITRACE_COND
   char p2[128] = {0};
 	record_inst_trace(p2 , _this);
+  iringbuf_write(p2);
 #endif
-	iringbuf_write(p2);
+#endif
 }
 #ifndef CONFIG_TARGET_SHARE
+#ifdef CONFIG_ITRACE_COND
 void record_inst_trace(char *p, Decode *s){
 	char *ps = p;
   p += snprintf(p, sizeof(s->logbuf), FMT_WORD ":", s->pc);
@@ -77,6 +80,7 @@ void record_inst_trace(char *p, Decode *s){
   p[0] = '\0'; // the upstream llvm does not support loongarch32r
 #endif
 }
+#endif
 #endif
 #endif
 static void exec_once(Decode *s, vaddr_t pc) {
