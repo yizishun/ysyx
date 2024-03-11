@@ -86,7 +86,7 @@ CFLAGS   += -O2 -MMD -Wall -Werror $(INCFLAGS) \
             -D__PLATFORM__=$(PLATFORM) -D__PLATFORM_$(shell echo $(PLATFORM) | tr a-z A-Z | tr - _) \
             -DARCH_H=\"$(ARCH_H)\" \
             -fno-asynchronous-unwind-tables -fno-builtin -fno-stack-protector \
-            -Wno-main -U_FORTIFY_SOURCE
+            -Wno-main -U_FORTIFY_SOURCE -fvisibility=hidden
 CXXFLAGS +=  $(CFLAGS) -ffreestanding -fno-rtti -fno-exceptions
 ASFLAGS  += -MMD $(INCFLAGS)
 LDFLAGS  += -z noexecstack
@@ -129,7 +129,7 @@ $(LIBS): %:
 	@$(MAKE) -s -C $(AM_HOME)/$* archive
 
 ### Rule (link): objects (`*.o`) and libraries (`*.a`) -> `IMAGE.elf`, the final ELF binary to be packed into image (ld)
-$(IMAGE).elf: $(OBJS) am $(LIBS)
+$(IMAGE).elf: $(OBJS) $(LIBS)
 	@echo + LD "->" $(IMAGE_REL).elf
 	@$(LD) $(LDFLAGS) -o $(IMAGE).elf --start-group $(LINKAGE) --end-group
 
@@ -146,7 +146,7 @@ $(ARCHIVE): $(OBJS)
 ### Build order control
 image: image-dep
 archive: $(ARCHIVE)
-image-dep: $(OBJS) am $(LIBS)
+image-dep: $(OBJS) $(LIBS)
 	@echo \# Creating image [$(ARCH)]
 .PHONY: image image-dep archive run $(LIBS)
 
