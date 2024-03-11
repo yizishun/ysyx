@@ -8,7 +8,6 @@ AM_SRCS := native/trm.c \
            native/ioe/input.c \
            native/ioe/timer.c \
            native/ioe/gpu.c \
-           native/ioe/uart.c \
            native/ioe/audio.c \
            native/ioe/disk.c \
 
