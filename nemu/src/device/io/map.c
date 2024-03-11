@@ -52,18 +52,43 @@ void init_map() {
   p_space = io_space;
 }
 
+//dtrace
+#ifdef CONFIG_DTRACE
+#define READ 0
+#define WRITE 1
+char dtrace[128] = {0};
+void record_dev_trace(int rw,const char * name,paddr_t addr, int len , word_t content){
+	char *d = dtrace;
+	if (rw == READ)
+		d += sprintf(d , "READ  ");
+	else
+		d += sprintf(d,  "WRITE ");
+  d += sprintf(d , "DEV : %s ",name);
+	d += sprintf(d, "%d byte in " FMT_PADDR,len,addr);
+  d += sprintf(d," content = %d",content);
+}
+#endif
+
 word_t map_read(paddr_t addr, int len, IOMap *map) {
   assert(len >= 1 && len <= 8);
   check_bound(map, addr);
   paddr_t offset = addr - map->low;
   invoke_callback(map->callback, offset, len, false); // prepare data to read
   word_t ret = host_read(map->space + offset, len);
+  #ifdef CONFIG_DTRACE
+  record_dev_trace(READ , map -> name , addr , len,ret);
+  log_write("%s\n",dtrace);
+  #endif
   return ret;
 }
 
 void map_write(paddr_t addr, int len, word_t data, IOMap *map) {
   assert(len >= 1 && len <= 8);
   check_bound(map, addr);
+  #ifdef CONFIG_DTRACE
+  record_dev_trace(WRITE , map -> name , addr , len , data);
+  log_write("%s\n",dtrace);
+  #endif
   paddr_t offset = addr - map->low;
   host_write(map->space + offset, len, data);
   invoke_callback(map->callback, offset, len, true);
