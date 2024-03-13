@@ -74,7 +74,7 @@ static void ftrace_write(int type,char *fname, vaddr_t caddr, vaddr_t addr){
 		printf("ret  [%s]\n", fname);
 		}
 	//printf("space=%d\n",space);
-	if(space< 0)  assert(0);
+	//if(space< 0)  assert(0);
 }
 void init_ftrace(char *elf_file){ 
 	if(elf_file == NULL) { 

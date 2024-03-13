@@ -4,6 +4,9 @@
 #include <common.h>
 
 extern FILE* log_fp;
+// ----------- timer -----------
+
+uint64_t get_time();
 
 // ----------- log -----------
 

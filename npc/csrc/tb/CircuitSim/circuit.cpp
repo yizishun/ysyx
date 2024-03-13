@@ -69,19 +69,23 @@ static void trace_and_difftest(){
 	//print to log file
 	log_write("%s\n", disasm_buf);
 
+	#ifdef CONFIG_FTRACE
 	/* trace(2):function trace*/
 	extern char * elf_file;
 	opcode = BITS(inst, 6, 0);
 	if(opcode == JAL || opcode == JALR){
 		ftrace_check(opcode ,prev_pc, dnpc, inst);
 	}
+	#endif
 
 }
 
 /* cpu single cycle in exec */
 static void exec_once(){
 	single_cycle();
+	#ifdef CONFIG_WAVE
 	dump_wave_inc();
+	#endif
 }
 
 void cpu_exec(uint32_t n){
@@ -96,7 +100,9 @@ void cpu_exec(uint32_t n){
 		dnpc = cpu.rootp -> ysyx_23060171_cpu__DOT__pc;
 		get_reg();
 		g_nr_guest_inst ++;
+		#ifdef CONFIG_TRACE
 		trace_and_difftest();
+		#endif
 		n--;
 	}
 }

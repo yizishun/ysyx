@@ -1,5 +1,6 @@
 #include <memory.h>
 #include <common.h>
+#include <device.h>
 static const uint32_t img[] = {
 	0b00000000110000000000001011101111, //jal   x5 12   0x80000000
 	0b00000000000000000001001000110111, //lui   x4 1    0x80000004
@@ -12,6 +13,9 @@ static const uint32_t img[] = {
 	0b00000000000100000000000001110011  //ebreak        0x80000020  
 };
 static uint8_t *pmem = NULL;
+static int32_t device_read = 0;
+static int32_t device_write;
+static uint64_t timer = 0;
 void init_mem(size_t size){ 
 	pmem = (uint8_t *)malloc(size * sizeof(uint8_t));
 	memcpy(pmem , img , sizeof(img));
@@ -31,17 +35,57 @@ void record_mem_trace(int rw,paddr_t addr, int len){
 	m += sprintf(m, "%dbyte/mask in %#x",len,addr);
 }
 
+void init_flag(){ //bug fix
+	if(device_write < 0)
+		device_write = 0;
+	if(device_read < 0)
+		device_read = 0;
+}
+
 extern "C" uint32_t pmem_read(uint32_t paddr){
-	if(paddr > 0x87ffffff || paddr < RESET_VECTOR) return 0;
+	if(!((paddr >= 0x80000000 && paddr <= 0x87ffffff) || (paddr == RTC_ADDR) || (paddr == RTC_ADDR + 4))) 
+		return 0;
+	init_flag();
+	//printf("\ndev_r = %d\n",device_read);
+	#ifdef CONFIG_TRACE
+	record_mem_trace(READ, paddr , sizeof(uint32_t));	
+	log_write("%s\n", mtrace);
+	#endif
+	if(device_read == 3) device_read = 0;
+	if(paddr == RTC_ADDR+4 && device_read == 0) {
+		device_read++; 
+		timer = get_time(); 
+		return (uint32_t)(timer >> 32);
+	}
+	else if(paddr == RTC_ADDR) {
+		device_read++;
+		return (uint32_t)timer;
+	}
+	else if(paddr == RTC_ADDR + 4 && device_read != 0){
+		device_read++;
+		return (uint32_t)(timer >> 32);
+	}
+	else if(paddr == SERIAL_PORT) return 0;
 	uint32_t *inst_paddr = (uint32_t *)guest_to_host(paddr);
 	record_mem_trace(READ, paddr , sizeof(uint32_t));	
-	log_write("%s ", mtrace);
-	log_write("content : %#x\n",*inst_paddr);
+	//log_write("content : %#x\n",*inst_paddr);
 	return *inst_paddr;
 }
 
 extern "C" void pmem_write(int waddr, int wdata, char wmask){
-	if(waddr > 0x87ffffff) return;
+	if(!((waddr >= 0x80000000 && waddr <= 0x87ffffff) || (waddr == SERIAL_PORT))) 
+		return;
+
+	init_flag();
+#ifdef CONFIG_TRACE
+	record_mem_trace(WRITE,waddr,wmask);	
+	log_write("%s\n", mtrace);
+#endif
+	//printf("\ndev_w = %d\n",device_write);
+	if(device_write == 3) device_write = 0;
+	if(waddr == SERIAL_PORT && device_write == 0) {device_write++; putc((char)wdata,stderr); return;}
+	else if(waddr == SERIAL_PORT && device_write != 0) {device_write++; return;}
+	
 	uint8_t *vaddr = guest_to_host(waddr);
 	uint8_t *iaddr;
 	int i;
@@ -53,6 +97,4 @@ extern "C" void pmem_write(int waddr, int wdata, char wmask){
 			j++;
 		}
 	}
-	record_mem_trace(WRITE,waddr,wmask);	
-	log_write("%s\n", mtrace);
 }

@@ -17,7 +17,7 @@ module ysyx_23060171_data_memory(
             if (wen) begin // 有写请求时
                 pmem_write(waddr, wdata, wmask);
             end
-  end
+        end
         else begin
             rdata = 0;
         end
