@@ -25,12 +25,22 @@ const char *regs[] = {
 
 void isa_reg_display() {
   int i;
-  printf("dut-pc=%x\n",cpu.pc);
+  printf("\ndut-pc=%x\n",cpu.pc);
   for(i = 0;i < REGNUMBER;i++){
-    if(cpu.gpr[i] >= 0x80000000)
-      printf("dut-%3s	%#x\n",regs[i],cpu.gpr[i]);
-    else
-      printf("dut-%3s      %d\n",regs[i],cpu.gpr[i]); }
+    if(cpu.gpr[i] >= 0x80000000){
+      printf("dut-%3s = %-#11x",regs[i],cpu.gpr[i]);
+      if(i % 3 == 0) printf("\n");
+      }
+    else{
+      printf("dut-%3s = %-11d",regs[i],cpu.gpr[i]);
+      if(i % 3 == 0) printf("\n");
+      } 
+    }
+  printf("\n");
+  printf("dut-mtvec  = %-#11x\n",cpu.csr[MTVEC]);
+  printf("dut-mepc   = %-#11x\n",cpu.csr[MEPC]);
+  printf("dut-mstatus= %-#11x\n",cpu.csr[MSTATUS]);
+  printf("dut-mcause = %-#11x\n",cpu.csr[MCAUSE]);
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {

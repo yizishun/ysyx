@@ -23,8 +23,9 @@ const char *regs2[] = {
   "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7",
   "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"
 };
+ 
 
-bool isa_difftest_checkregs(CPU_state *ref_r, vaddr_t pc) {
+bool isa_difftest_checkregs(CPU_state *ref_r , vaddr_t pc){
   bool flag = true;
   int i;
   if(ref_r -> pc != cpu.pc) flag = false;
@@ -34,12 +35,17 @@ bool isa_difftest_checkregs(CPU_state *ref_r, vaddr_t pc) {
   }
   if(flag == false){
     printf("ref-pc=%x\n",ref_r -> pc);
-    for(i = 0;i < REGNUM;i++){ 
-      if(ref_r -> gpr[i] >= 0x80000000)
-        printf("ref-%3s       %#x\n",regs2[i],ref_r->gpr[i]);
-      else
-        printf("ref-%3s      %d\n",regs2[i],ref_r->gpr[i]);
+    for(i = 0;i < REGNUM;i++){
+    if(ref_r -> gpr[i] >= 0x80000000){
+        printf("ref-%3s = %-#11x",regs2[i],ref_r -> gpr[i]);
+        if(i % 3 == 0) printf("\n");
+        }
+    else{
+        printf("ref-%3s = %-11d",regs2[i],ref_r -> gpr[i]);
+        if(i % 3 == 0) printf("\n");
+        } 
     }
+    printf("\n");
   }
   return flag;
 }
