@@ -58,6 +58,7 @@ static uintptr_t loader(PCB *pcb, const char *filename) {
 }
 
 void naive_uload(PCB *pcb, const char *filename) {
+  if(get_ramdisk_size() == 0) return;
   uintptr_t entry = loader(pcb, filename);
   Log("Jump to entry = %lu", entry);
   ((void(*)())entry) ();

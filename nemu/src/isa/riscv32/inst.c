@@ -19,6 +19,7 @@
 #include <cpu/decode.h>
 #include <cpu/ftrace.h>
 #include <stdio.h>
+#include <isa.h>
 
 #define R(i) gpr(i)
 #define SR(i) csr(i)
@@ -57,7 +58,20 @@ void ftrace_check(int type,Decode *s,word_t imm, int rd){
 
 void etrace(word_t NO, vaddr_t epc){
   #ifdef CONFIG_ETRACE
-  printf("ETRACE: NO = %d   pc = %#x\n",NO,epc);
+  char s[20];
+  switch (NO)
+  {
+  case EVENT_YIELD:
+    sprintf(s ,"EVENT_YIELD  ");
+    break;
+  case EVENT_SYSCALL:
+    sprintf(s ,"EVENT_SYSCALL");
+    break;
+  default:
+    sprintf(s ,"UNKOWN EVENT id = %d",NO);
+    break;
+  }
+  printf("ETRACE: %s   pc = %#x\n",s,epc); //if you convert printf to log_write,you can write trace to log.
   #endif
 }
 #define src1R() do { *src1 = R(rs1); } while (0)
@@ -145,7 +159,7 @@ static int decode_exec(Decode *s) {
   INSTPAT("??????? ????? ????? 110 ????? 11000 11", bltu   , B, s->dnpc = (src1 < src2)?s->pc + imm : s->dnpc);
   INSTPAT("??????? ????? ????? 111 ????? 11000 11", bgeu   , B, s->dnpc = (src1 >= src2)?s->pc + imm : s->dnpc);
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak , N, NEMUTRAP(s->pc, R(10))); // R(10) is $a0
-  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  , N, s->dnpc = isa_raise_intr(R(10), s->pc),etrace(EVENT_YIELD,s->pc));
+  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  , N, etrace((R(17) == -1 ? EVENT_YIELD:EVENT_SYSCALL),s->pc);s->dnpc = isa_raise_intr((R(17) == -1 ? EVENT_YIELD:EVENT_SYSCALL), s->pc));
   INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   , R, s->dnpc = SR(MEPC));
   INSTPAT("??????? ????? ????? 001 ????? 11100 11", csrrw  , I, int t = SR(csri); SR(csri) = src1;R(rd) = t;);
   INSTPAT("??????? ????? ????? 010 ????? 11100 11", csrrs  , I, int t = SR(csri); SR(csri) = src1 | t;R(rd) = t);
