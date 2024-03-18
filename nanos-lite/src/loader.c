@@ -1,8 +1,7 @@
 #include <proc.h>
 #include <elf.h>
+#include <fs.h>
 
-size_t ramdisk_read(void *buf, size_t offset, size_t len);
-size_t ramdisk_write(const void *buf, size_t offset, size_t len);
 size_t get_ramdisk_size();
 
 #ifdef __LP64__
@@ -19,41 +18,46 @@ size_t get_ramdisk_size();
 # define ELf_Addr Elf32_Addr
 #endif
 
-static void disk2mem(ELf_Off offset ,ELf_Addr vaddr ,ELf_Word filesz ,ELf_Word memsz){
+static void disk2mem(int fd, ELf_Off offset ,ELf_Addr vaddr ,ELf_Word filesz ,ELf_Word memsz){
   void *buf = malloc(filesz);
-  ramdisk_read(buf ,offset ,filesz);
-  memcpy((void *)vaddr ,buf ,filesz);
-  memset((void *)(vaddr+filesz) ,0 ,memsz - filesz);
+  fs_lseek(fd ,offset ,SEEK_SET);
+  fs_read(fd, buf ,filesz);
+  memcpy((void *)vaddr, buf, filesz);
+  memset((void *)(vaddr+filesz), 0, memsz - filesz);
 }
 
 static uintptr_t loader(PCB *pcb, const char *filename) {
   size_t ret;
   size_t len;
   size_t offset;
+  int fd = fs_open(filename, 0, 0);
   //elf header
 	Elf_Ehdr elf_header;				//elf header var
   len = sizeof(elf_header);
   offset = 0;
-  ret = ramdisk_read(&elf_header ,offset ,len);
+  fs_lseek(fd, offset, SEEK_SET);
+  ret = fs_read(fd ,&elf_header, len);
 	assert(ret == len);
 	if (elf_header.e_ident[0] != 0x7F ||
 			elf_header.e_ident[1] != 'E' ||
 			elf_header.e_ident[2] != 'L' ||
 			elf_header.e_ident[3] != 'F')
-	  assert(0);
+	  panic("ld : no ELF file");
 
   //phdr
   Elf_Phdr *phdr =(Elf_Phdr *) malloc(sizeof(Elf_Phdr) * elf_header.e_shnum);
   len = sizeof(Elf_Phdr);
   offset = elf_header.e_phoff;
   for(int i = 0;i < elf_header.e_shnum; i++){
-    ret = ramdisk_read(&phdr[i] ,offset ,len);
+    fs_lseek(fd ,offset ,SEEK_SET);
+    ret = fs_read(fd, &phdr[i], len);
     assert(ret == len);
     if(phdr[i].p_type == PT_LOAD){
-      disk2mem(phdr[i].p_offset ,phdr[i].p_vaddr ,phdr[i].p_filesz ,phdr[i].p_memsz);
+      disk2mem(fd, phdr[i].p_offset ,phdr[i].p_vaddr ,phdr[i].p_filesz ,phdr[i].p_memsz);
     }
     offset += len;
   }
+  Log("loader file:%s",filename);
   return elf_header.e_entry;
 }
 

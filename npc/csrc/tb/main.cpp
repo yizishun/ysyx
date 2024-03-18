@@ -1,6 +1,6 @@
 #include <circuit.h>
 #include <memory.h>
-#include <util.h>
+#include <utils.h>
 void init_monitor(int, char *[]);
 void sdb_mainloop();
 

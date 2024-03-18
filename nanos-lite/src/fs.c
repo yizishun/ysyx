@@ -1,5 +1,9 @@
 #include <fs.h>
 
+size_t get_ramdisk_size();
+size_t ramdisk_read(void *buf, size_t offset, size_t len);
+size_t ramdisk_write(const void *buf, size_t offset, size_t len);
+
 typedef size_t (*ReadFn) (void *buf, size_t offset, size_t len);
 typedef size_t (*WriteFn) (const void *buf, size_t offset, size_t len);
 
@@ -9,6 +13,8 @@ typedef struct {
   size_t disk_offset;
   ReadFn read;
   WriteFn write;
+  bool open;
+  size_t open_offset;
 } Finfo;
 
 enum {FD_STDIN, FD_STDOUT, FD_STDERR, FD_FB};
@@ -31,6 +37,128 @@ static Finfo file_table[] __attribute__((used)) = {
 #include "files.h"
 };
 
+static void init_OpenState(){
+  int fd = 3;
+  for(;file_table[fd].name != NULL;fd ++){
+    file_table[fd].open = false;
+  }
+}
+
 void init_fs() {
   // TODO: initialize the size of /dev/fb
+  init_OpenState();
+}
+
+
+//---some utils---------
+static int pathname2fd(const char *pathname){
+  int fd;
+  for(fd = 3;file_table[fd].name != NULL;fd ++){
+    if(strcmp(pathname, file_table[fd].name) == 0){
+      return fd;
+    }
+  }
+  panic("fs : no filename is %s\n",pathname);
+}
+
+char * fd2pathname(int fd){
+  return file_table[fd].name;
+}
+
+static void check_bound(int fd, size_t count){
+  if(file_table[fd].name == NULL)
+    panic("fs : unkonwn file descripter(checkbound)");
+  if(file_table[fd].open == false)
+    panic("fs : you are trying to operate an unopened file descripter(checkbound)");
+}
+
+static int regular_read(int fd, void *buf, int len){
+  int count = len;
+  char *c = (char *)buf;
+  c += ramdisk_read(buf, file_table[fd].disk_offset + file_table[fd].open_offset, len);
+  count = c - (char *)buf;
+  file_table[fd].open_offset += count;
+  return count;
+}
+
+static int regular_write(int fd,const void *buf, int len){
+  int count = len;
+  char *c = (char *)buf;
+  c += ramdisk_write(buf ,file_table[fd].disk_offset + file_table[fd].open_offset ,len);
+  count = c - (char *)buf;
+  file_table[fd].open_offset += count;
+  return count;
+}
+
+//-----some file api---------
+int fs_open(const char *pathname, int flags, int mode){
+  int fd = pathname2fd(pathname);
+  file_table[fd].open = true;
+  file_table[fd].open_offset = 0;
+  return fd;
+}
+
+int fs_close(int fd){
+  file_table[fd].open_offset = 0;
+  file_table[fd].open = false;
+  return 0;
+}
+
+size_t fs_write(int fd ,const void *buf ,size_t count){
+  int i;
+  char *c = (char *)buf;
+  int len = -1;
+  if(fd == FD_STDOUT || fd == FD_STDERR){
+    for(i = 0;i < count;i++)
+      putch(*c++);
+    len = c - (char *)buf;
+  }
+  else if(fd == FD_STDIN)
+    panic("fs_write:you can't write to stdin");
+  else{
+    check_bound(fd, count);
+    if(file_table[fd].open_offset + count > file_table[fd].size){
+      panic("fs(write): offset out of bound.(checkbound), offset = %lu\n",file_table[fd].open_offset + count);
+    }
+    len = regular_write(fd, buf, count);
+  }
+  assert(len != -1);
+  return len;
+}
+
+size_t fs_read(int fd, void *buf, size_t count){
+  int len = -1;
+  if(fd == FD_STDOUT || fd == FD_STDERR || fd == FD_STDIN){
+    return -1;
+  }
+  else{
+    if(file_table[fd].open_offset + count > file_table[fd].size){ //reach EOF
+      len = file_table[fd].size - file_table[fd].open_offset;
+      len = regular_read(fd, buf, len);
+      assert(file_table[fd].open_offset == file_table[fd].size);
+    }
+    else{
+      check_bound(fd, count);
+      len = regular_read(fd, buf, count);
+    }
+  }
+  assert(len != -1);
+  return len;
+}
+
+size_t fs_lseek(int fd, size_t offset, int whence){
+  if(file_table[fd].name == NULL) panic("fs : unkonwn file descripter(lseek)");
+
+  size_t foffset = whence == SEEK_SET ?  0: 
+                  (whence == SEEK_CUR ? file_table[fd].open_offset : file_table[fd].size);
+  file_table[fd].open_offset = foffset; //modify open_offset before plus offset
+
+  check_bound(fd, offset);
+  if(file_table[fd].open_offset + offset > file_table[fd].size){
+    panic("fs(lseek): offset out of bound.(checkbound), offset = %lu\n",file_table[fd].open_offset + offset);
+  }
+
+  file_table[fd].open_offset += offset;
+
+  return file_table[fd].open_offset;
 }
