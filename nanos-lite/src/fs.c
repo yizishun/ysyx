@@ -17,7 +17,12 @@ typedef struct {
   size_t open_offset;
 } Finfo;
 
-enum {FD_STDIN, FD_STDOUT, FD_STDERR, FD_FB};
+enum {FD_STDIN, FD_STDOUT, FD_STDERR, FD_EVENT, FD_DISPINFO, FD_FB};
+
+size_t serial_write(const void *buf, size_t offset, size_t len);
+size_t events_read(void *buf, size_t offset, size_t len);
+size_t dispinfo_read(void *buf, size_t offset, size_t len);
+size_t fb_write(const void *buf, size_t offset, size_t len);
 
 size_t invalid_read(void *buf, size_t offset, size_t len) {
   panic("should not reach here");
@@ -32,28 +37,50 @@ size_t invalid_write(const void *buf, size_t offset, size_t len) {
 /* This is the information about all files in disk. */
 static Finfo file_table[] __attribute__((used)) = {
   [FD_STDIN]  = {"stdin", 0, 0, invalid_read, invalid_write},
-  [FD_STDOUT] = {"stdout", 0, 0, invalid_read, invalid_write},
-  [FD_STDERR] = {"stderr", 0, 0, invalid_read, invalid_write},
+  [FD_STDOUT] = {"stdout", 0, 0, invalid_read, serial_write},
+  [FD_STDERR] = {"stderr", 0, 0, invalid_read, serial_write},
+  [FD_EVENT]  = {"/dev/events", 0, 0, events_read, invalid_write},
+  [FD_DISPINFO]={"/proc/dispinfo", 0, 0,dispinfo_read, invalid_write},
+  [FD_FB]     = {"/dev/fb", 0, 0,invalid_read, fb_write},
 #include "files.h"
 };
 
 static void init_OpenState(){
-  int fd = 3;
+  int fd = 5;
   for(;file_table[fd].name != NULL;fd ++){
     file_table[fd].open = false;
   }
 }
 
+int str2num(int *num, char *buf, int offset){
+  int i = offset;
+  int number = 0;
+  int digit;
+  for(;buf[i] >= '0' && buf[i] <= '9';i++);
+  digit = i - offset;
+  int n = 1;
+  for(int j = 0;j < digit-1;j ++) n*=10;
+  for(i = offset; i - offset < digit ;i ++){
+    number += (buf[i] - '0') * n;
+    n /= 10;
+  }
+  *num = number;
+  return offset + digit;
+}
+
 void init_fs() {
   // TODO: initialize the size of /dev/fb
   init_OpenState();
+
+  AM_GPU_CONFIG_T cfg = io_read(AM_GPU_CONFIG);
+  file_table[FD_FB].size = cfg.width * cfg.height;
 }
 
 
 //---some utils---------
 static int pathname2fd(const char *pathname){
   int fd;
-  for(fd = 3;file_table[fd].name != NULL;fd ++){
+  for(fd = 0;file_table[fd].name != NULL;fd ++){
     if(strcmp(pathname, file_table[fd].name) == 0){
       return fd;
     }
@@ -77,7 +104,6 @@ static int regular_read(int fd, void *buf, int len){
   char *c = (char *)buf;
   c += ramdisk_read(buf, file_table[fd].disk_offset + file_table[fd].open_offset, len);
   count = c - (char *)buf;
-  file_table[fd].open_offset += count;
   return count;
 }
 
@@ -86,7 +112,6 @@ static int regular_write(int fd,const void *buf, int len){
   char *c = (char *)buf;
   c += ramdisk_write(buf ,file_table[fd].disk_offset + file_table[fd].open_offset ,len);
   count = c - (char *)buf;
-  file_table[fd].open_offset += count;
   return count;
 }
 
@@ -105,16 +130,10 @@ int fs_close(int fd){
 }
 
 size_t fs_write(int fd ,const void *buf ,size_t count){
-  int i;
-  char *c = (char *)buf;
-  int len = -1;
-  if(fd == FD_STDOUT || fd == FD_STDERR){
-    for(i = 0;i < count;i++)
-      putch(*c++);
-    len = c - (char *)buf;
+  int len;
+  if(file_table[fd].write != NULL){
+    len = file_table[fd].write(buf, file_table[fd].open_offset, count);
   }
-  else if(fd == FD_STDIN)
-    panic("fs_write:you can't write to stdin");
   else{
     check_bound(fd, count);
     if(file_table[fd].open_offset + count > file_table[fd].size){
@@ -122,26 +141,27 @@ size_t fs_write(int fd ,const void *buf ,size_t count){
     }
     len = regular_write(fd, buf, count);
   }
+  file_table[fd].open_offset += len;
   assert(len != -1);
   return len;
 }
 
 size_t fs_read(int fd, void *buf, size_t count){
   int len = -1;
-  if(fd == FD_STDOUT || fd == FD_STDERR || fd == FD_STDIN){
-    return -1;
+  if(file_table[fd].read != NULL){
+    len = file_table[fd].read(buf, file_table[fd].open_offset, count);
   }
   else{
     if(file_table[fd].open_offset + count > file_table[fd].size){ //reach EOF
       len = file_table[fd].size - file_table[fd].open_offset;
       len = regular_read(fd, buf, len);
-      assert(file_table[fd].open_offset == file_table[fd].size);
     }
     else{
       check_bound(fd, count);
       len = regular_read(fd, buf, count);
     }
   }
+  file_table[fd].open_offset += len;
   assert(len != -1);
   return len;
 }

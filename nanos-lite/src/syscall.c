@@ -2,6 +2,16 @@
 #include "syscall.h"
 #include <fs.h>
 
+struct timeval {
+  long tv_sec;     /* seconds */
+  long tv_usec;    /* microseconds */
+};
+
+struct timezone { //no use
+  int tz_minuteswest;     /* minutes west of Greenwich */
+  int tz_dsttime;         /* type of DST correction */
+};
+
 __attribute__((unused)) static void strace(int no, int a1, int a2, int a3){
   char s0[128];
   char *s = s0;
@@ -32,6 +42,9 @@ __attribute__((unused)) static void strace(int no, int a1, int a2, int a3){
   case SYS_brk:
     s += sprintf(s ,"brk  ");
     break;
+  case SYS_gettimeofday:
+    s += sprintf(s ,"gettimeofday( tv, tz)");
+    break;
   default:
     s += sprintf(s ,"UNKOWN syscall");
     break;
@@ -57,6 +70,13 @@ size_t sys_read(int fd, void *buf, size_t count){
 
 size_t sys_lseek(int fd, size_t offset, int whence){
   return fs_lseek(fd, offset, whence);
+}
+
+int sys_gettimeofday(struct timeval * tv, struct timezone * tz){
+  uint64_t us = io_read(AM_TIMER_UPTIME).us;
+  tv->tv_sec = us / 1000000;
+  tv->tv_usec = us % 1000000;
+  return 0;
 }
 
 void do_syscall(Context *c) {
@@ -90,6 +110,9 @@ void do_syscall(Context *c) {
       break;
     case SYS_brk:
       c->GPRx = 0;
+      break;
+    case SYS_gettimeofday:
+      c->GPRx = sys_gettimeofday((struct timeval * )a[1], (struct timezone *)a[2]);
       break;
     case SYS_exit:
       halt(a[1]);
