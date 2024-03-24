@@ -1,5 +1,6 @@
 #ifndef __SDL_TIMER_H__
 #define __SDL_TIMER_H__
+#include "debug.h"
 
 typedef void* SDL_TimerID;
 typedef uint32_t (*SDL_NewTimerCallback)(uint32_t interval, void *param);

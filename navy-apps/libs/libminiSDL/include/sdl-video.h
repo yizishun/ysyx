@@ -1,5 +1,6 @@
 #ifndef __SDL_VIDEO_H__
 #define __SDL_VIDEO_H__
+#include "debug.h"
 
 #define SDL_HWSURFACE 0x1
 #define SDL_PHYSPAL 0x2

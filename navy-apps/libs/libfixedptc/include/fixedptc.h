@@ -120,6 +120,9 @@ typedef	__uint128_t fixedptud;
 #define FIXEDPT_HALF_PI	fixedpt_rconst(3.14159265358979323846 / 2)
 #define FIXEDPT_E	fixedpt_rconst(2.7182818284590452354)
 
+#define clear_frac(A) (fixedpt)((A) & (fixedpt)(~FIXEDPT_FMASK))
+#define get_frac(A) (fixedpt)((A) & (fixedpt)FIXEDPT_FMASK)
+
 /* fixedpt is meant to be usable in environments without floating point support
  * (e.g. microcontrollers, kernels), so we can't use floating point types directly.
  * Putting them only in macros will effectively make them optional. */
@@ -127,36 +130,68 @@ typedef	__uint128_t fixedptud;
 
 /* Multiplies a fixedpt number with an integer, returns the result. */
 static inline fixedpt fixedpt_muli(fixedpt A, int B) {
-	return 0;
+	fixedpt result = A * B; 
+	return result;
 }
 
 /* Divides a fixedpt number with an integer, returns the result. */
 static inline fixedpt fixedpt_divi(fixedpt A, int B) {
-	return 0;
+	fixedpt result = A / B;
+	return result;
 }
 
 /* Multiplies two fixedpt numbers, returns the result. */
 static inline fixedpt fixedpt_mul(fixedpt A, fixedpt B) {
-	return 0;
+	fixedpt result = (A * B) >> FIXEDPT_FBITS;
+	return result;
 }
 
 
 /* Divides two fixedpt numbers, returns the result. */
 static inline fixedpt fixedpt_div(fixedpt A, fixedpt B) {
-	return 0;
+	fixedpt result = (A / B) << FIXEDPT_FBITS;
+	return result;
 }
 
 static inline fixedpt fixedpt_abs(fixedpt A) {
-	return 0;
+	fixedpt result = A & ~(1 << (FIXEDPT_BITS - 1));
+	return result;
 }
 
 static inline fixedpt fixedpt_floor(fixedpt A) {
-	return 0;
+	fixedpt result;
+	fixedpt symbol = (A >> (FIXEDPT_BITS - 1));
+	fixedpt frac = get_frac(A);
+	if(symbol){
+		if(frac)
+			result = clear_frac(A) + FIXEDPT_ONE;	
+		else
+			result = clear_frac(A);
+	}
+	else
+		result = clear_frac(A);
+	return result;
 }
 
 static inline fixedpt fixedpt_ceil(fixedpt A) {
-	return 0;
+	fixedpt result;
+	fixedpt symbol = (A >> (FIXEDPT_BITS - 1)) << FIXEDPT_FBITS;
+	fixedpt frac = get_frac(A);
+	if(!symbol){
+		if(frac)
+			result = clear_frac(A) + FIXEDPT_ONE;
+		else
+			result = clear_frac(A);
+	}
+	else{
+		result = clear_frac(A);
+		if(result << 1 == 0)
+			result = 0;
+		}
+	return result;
 }
+// TODO: 选做题 : 将浮点变量转换成fixedpt类型
+// fixedpt fixedpt_fromfloat(void *p);
 
 /*
  * Note: adding and substracting fixedpt numbers can be done by using

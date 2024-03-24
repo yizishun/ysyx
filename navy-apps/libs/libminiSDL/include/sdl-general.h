@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include "debug.h"
 
 #define SDL_INIT_VIDEO       0x01
 #define SDL_INIT_TIMER       0x02

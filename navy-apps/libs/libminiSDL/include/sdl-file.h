@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include "debug.h"
 
 enum { RW_TYPE_FILE, RW_TYPE_MEM };
 

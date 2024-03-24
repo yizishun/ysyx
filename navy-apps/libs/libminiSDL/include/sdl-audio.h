@@ -1,5 +1,6 @@
 #ifndef __SDL_AUDIO_H__
 #define __SDL_AUDIO_H__
+#include "debug.h"
 
 typedef struct {
   int freq;
