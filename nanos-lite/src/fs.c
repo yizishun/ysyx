@@ -69,7 +69,6 @@ int str2num(int *num, char *buf, int offset){
 }
 
 void init_fs() {
-  // TODO: initialize the size of /dev/fb
   init_OpenState();
 
   AM_GPU_CONFIG_T cfg = io_read(AM_GPU_CONFIG);
@@ -174,9 +173,9 @@ size_t fs_lseek(int fd, size_t offset, int whence){
   file_table[fd].open_offset = foffset; //modify open_offset before plus offset
 
   check_bound(fd, offset);
-  if(file_table[fd].open_offset + offset > file_table[fd].size){
-    panic("fs(lseek): offset out of bound.(checkbound), offset = %lu\n",file_table[fd].open_offset + offset);
-  }
+  //if(file_table[fd].open_offset + offset > file_table[fd].size){
+    //panic("fs(lseek): offset out of bound.(checkbound), offset = %lu size = %lu\n",file_table[fd].open_offset + offset, file_table[fd].size);
+  //}
 
   file_table[fd].open_offset += offset;
 

@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+extern "C" pid_t vfork();
 static int read_fd, write_fd, nterm_to_app[2], app_to_nterm[2]; // file desc
 
 char handle_key(const char *buf);

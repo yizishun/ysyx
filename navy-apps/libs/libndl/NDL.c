@@ -65,10 +65,24 @@ int GetVgaSize(int *width, int *height){
     else
       continue;
   }
+  close(fd);
   return 1;
 }
 
 void NDL_OpenCanvas(int *w, int *h) {
+  int width,height;
+  GetVgaSize(&width, &height);
+  if(*w > width || *h > height){
+    printf("NDL(NDL_OpenCansvas) fail:size erron");
+    assert(0);
+  }
+  if(*w == 0 && *h == 0){
+    *w = width;
+    *h = height;
+  }
+  screen_h = *h;
+  screen_w = *w;
+
   if (getenv("NWM_APP")) {
     int fbctl = 4;
     fbdev = 5;
@@ -85,13 +99,6 @@ void NDL_OpenCanvas(int *w, int *h) {
       if (strcmp(buf, "mmap ok") == 0) break;
     }
     close(fbctl);
-  }
-  screen_w = *w; screen_h = *h;
-  int width,height;
-  GetVgaSize(&width, &height);
-  if(*w > width || *h > height){
-    printf("NDL(NDL_OpenCansvas) fail:size erron");
-    assert(0);
   }
 }
 

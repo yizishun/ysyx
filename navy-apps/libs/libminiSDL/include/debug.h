@@ -2,6 +2,7 @@
 #define __DEBUG_H__
 
 #include <assert.h>
+#include <stdio.h>
 
 #define Log(format, ...) \
   printf("\33[1;35m[%s,%d,%s] " format "\33[0m\n", \
@@ -10,7 +11,7 @@
 #undef panic
 #define panic(format, ...) \
   do { \
-    Log("\33[1;31msystem panic: " format, ## __VA_ARGS__); \
+    Log("\33[1;31mapps panic: " format, ## __VA_ARGS__); \
     assert(0); \
   } while (0)
 
