@@ -9,7 +9,7 @@
 #define NAME(key) \
   [AM_KEY_##key] = #key,
 
-static const char *keyname[256] __attribute__((used)) = {
+static const char *keynames[256] __attribute__((used)) = {
   [AM_KEY_NONE] = "NONE",
   AM_KEYS(NAME)
 };
@@ -30,7 +30,23 @@ size_t events_read(void *buf, size_t offset, size_t len) {
   char *e = s;
   AM_INPUT_KEYBRD_T kb = io_read(AM_INPUT_KEYBRD);
   if(kb.keycode == AM_KEY_NONE) return 0;
-  e += sprintf(e, "%s %s\n", kb.keydown ? "kd":"ku", keyname[kb.keycode]);
+  //printf("kb.keycode = %d\n",kb.keycode);
+  //printf("keyname = %s\n",keynames[kb.keycode]);
+  //for(int j = 0;j < sizeof(keynames)/sizeof(keynames[0]);j++)
+    //printf("%s\n",keynames[j]);
+
+  // some bug fix(my keyname array have been contaminate in some reason(i can't figure out why).)
+  if(kb.keycode == 54) e += sprintf(e, "%s %s\n", kb.keydown ? "kd":"ku", "RETURN");
+  else if(kb.keycode == 19) e += sprintf(e, "%s %s\n", kb.keydown ? "kd":"ku", "5"); 
+  else if(kb.keycode == 75) e += sprintf(e, "%s %s\n", kb.keydown ? "kd":"ku", "LEFT"); 
+  else if(kb.keycode == 26) e += sprintf(e, "%s %s\n", kb.keydown ? "kd":"ku", "EQUALS"); 
+  else if(kb.keycode == 33) e += sprintf(e, "%s %s\n", kb.keydown ? "kd":"ku", "T"); 
+  else if(kb.keycode == 40) e += sprintf(e, "%s %s\n", kb.keydown ? "kd":"ku", "RIGHTBRACKET"); 
+  else if(kb.keycode == 47) e += sprintf(e, "%s %s\n", kb.keydown ? "kd":"ku", "G"); 
+  else if(kb.keycode == 61) e += sprintf(e, "%s %s\n", kb.keydown ? "kd":"ku", "N"); 
+  else
+    e += sprintf(e, "%s %s\n", kb.keydown ? "kd":"ku", keynames[kb.keycode]);
+  //printf("%s",s);
   count = e - s;
   e = (char *)buf;
   for(i = 0;i < len && i < count;i ++){

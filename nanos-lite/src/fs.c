@@ -84,6 +84,7 @@ static int pathname2fd(const char *pathname){
       return fd;
     }
   }
+  return -1;
   panic("fs : no filename is %s\n",pathname);
 }
 
@@ -117,6 +118,7 @@ static int regular_write(int fd,const void *buf, int len){
 //-----some file api---------
 int fs_open(const char *pathname, int flags, int mode){
   int fd = pathname2fd(pathname);
+  if(fd == -1) return -1;
   file_table[fd].open = true;
   file_table[fd].open_offset = 0;
   return fd;
@@ -166,7 +168,7 @@ size_t fs_read(int fd, void *buf, size_t count){
 }
 
 size_t fs_lseek(int fd, size_t offset, int whence){
-  if(file_table[fd].name == NULL) panic("fs : unkonwn file descripter(lseek)");
+  if(file_table[fd].name == NULL) return -1;//panic("fs : unkonwn file descripter(lseek)");
 
   size_t foffset = whence == SEEK_SET ?  0: 
                   (whence == SEEK_CUR ? file_table[fd].open_offset : file_table[fd].size);

@@ -1,6 +1,9 @@
 #include <common.h>
 #include "syscall.h"
 #include <fs.h>
+#include <proc.h>
+
+void naive_uload(PCB *pcb, const char *filename);
 
 struct timeval {
   long tv_sec;     /* seconds */
@@ -45,6 +48,9 @@ __attribute__((unused)) static void strace(int no, int a1, int a2, int a3){
   case SYS_gettimeofday:
     s += sprintf(s ,"gettimeofday( tv, tz)");
     break;
+  case SYS_execve:
+    s += sprintf(s ,"execve( %s(pathname), %s, %s)",(char *)a1, a2, a3);
+    break;
   default:
     s += sprintf(s ,"UNKOWN syscall");
     break;
@@ -77,6 +83,11 @@ int sys_gettimeofday(struct timeval * tv, struct timezone * tz){
   tv->tv_sec = us / 1000000;
   tv->tv_usec = us % 1000000;
   return 0;
+}
+
+int sys_execve(const char *pathname, char *argv[], char * envp[]){
+  naive_uload(NULL, pathname);
+  return -1;
 }
 
 void do_syscall(Context *c) {
@@ -114,8 +125,11 @@ void do_syscall(Context *c) {
     case SYS_gettimeofday:
       c->GPRx = sys_gettimeofday((struct timeval * )a[1], (struct timezone *)a[2]);
       break;
+    case SYS_execve:
+      c->GPRx = sys_execve((char *)a[1], (char **)a[2], (char **)a[3]);
+      break;
     case SYS_exit:
-      halt(a[1]);
+      naive_uload(NULL, "/bin/nterm");
       break;
     default: panic("Unhandled syscall ID = %d", a[0]);
   }

@@ -12,7 +12,7 @@ Context* __am_irq_handle(Context *c) {
         ev.event = EVENT_YIELD;
         c->mepc += 4; 
         break;
-      case EVENT_SYSCALL:
+      case 11:
         ev.event = EVENT_SYSCALL;
         c->mepc += 4;
         break;

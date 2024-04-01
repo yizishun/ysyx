@@ -109,21 +109,20 @@ void SDL_UpdateRect(SDL_Surface *s, int x, int y, int w, int h) {
     width = w;
     height = h;
   }
-  p = (uint32_t *)malloc(width * height * sizeof(uint32_t));
   if(s->format->BitsPerPixel == 8){
     assert(s->format->palette);
     assert(s->format->palette->colors);
+    p = (uint32_t *)malloc(width * height * sizeof(uint32_t));
     for(i = 0;i < width * height;i++){
       SDL_Color color = s->format->palette->colors[s->pixels[i]];
       p[i] = (color.a << 24) | (color.r << 16) | (color.g << 8) | (color.b);
     }
+    NDL_DrawRect((uint32_t *)p, x, y, width, height);
   }
   else{ 
     assert(s->format->palette == NULL);
-    p = (uint32_t *)s->pixels;
+    NDL_DrawRect((uint32_t *)s->pixels, x, y, width, height);
   }
-
-  NDL_DrawRect((uint32_t *)p, x, y, width, height);
   free(p);
 }
 
