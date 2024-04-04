@@ -42,6 +42,8 @@ static struct {
 
 static void sh_handle_cmd(const char *cmd) {
   int i;
+  char *argv[16];
+  int argc = 0;
   int size = strlen(cmd);
   char *str = (char *)malloc(size);
   for(i = 0;cmd[i] != '\n';i++){
@@ -49,6 +51,16 @@ static void sh_handle_cmd(const char *cmd) {
   }
   str[i] = '\0';
   char *str_end = str + strlen(str);
+
+  const char split[2] = " ";
+  char* token;
+
+  token = strtok(str, split);
+  while (token != NULL) {
+    argv[argc++] = token;
+    token = strtok(NULL, split);
+  }
+  argv[argc] = NULL;
 
   char *command = strtok(str, " ");
   char *args = command + strlen(command) + 1;
@@ -62,9 +74,10 @@ static void sh_handle_cmd(const char *cmd) {
       return;
     }
   }
-
-  if(execvp(command, NULL) == -1){
-    sh_printf("ysh: command not found: %s\n",command);
+  if(argv[0] != NULL){
+    if(execvp(argv[0], argv) == -1){
+      sh_printf("ysh: command not found: %s\n",command);
+    }
   }
 }
 

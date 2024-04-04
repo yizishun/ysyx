@@ -15,6 +15,7 @@ static const char *keynames[256] __attribute__((used)) = {
 };
 
 size_t serial_write(const void *buf, size_t offset, size_t len) {
+  yield();
   int i;
   char *c = (char *)buf;
   for(i = 0;i < len;i ++){
@@ -24,6 +25,7 @@ size_t serial_write(const void *buf, size_t offset, size_t len) {
 }
 
 size_t events_read(void *buf, size_t offset, size_t len) {
+  yield();
   int count = 0, i;
   char *s = (char *)malloc(20);
   assert(s != NULL);
@@ -76,6 +78,7 @@ size_t dispinfo_read(void *buf, size_t offset, size_t len) {
 }
 //write len bytes in buf to offset in fb
 size_t fb_write(void *buf, size_t offset, size_t len) {
+  yield();
   AM_GPU_CONFIG_T cfg = io_read(AM_GPU_CONFIG);
   int x = offset % cfg.width;
   int y = offset / cfg.width;

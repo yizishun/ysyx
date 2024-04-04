@@ -62,11 +62,9 @@ static uintptr_t loader(PCB *pcb, const char *filename) {
   return elf_header.e_entry;
 }
 
-void naive_uload(PCB *pcb, const char *filename) {
-  if(get_ramdisk_size() == 0) return;
+uintptr_t naive_uload(PCB *pcb, const char *filename) {
+  if(get_ramdisk_size() == 0) panic("disk is empty");
   uintptr_t entry = loader(pcb, filename);
-  if(entry == -1) return;
-  Log("Jump to entry = %lu", entry);
-  ((void(*)())entry) ();
+  return entry;
 }
 

@@ -3,7 +3,8 @@
 #include <fs.h>
 #include <proc.h>
 
-void naive_uload(PCB *pcb, const char *filename);
+int context_uload(PCB *pcb, const char *filename, char *const argv[], char *const envp[]);
+void switch_boot_pcb();
 
 struct timeval {
   long tv_sec;     /* seconds */
@@ -86,7 +87,9 @@ int sys_gettimeofday(struct timeval * tv, struct timezone * tz){
 }
 
 int sys_execve(const char *pathname, char *argv[], char * envp[]){
-  naive_uload(NULL, pathname);
+  if(context_uload(current, pathname, argv, envp) == -1) return -1;
+  switch_boot_pcb();
+  yield();
   return -1;
 }
 
@@ -129,7 +132,7 @@ void do_syscall(Context *c) {
       c->GPRx = sys_execve((char *)a[1], (char **)a[2], (char **)a[3]);
       break;
     case SYS_exit:
-      naive_uload(NULL, "/bin/nterm");
+      halt(1);
       break;
     default: panic("Unhandled syscall ID = %d", a[0]);
   }
