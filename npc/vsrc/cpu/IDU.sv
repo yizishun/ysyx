@@ -1,6 +1,6 @@
 /*-----------instruction----(RV32E)--*/
 //opcode
-`define ENV            7'b1110011
+`define SYSTEM         7'b1110011
 `define IMMARITH       7'b0010011
 `define REGARITH       7'b0110011
 `define STORE          7'b0100011
@@ -11,8 +11,13 @@
 `define jal            7'b1101111
 `define jalr           7'b1100111
 //function
-  //env
+  //SYSTEM
 `define ebreak         12'b000000000001
+`define ecall          12'b000000000000
+`define mret           12'b001100000010
+`define inv            3'b000
+`define csrrw          3'b001
+`define csrrs		   3'b010
   //IMMARITH
 `define addi           3'b000
 `define slli           3'b001
@@ -54,6 +59,10 @@
 `define bge            3'b101
 `define bltu           3'b110
 `define bgeu           3'b111
+/*----------exception---------------*/
+`define NIRQ		   1'b0
+`define IRQ            1'b1
+`define MECALL         8'b00001011
 /*----------control signal----------*/
 //MemRD
 `define RBYTE          3'b000
@@ -82,14 +91,22 @@
 `define ALUSRA         4'b0111
 `define ALUSRL         4'b1000
 `define ALUSLL         4'b1001
+//CSRWriteE
+`define CSRWRITE       1'b1
+`define CSRNWRITE      1'b0
 //RegwriteE
 `define RWRITE         1'b1
 `define RNWRITE        1'b0
 //RegwriteD
-`define Aluresult      2'b00
-`define imm            2'b01
-`define pc_plus_4_2	   2'b10
-`define MemRD          2'b11 
+`define Aluresult      3'b000
+`define imm            3'b001
+`define pc_plus_4_2	   3'b010
+`define MemRD          3'b011 
+`define CSR            3'b100
+//CSRWriteD
+`define RD1            2'b00
+`define RD1_OR		   2'b01
+`define PC             2'b10
 //immtype
 `define immI           3'b000
 `define immU           3'b001
@@ -107,27 +124,78 @@ module ysyx_23060171_idu(
 	input [2:0]f3,
 	input [6:0]f7,
 	input [11:0]f12,
+	output reg irq,
+	output reg [7:0]irq_no,
 	output reg MemWriteE,
 	output reg [7:0]MemWmask,
 	output reg MemValid,
 	output reg [2:0]MemRD,
 	output reg [3:0]alucontrol,
+	output reg CSRWriteE,
 	output reg RegwriteE,
 	output reg [2:0]immtype,
 	output reg AluSrcA,
 	output reg AluSrcB,
-	output reg [1:0]RegwriteD
+	output reg [1:0]CSRWriteD,
+	output reg [2:0]RegwriteD
 );
 	import "DPI-C" function void npc_trap();
 	always @(*) begin
 		case(opcode)
-			`ENV: begin
-				case(f12)
-					`ebreak: begin
-						npc_trap();
+			`SYSTEM: begin
+				case(f3)
+					`csrrw: begin
+						irq = `NIRQ; 
+						MemWriteE = `MNWRITE;
+						MemValid = `INVALID;
+						CSRWriteE = `CSRWRITE;
+						CSRWriteD = `RD1;
+						RegwriteE = `RWRITE;
+						RegwriteD = `CSR;
+					end
+					`csrrs:begin
+						irq = `NIRQ; 
+						MemWriteE = `MNWRITE;
+						MemValid = `INVALID;
+						CSRWriteE = `CSRWRITE;
+						CSRWriteD = `RD1_OR;
+						RegwriteE = `RWRITE;
+						RegwriteD = `CSR;
+					end
+					`inv:begin
+						case(f12)
+							`ebreak: begin
+								npc_trap();
+							end
+							`ecall: begin
+								irq = `IRQ;
+								irq_no = `MECALL;
+								MemWriteE = `MNWRITE;
+								MemValid = `INVALID;
+								CSRWriteE = `CSRNWRITE;
+								CSRWriteD = `PC;
+								RegwriteE = `RNWRITE;
+							end
+							`mret: begin
+								irq = `NIRQ;
+								RegwriteE = `RNWRITE;
+								CSRWriteE = `CSRNWRITE;
+								MemWriteE = `MNWRITE;
+								MemValid = `INVALID;	
+							end
+							default:begin
+								irq = `NIRQ; 
+								RegwriteE = `RNWRITE;
+								CSRWriteE = `CSRNWRITE;
+								MemWriteE = `MNWRITE;
+								MemValid = `INVALID;
+							end
+						endcase
 					end
 					default:begin
+						irq = `NIRQ; 
 						RegwriteE = `RNWRITE;
+						CSRWriteE = `CSRNWRITE;
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 					end
@@ -136,41 +204,49 @@ module ysyx_23060171_idu(
 			`IMMARITH:begin
 				case(f3)
 					`addi:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
 						AluSrcB = `ALUbimm;
 						alucontrol = `ALUADD;
+						CSRWriteE = `CSRNWRITE;
 						RegwriteE = `RWRITE;
 						immtype = `immI;
 						RegwriteD = `Aluresult;
 					end
 					`slli:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
 						AluSrcB = `ALUbimm;
 						alucontrol = `ALUSLL;
+						CSRWriteE = `CSRNWRITE;
 						RegwriteE = `RWRITE;
 						immtype = `immI;
 						RegwriteD = `Aluresult;
 					end
 					`slti:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
 						AluSrcB = `ALUbimm;
 						alucontrol = `ALUCMP;
+						CSRWriteE = `CSRNWRITE;
 						RegwriteE = `RWRITE;
 						immtype = `immI;
 						RegwriteD = `Aluresult;
 					end
 					`sltiu:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
 						AluSrcB = `ALUbimm;
 						alucontrol = `ALUCMPU;
+						CSRWriteE = `CSRNWRITE;
 						RegwriteE = `RWRITE;
 						immtype = `immI;
 						RegwriteD = `Aluresult;
@@ -178,64 +254,78 @@ module ysyx_23060171_idu(
 					`sri:begin
 						case(f7)
 							`srli:begin
+								irq = `NIRQ; 
 								MemWriteE = `MNWRITE;
 								MemValid = `INVALID;
 								AluSrcA = `ALUaRD1;
 								AluSrcB = `ALUbimm;
 								alucontrol = `ALUSRL;
+								CSRWriteE = `CSRNWRITE;
 								RegwriteE = `RWRITE;
 								immtype = `immI;
 								RegwriteD = `Aluresult;
 							end
 							`srai:begin
+								irq = `NIRQ; 
 								MemWriteE = `MNWRITE;
 								MemValid = `INVALID;
 								AluSrcA = `ALUaRD1;
 								AluSrcB = `ALUbimm;
 								alucontrol = `ALUSRA;
+								CSRWriteE = `CSRNWRITE;
 								RegwriteE = `RWRITE;
 								immtype = `immI;
 								RegwriteD = `Aluresult;
 							end
 							default:begin 
+								irq = `NIRQ; 
 								RegwriteE = `RNWRITE;
 								MemWriteE = `MNWRITE;
+								CSRWriteE = `CSRNWRITE;
 								MemValid = `INVALID;
 							end
 						endcase
 					end
 					`xori:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
 						AluSrcB = `ALUbimm;
 						alucontrol = `ALUXOR;
+						CSRWriteE = `CSRNWRITE;
 						RegwriteE = `RWRITE;
 						immtype = `immI;
 						RegwriteD = `Aluresult;
 					end
 					`ori:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
 						AluSrcB = `ALUbimm;
 						alucontrol = `ALUOR;
+						CSRWriteE = `CSRNWRITE;
 						RegwriteE = `RWRITE;
 						immtype = `immI;
 						RegwriteD = `Aluresult;
 					end
 					`andi:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
 						AluSrcB = `ALUbimm;
 						alucontrol = `ALUAND;
+						CSRWriteE = `CSRNWRITE;
 						RegwriteE = `RWRITE;
 						immtype = `immI;
 						RegwriteD = `Aluresult;
 					end
 					default:begin 
+						irq = `NIRQ; 
 						RegwriteE = `RNWRITE;
+						CSRWriteE = `CSRNWRITE;
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 					end
@@ -246,113 +336,139 @@ module ysyx_23060171_idu(
 					`add_sub:begin
 						case(f7)
 							`add:begin
+								irq = `NIRQ; 
 								MemWriteE = `MNWRITE;
 								MemValid = `INVALID;
 								AluSrcA = `ALUaRD1;
 								AluSrcB = `ALUbRD2;
 								alucontrol = `ALUADD;
 								RegwriteE = `RWRITE;
+								CSRWriteE = `CSRNWRITE;
 								RegwriteD = `Aluresult;
 							end
 							`sub:begin
+								irq = `NIRQ; 
 								MemWriteE = `MNWRITE;
 								MemValid = `INVALID;
 								AluSrcA = `ALUaRD1;
 								AluSrcB = `ALUbRD2;
 								alucontrol = `ALUSUB;
 								RegwriteE = `RWRITE;
+								CSRWriteE = `CSRNWRITE;
 								RegwriteD = `Aluresult;
 							end
 							default:begin 
+								irq = `NIRQ; 
 								RegwriteE = `RNWRITE;
+								CSRWriteE = `CSRNWRITE;
 								MemWriteE = `MNWRITE;
 								MemValid = `INVALID;
 							end
 						endcase
 					end
 					`sll:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
 						AluSrcB = `ALUbRD2;
 						alucontrol = `ALUSLL;
 						RegwriteE = `RWRITE;
+						CSRWriteE = `CSRNWRITE;
 						RegwriteD = `Aluresult;
 					end
 					`slt:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
 						AluSrcB = `ALUbRD2;
 						alucontrol = `ALUCMP;
 						RegwriteE = `RWRITE;
+						CSRWriteE = `CSRNWRITE;
 						RegwriteD = `Aluresult;
 					end
 					`sltu:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
 						AluSrcB = `ALUbRD2;
 						alucontrol = `ALUCMPU;
 						RegwriteE = `RWRITE;
+						CSRWriteE = `CSRNWRITE;
 						RegwriteD = `Aluresult;
 					end
 					`xor:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
 						AluSrcB = `ALUbRD2;
 						alucontrol = `ALUXOR;
 						RegwriteE = `RWRITE;
+						CSRWriteE = `CSRNWRITE;
 						RegwriteD = `Aluresult;
 					end
 					`sr:begin
 						case(f7)
 							`srl:begin
+								irq = `NIRQ; 
 								MemWriteE = `MNWRITE;
 								MemValid = `INVALID;
 								AluSrcA = `ALUaRD1;
 								AluSrcB = `ALUbRD2;
 								alucontrol = `ALUSRL;
 								RegwriteE = `RWRITE;
+								CSRWriteE = `CSRNWRITE;
 								RegwriteD = `Aluresult;
 							end
 							`sra:begin
+								irq = `NIRQ; 
 								MemWriteE = `MNWRITE;
 								MemValid = `INVALID;
 								AluSrcA = `ALUaRD1;
 								AluSrcB = `ALUbRD2;
 								alucontrol = `ALUSRA;
 								RegwriteE = `RWRITE;
+								CSRWriteE = `CSRNWRITE;
 								RegwriteD = `Aluresult;
 							end
 							default:begin 
+								irq = `NIRQ; 
 								RegwriteE = `RNWRITE;
+								CSRWriteE = `CSRNWRITE;
 								MemWriteE = `MNWRITE;
 								MemValid = `INVALID;
 							end
 						endcase
 					end
 					`or:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
 						AluSrcB = `ALUbRD2;
 						alucontrol = `ALUOR;
 						RegwriteE = `RWRITE;
+						CSRWriteE = `CSRNWRITE;
 						RegwriteD = `Aluresult;
 					end
 					`and:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
 						AluSrcB = `ALUbRD2;
 						alucontrol = `ALUAND;
 						RegwriteE = `RWRITE;
+						CSRWriteE = `CSRNWRITE;
 						RegwriteD = `Aluresult;
 					end
 					default:begin 
+						irq = `NIRQ; 
 						RegwriteE = `RNWRITE;
+						CSRWriteE = `CSRNWRITE;
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 				end
@@ -361,6 +477,7 @@ module ysyx_23060171_idu(
 			`STORE:begin
 				case(f3)
 					`sw:begin
+						irq = `NIRQ; 
 						MemWriteE = `MWRITE;
 						MemValid = `VALID;
 						MemWmask = `WWORD;
@@ -369,8 +486,10 @@ module ysyx_23060171_idu(
 						alucontrol = `ALUADD;
 						immtype = `immS;
 						RegwriteE = `RNWRITE;
+						CSRWriteE = `CSRNWRITE;
 					end
 					`sh:begin
+						irq = `NIRQ; 
 						MemWriteE = `MWRITE;
 						MemValid = `VALID;
 						MemWmask = `WHALFW;
@@ -379,8 +498,10 @@ module ysyx_23060171_idu(
 						alucontrol = `ALUADD;
 						immtype = `immS;
 						RegwriteE = `RNWRITE;
+						CSRWriteE = `CSRNWRITE;
 					end
 					`sb:begin
+						irq = `NIRQ; 
 						MemWriteE = `MWRITE;
 						MemValid = `VALID;
 						MemWmask = `WBYTE;
@@ -389,9 +510,12 @@ module ysyx_23060171_idu(
 						alucontrol = `ALUADD;
 						immtype = `immS;
 						RegwriteE = `RNWRITE;
+						CSRWriteE = `CSRNWRITE;
 					end
 					default:begin 
+						irq = `NIRQ; 
 						RegwriteE = `RNWRITE;
+						CSRWriteE = `CSRNWRITE;
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 					end
@@ -400,6 +524,7 @@ module ysyx_23060171_idu(
 			`LOAD:begin
 				case(f3)
 					`lw:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `VALID;
 						MemWmask = `WWORD;
@@ -409,9 +534,11 @@ module ysyx_23060171_idu(
 						alucontrol = `ALUADD;
 						immtype = `immI;
 						RegwriteE = `RWRITE;
+						CSRWriteE = `CSRNWRITE;
 						RegwriteD = `MemRD;
 					end
 					`lh:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `VALID;
 						MemWmask = `WWORD;
@@ -421,9 +548,11 @@ module ysyx_23060171_idu(
 						alucontrol = `ALUADD;
 						immtype = `immI;
 						RegwriteE = `RWRITE;
+						CSRWriteE = `CSRNWRITE;
 						RegwriteD = `MemRD;
 					end
 					`lb:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `VALID;
 						MemWmask = `WWORD;
@@ -433,9 +562,11 @@ module ysyx_23060171_idu(
 						alucontrol = `ALUADD;
 						immtype = `immI;
 						RegwriteE = `RWRITE;
+						CSRWriteE = `CSRNWRITE;
 						RegwriteD = `MemRD;
 					end
 					`lbu:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `VALID;
 						MemWmask = `WWORD;
@@ -445,9 +576,11 @@ module ysyx_23060171_idu(
 						alucontrol = `ALUADD;
 						immtype = `immI;
 						RegwriteE = `RWRITE;
+						CSRWriteE = `CSRNWRITE;
 						RegwriteD = `MemRD;
 					end
 					`lhu:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `VALID;
 						MemWmask = `WWORD;
@@ -457,10 +590,13 @@ module ysyx_23060171_idu(
 						alucontrol = `ALUADD;
 						immtype = `immI;
 						RegwriteE = `RWRITE;
+						CSRWriteE = `CSRNWRITE;
 						RegwriteD = `MemRD;
 					end
 					default:begin 
+						irq = `NIRQ; 
 						RegwriteE = `RNWRITE;
+						CSRWriteE = `CSRNWRITE;
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 					end
@@ -469,6 +605,7 @@ module ysyx_23060171_idu(
 			`BRANCH:begin
 				case(f3)
 					`beq:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
@@ -476,8 +613,10 @@ module ysyx_23060171_idu(
 						alucontrol = `ALUSUB;
 						immtype = `immB;
 						RegwriteE = `RNWRITE;
+						CSRWriteE = `CSRNWRITE;
 					end
 					`bne:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
@@ -485,8 +624,10 @@ module ysyx_23060171_idu(
 						alucontrol = `ALUSUB;
 						immtype = `immB;
 						RegwriteE = `RNWRITE;
+						CSRWriteE = `CSRNWRITE;
 					end
 					`bge:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
@@ -494,8 +635,10 @@ module ysyx_23060171_idu(
 						alucontrol = `ALUCMP;
 						immtype = `immB;
 						RegwriteE = `RNWRITE;
+						CSRWriteE = `CSRNWRITE;
 					end
 					`blt:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
@@ -503,8 +646,10 @@ module ysyx_23060171_idu(
 						alucontrol = `ALUCMP;
 						immtype = `immB;
 						RegwriteE = `RNWRITE;
+						CSRWriteE = `CSRNWRITE;
 					end
 					`bltu:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
@@ -512,8 +657,10 @@ module ysyx_23060171_idu(
 						alucontrol = `ALUCMPU;
 						immtype = `immB;
 						RegwriteE = `RNWRITE;
+						CSRWriteE = `CSRNWRITE;
 					end
 					`bgeu:begin
+						irq = `NIRQ; 
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 						AluSrcA = `ALUaRD1;
@@ -521,53 +668,66 @@ module ysyx_23060171_idu(
 						alucontrol = `ALUCMPU;
 						immtype = `immB;
 						RegwriteE = `RNWRITE;
+						CSRWriteE = `CSRNWRITE;
 					end
 					default:begin 
+						irq = `NIRQ; 
 						RegwriteE = `RNWRITE;
+						CSRWriteE = `CSRNWRITE;
 						MemWriteE = `MNWRITE;
 						MemValid = `INVALID;
 					end
 				endcase
 			end
 			`auipc:begin
+				irq = `NIRQ; 
 				MemWriteE = `MNWRITE;
 				MemValid = `INVALID;
 				AluSrcA = `ALUaPC;
 				AluSrcB = `ALUbimm;
 				alucontrol = `ALUADD;
 				RegwriteE = `RWRITE;
+				CSRWriteE = `CSRNWRITE;
 				immtype = `immU;
 				RegwriteD = `Aluresult;
 			end
 			`lui:begin
+				irq = `NIRQ; 
 				MemWriteE = `MNWRITE;
 				MemValid = `INVALID;
 				RegwriteE = `RWRITE;
+				CSRWriteE = `CSRNWRITE;
 				immtype = `immU;
 				RegwriteD = `imm;
 			end
 			`jal:begin
+				irq = `NIRQ; 
 				MemWriteE = `MNWRITE;
 				MemValid = `INVALID;
 				AluSrcA = `ALUaPC;
 				AluSrcB = `ALUbimm;
 				alucontrol = `ALUADD;
 				RegwriteE = `RWRITE;
+				CSRWriteE = `CSRNWRITE;
 				immtype = `immJ;
 				RegwriteD = `pc_plus_4_2;
 			end
 			`jalr:begin
+				irq = `NIRQ; 
 				MemWriteE = `MNWRITE;
 				MemValid = `INVALID;
 				AluSrcA = `ALUaRD1;
 				AluSrcB = `ALUbimm;
 				alucontrol = `ALUADD;
 				RegwriteE = `RWRITE;
+				CSRWriteE = `CSRNWRITE;
 				immtype = `immI;
 				RegwriteD = `pc_plus_4_2;
 			end
 			default:begin 
+				irq = `NIRQ; 
 				RegwriteE = `RNWRITE;
+				CSRWriteE = `CSRNWRITE;
 				MemWriteE = `MNWRITE;
 				MemValid = `INVALID;
 			end

@@ -1,4 +1,5 @@
 `define BRANCH         7'b1100011
+`define SYSTEM         7'b1110011
 `define jal            7'b1101111
 `define jalr           7'b1100111
 //BRANCH
@@ -8,10 +9,14 @@
 `define bge            3'b101
 `define bltu           3'b110
 `define bgeu           3'b111
+//SYSTEM
+`define mret           12'b001100000010
 //PCSrc
-`define snpc           2'b00
-`define dnpc           2'b01
-`define dnpc_r         2'b10
+`define snpc           3'b000
+`define dnpc           3'b001
+`define dnpc_r         3'b010
+`define mtvec          3'b011
+`define mepc           3'b100
 module ysyx_23060171_idupc(
     input [6:0]opcode,
 	input [2:0]f3,
@@ -19,7 +24,7 @@ module ysyx_23060171_idupc(
 	input [11:0]f12,
 	input zf,
 	input cmp,
-    output reg [1:0]PCSrc
+    output reg [2:0]PCSrc
 );
 always @(*) begin
 		case(opcode)
@@ -43,12 +48,18 @@ always @(*) begin
 					`bgeu:begin
 						PCSrc = cmp ? `snpc : `dnpc;
 					end
-
                     default:PCSrc = `snpc;
                 endcase
             end
             `jal: PCSrc = `dnpc;
             `jalr:PCSrc = `dnpc_r;
+			`SYSTEM:
+				case(f12)
+					`mret:begin
+						PCSrc = `mepc;
+					end
+					default:PCSrc = `snpc;
+				endcase
             default:PCSrc = `snpc;
         endcase
 end

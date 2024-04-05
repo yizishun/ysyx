@@ -2,37 +2,49 @@ module ysyx_23060171_cpu(
 	input clk,
 	input rst
 );
-	//control signal
+//exception
+	wire irq;
+	wire [7:0]irq_no;
+//control signal
 	wire MemWriteE;
 	wire [7:0]MemWmask;
 	wire MemValid;
 	wire [2:0]MemRD;
 	wire [3:0]alucontrol;
+	wire CSRWriteE;
 	wire RegwriteE;
 	wire [2:0]immtype;
 	wire AluSrcA;
 	wire AluSrcB;
-	wire [1:0]RegwriteD;
-	wire [1:0]PCSrc;
-	//pc
+	wire [1:0]CSRWriteD;
+	wire [2:0]RegwriteD;
+	wire [2:0]PCSrc;
+//pc
+	wire [2:0]PCSrc_irq;
 	wire [31:0]pc;
 	wire [31:0]inst;
 	wire [31:0]nextpc;
 	wire [31:0]snpc;
 	wire [31:0]dnpc;
 	wire [31:0]dnpc_r;
-	//gpr
+//gpr
 	wire [31:0]wd;
 	wire [31:0]rd1;
 	wire [31:0]rd2;
-	//imm
+//csr
+	wire [1:0]CSRWriteD_irq;
+	wire [31:0]csr_rd;
+	wire [31:0]csr_wd;
+	wire [31:0]mtvec;
+	wire [31:0]mepc;
+//imm
 	wire [31:0]immext;
-	//alu
+//alu
 	wire [31:0]aluresult;
 	wire [31:0]aluA;
 	wire [31:0]aluB;
 	wire [3:0]flag;
-	//mem
+//mem
 	wire [31:0]maddr;
 	wire [31:0]place;
 	wire [7:0]RealMemWmask;
@@ -51,10 +63,16 @@ module ysyx_23060171_cpu(
 		.inst(inst)
 	);
 	assign dnpc_r = aluresult & (~32'b1);
-	ysyx_23060171_MuxKey #(3,2,32) pcmux(nextpc,PCSrc,{
-		2'b00,snpc,
-		2'b01,dnpc,
-		2'b10,dnpc_r
+	ysyx_23060171_MuxKey #(2,1,3) pcirqmux(PCSrc_irq,irq,{
+		1'b0,PCSrc,
+		1'b1,3'b011
+	});
+	ysyx_23060171_MuxKey #(5,3,32) pcmux(nextpc,PCSrc_irq,{
+		3'b000,snpc,
+		3'b001,dnpc,
+		3'b010,dnpc_r,
+		3'b011,mtvec,
+		3'b100,mepc
 	});
 	ysyx_23060171_addpc addpc(
 		.pc(pc),
@@ -65,6 +83,13 @@ module ysyx_23060171_cpu(
 		.imm(immext),
 		.nextpc(dnpc)
 	);
+	ysyx_23060171_MuxKey #(5,3,32) wdmux(wd,RegwriteD,{
+		3'b000,aluresult,
+		3'b001,immext,
+		3'b010,snpc,
+		3'b011,rd,
+		3'b100,csr_rd
+	});
 	ysyx_23060171_gpr	gpr(
 		.clk(clk),
 		.wen(RegwriteE),
@@ -75,26 +100,45 @@ module ysyx_23060171_cpu(
 		.rdata1(rd1),
 		.rdata2(rd2)
 	);
-	ysyx_23060171_MuxKey #(4,2,32) wdmux(wd,RegwriteD,{
-		2'b00,aluresult,
-		2'b01,immext,
-		2'b10,snpc,
-		2'b11,rd
+	ysyx_23060171_MuxKey #(2,1,2) csr_wdirqmux(CSRWriteD_irq,irq,{
+		1'b0,CSRWriteD,
+		1'b1,2'b10
+	});	
+	ysyx_23060171_MuxKey #(3,2,32) csr_wdmux(csr_wd,CSRWriteD_irq,{
+		2'b00,rd1,
+		2'b01,rd1|csr_rd,
+		2'b10,pc
 	});
+	ysyx_23060171_csr   csr(
+		.clk(clk),
+		.irq(irq),
+		.irq_no(irq_no),
+		.wen(CSRWriteE),
+		.waddr(inst[31:20]),
+		.wdata(csr_wd),
+		.raddr1(inst[31:20]),
+		.rdata1(csr_rd),
+		.mtvec(mtvec),
+		.mepc(mepc)
+	);
 	ysyx_23060171_idu idu(
 		.opcode(inst[6:0]),
 		.f3(inst[14:12]),
 		.f7(inst[31:25]),
 		.f12(inst[31:20]),
+		.irq(irq),
+		.irq_no(irq_no),
 		.MemWriteE(MemWriteE),
 		.MemWmask(MemWmask),
 		.MemValid(MemValid),
 		.MemRD(MemRD),
 		.alucontrol(alucontrol),
+		.CSRWriteE(CSRWriteE),
 		.RegwriteE(RegwriteE),
 		.immtype(immtype),
 		.AluSrcA(AluSrcA),
 		.AluSrcB(AluSrcB),
+		.CSRWriteD(CSRWriteD),
 		.RegwriteD(RegwriteD)
 	);
 	ysyx_23060171_idupc idupc(
