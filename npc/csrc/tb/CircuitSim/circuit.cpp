@@ -92,12 +92,12 @@ void cpu_exec(uint32_t n){
 	//max inst to print to stdout
 	g_print_step = (n < MAX_INST_TO_PRINT);
 	while(n > 0){
-		prev_pc = cpu.rootp -> ysyx_23060171_cpu__DOT__pc;
+		prev_pc = cpu.rootp -> ysyx_23060171_cpu__DOT__pcFD;
 		snpc = pc + 4;
 		exec_once();
-		inst = cpu.rootp -> ysyx_23060171_cpu__DOT__inst;
-		pc = cpu.rootp -> ysyx_23060171_cpu__DOT__pc;
-		dnpc = cpu.rootp -> ysyx_23060171_cpu__DOT__pc;
+		inst = cpu.rootp -> ysyx_23060171_cpu__DOT__instFD;
+		pc = cpu.rootp -> ysyx_23060171_cpu__DOT__pcFD;
+		dnpc = cpu.rootp -> ysyx_23060171_cpu__DOT__pcFD;
 		get_reg();
 		g_nr_guest_inst ++;
 		#ifdef CONFIG_TRACE

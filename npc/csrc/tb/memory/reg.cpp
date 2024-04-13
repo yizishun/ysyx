@@ -14,7 +14,7 @@ const char *regs[] = {
 void get_reg(){
   int i;
   for(i = 0;i < REGNUM; i++)
-    gpr[i] = cpu.rootp -> ysyx_23060171_cpu__DOT__gpr__DOT__rf[i];
+    gpr[i] = cpu.rootp -> ysyx_23060171_cpu__DOT__idu__DOT__gpr__DOT__rf[i];
 }
 
 void isa_reg_display() {

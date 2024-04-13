@@ -2,196 +2,202 @@ module ysyx_23060171_cpu(
 	input clk,
 	input rst
 );
-//exception
-	wire irq;
-	wire [7:0]irq_no;
-//control signal
-	wire MemWriteE;
-	wire [7:0]MemWmask;
-	wire MemValid;
-	wire [2:0]MemRD;
-	wire [3:0]alucontrol;
-	wire CSRWriteE;
-	wire RegwriteE;
-	wire [2:0]immtype;
-	wire AluSrcA;
-	wire AluSrcB;
-	wire [1:0]CSRWriteD;
-	wire [2:0]RegwriteD;
-	wire [2:0]PCSrc;
-//pc
-	wire [2:0]PCSrc_irq;
-	wire [31:0]pc;
-	wire [31:0]inst;
-	wire [31:0]nextpc;
-	wire [31:0]snpc;
-	wire [31:0]dnpc;
-	wire [31:0]dnpc_r;
-//gpr
-	wire [31:0]wd;
-	wire [31:0]rd1;
-	wire [31:0]rd2;
-//csr
-	wire [1:0]CSRWriteD_irq;
-	wire [31:0]csr_rd;
-	wire [31:0]csr_wd;
-	wire [31:0]mtvec;
-	wire [31:0]mepc;
-//imm
-	wire [31:0]immext;
-//alu
-	wire [31:0]aluresult;
-	wire [31:0]aluA;
-	wire [31:0]aluB;
-	wire [3:0]flag;
-//mem
-	wire [31:0]maddr;
-	wire [31:0]place;
-	wire [7:0]RealMemWmask;
-	wire [31:0]rdplace;
-	wire [31:0]rdraw;
-	wire [31:0]rd;
-	ysyx_23060171_pc pc2(
-		.clk(clk),
-		.rst(rst),
-		.next_pc(nextpc),
-		.pc(pc)
-	);
-	ysyx_23060171_inst_memory inst_memory(
-		.valid(~(rst | clk)),
-		.pc(pc),
-		.inst(inst)
-	);
-	assign dnpc_r = aluresult & (~32'b1);
-	ysyx_23060171_MuxKey #(2,1,3) pcirqmux(PCSrc_irq,irq,{
-		1'b0,PCSrc,
-		1'b1,3'b011
-	});
-	ysyx_23060171_MuxKey #(5,3,32) pcmux(nextpc,PCSrc_irq,{
-		3'b000,snpc,
-		3'b001,dnpc,
-		3'b010,dnpc_r,
-		3'b011,mtvec,
-		3'b100,mepc
-	});
-	ysyx_23060171_addpc addpc(
-		.pc(pc),
-		.nextpc(snpc)
-	);
-	ysyx_23060171_jumppc jumppc(
-		.pc(pc),
-		.imm(immext),
-		.nextpc(dnpc)
-	);
-	ysyx_23060171_MuxKey #(5,3,32) wdmux(wd,RegwriteD,{
-		3'b000,aluresult,
-		3'b001,immext,
-		3'b010,snpc,
-		3'b011,rd,
-		3'b100,csr_rd
-	});
-	ysyx_23060171_gpr	gpr(
-		.clk(clk),
-		.wen(RegwriteE),
-		.waddr(inst[11:7]),
-		.raddr1(inst[19:15]),
-		.raddr2(inst[24:20]),
-		.wdata(wd), 
-		.rdata1(rd1),
-		.rdata2(rd2)
-	);
-	ysyx_23060171_MuxKey #(2,1,2) csr_wdirqmux(CSRWriteD_irq,irq,{
-		1'b0,CSRWriteD,
-		1'b1,2'b10
-	});	
-	ysyx_23060171_MuxKey #(3,2,32) csr_wdmux(csr_wd,CSRWriteD_irq,{
-		2'b00,rd1,
-		2'b01,rd1|csr_rd,
-		2'b10,pc
-	});
-	ysyx_23060171_csr   csr(
-		.clk(clk),
-		.irq(irq),
-		.irq_no(irq_no),
-		.wen(CSRWriteE),
-		.waddr(inst[31:20]),
-		.wdata(csr_wd),
-		.raddr1(inst[31:20]),
-		.rdata1(csr_rd),
-		.mtvec(mtvec),
-		.mepc(mepc)
+	//EXU -> IFU
+	wire [31:0]pc_plus_rs2EF;
+	wire [31:0]pc_plus_immEF;
+	wire [2:0]PCSrcEF;
+	//IDU -> IFU
+	wire [31:0]mtvecDF;
+	wire [31:0]mepcDF;
+	wire irqDF;
+	//IFU -> IDU
+	wire [31:0]instFD;
+	wire [31:0]pc_plus_4FD;
+	wire [31:0]pcFD;
+	//WBU -> IDU
+	wire [31:0]wdWD;
+	wire [31:0]csr_wdWD;
+	//IDU -> EXU
+	wire [31:0]rd1DE;
+	wire [31:0]rd2DE;
+	wire [31:0]crd1DE;
+	wire [31:0]pcDE;
+	wire [31:0]pc_plus_4DE;
+	wire [31:0]immextDE;
+	wire irqDE;
+	wire [2:0]RegwriteDDE;
+    wire [1:0]CSRWriteDDE;
+    wire [2:0]MemRDDE;
+    wire MemValidDE;
+    wire [7:0]MemWmaskDE;
+    wire MemWriteEDE;
+    wire [3:0]alucontrolDE;
+    wire [3:0]JumpDE;
+    wire AluSrcADE;
+    wire AluSrcBDE;
+    //EXU -> LSU
+    wire [31:0]aluresultES;
+    wire [31:0]crd1ES;
+    wire [31:0]pcES;
+    wire [31:0]immextES;
+    wire [31:0]pc_plus_4ES;
+    wire [31:0]rd1ES;
+    wire [31:0]rd2ES;
+    wire irqES;
+    wire [2:0]RegwriteDES;
+    wire [1:0]CSRWriteDES;
+    wire [2:0]MemRDES;
+    wire MemValidES;
+    wire [7:0]MemWmaskES;
+    wire MemWriteEES;
+    //LSU to WBU
+    wire [31:0]rd1LW;
+    wire [31:0]aluresultLW;
+    wire [31:0]crd1LW;
+    wire [31:0]pcLW;
+    wire [31:0]immextLW;
+    wire [31:0]pc_plus_4LW;
+    wire [31:0]MemRLW;
+    wire irqLW;
+    wire [2:0]RegwriteDLW;
+    wire [1:0]CSRWriteDLW;
+	ysyx_23060171_ifu ifu(
+        .clk(clk),
+        .rst(rst),
+	//from EXU
+        .pc_plus_rs2(pc_plus_rs2EF),
+        .pc_plus_imm(pc_plus_immEF),
+        .PCSrc(PCSrcEF), //control signal
+	//from IDU
+        .mtvec(mtvecDF),
+        .mepc(mepcDF),
+        .irq(irqDF),  //control signal
+	//to IDU
+        .inst(instFD),
+        .pc_plus_4F(pc_plus_4FD),
+        .pcF(pcFD)
 	);
 	ysyx_23060171_idu idu(
-		.opcode(inst[6:0]),
-		.f3(inst[14:12]),
-		.f7(inst[31:25]),
-		.f12(inst[31:20]),
-		.irq(irq),
-		.irq_no(irq_no),
-		.MemWriteE(MemWriteE),
-		.MemWmask(MemWmask),
-		.MemValid(MemValid),
-		.MemRD(MemRD),
-		.alucontrol(alucontrol),
-		.CSRWriteE(CSRWriteE),
-		.RegwriteE(RegwriteE),
-		.immtype(immtype),
-		.AluSrcA(AluSrcA),
-		.AluSrcB(AluSrcB),
-		.CSRWriteD(CSRWriteD),
-		.RegwriteD(RegwriteD)
-	);
-	ysyx_23060171_idupc idupc(
-		.opcode(inst[6:0]),
-		.f3(inst[14:12]),
-		.f7(inst[31:25]),
-		.f12(inst[31:20]),
-		.zf(flag[1]),
-		.cmp(aluresult[0]),
-		.PCSrc(PCSrc)
-	);
-	ysyx_23060171_imm imm(
-		.inst(inst),
-		.immtype(immtype),
-		.immext(immext)
-	);
-	ysyx_23060171_MuxKey #(2,1,32) alusrcamux(aluA,AluSrcA,{
-		1'b0,rd1,
-		1'b1,pc
-	});
-	ysyx_23060171_MuxKey #(2,1,32) alusrcbmux(aluB,AluSrcB,{
-		1'b0,rd2,
-		1'b1,immext
-	});
-	ysyx_23060171_alu alu(
-		.a(aluA),
-		.b(aluB),
-		.alucontrol(alucontrol),
-		.result(aluresult),
-		.of(flag[0]),
-		.zf(flag[1]),
-		.nf(flag[2]),
-		.cf(flag[3])
-	);
-	assign maddr = aluresult & (~32'h3);
-	assign place = aluresult - maddr;
-	assign RealMemWmask = MemWmask << place;
-	ysyx_23060171_data_memory data_memory(
 		.clk(clk),
-		.wen(MemWriteE),
-		.valid(MemValid),
-		.raddr(maddr),
-		.waddr(maddr),
-		.wdata(rd2),
-		.wmask(RealMemWmask),
-		.rdata(rdraw)
+    //from IFU
+        .inst(instFD),
+        .pcD(pcFD),
+        .pc_plus_4D(pc_plus_4FD),
+    //from WBU
+        .wd(wdWD),
+        .csr_wd(csr_wdWD),
+    //to EXU
+        .rd1(rd1DE),
+        .rd2(rd2DE),
+        .crd1(crd1DE),
+        .pcE(pcDE),
+        .pc_plus_4E(pc_plus_4DE),
+        .immextD(immextDE),
+    //control signals to EXU
+        .irqE(irqDE),
+		.irqF(irqDF),
+        .RegwriteD(RegwriteDDE),
+        .CSRWriteD(CSRWriteDDE),
+        .MemRD(MemRDDE),
+        .MemValid(MemValidDE),
+        .MemWmask(MemWmaskDE),
+        .MemWriteE(MemWriteEDE),
+        .alucontrol(alucontrolDE),
+        .Jump(JumpDE),
+        .AluSrcA(AluSrcADE),
+        .AluSrcB(AluSrcBDE),
+    //to IFU
+        .mtvec(mtvecDF),
+        .mepc(mepcDF)
 	);
-	assign rdplace = rdraw >> (place << 3);
-	ysyx_23060171_MuxKey #(5,3,32) Mrdmux(rd,MemRD,{
-		3'b010,rdraw,
-		3'b001,{{16{rdraw[15]}},rdplace[15:0]},
-		3'b000,{{24{rdraw[7]}},rdplace[7:0]},
-		3'b011,{24'b0,rdplace[7:0]},
-		3'b100,{16'b0,rdplace[15:0]}
-	});
+	ysyx_23060171_exu exu(
+    //from IDU
+    	.rd1E(rd1DE),
+        .rd2E(rd2DE),
+        .crd1E(crd1DE),
+       	.pcE(pcDE),
+       	.pc_plus_4E(pc_plus_4DE),
+        .immextE(immextDE),
+    //control signal from IDU
+        .irq(irqDE),
+        .RegwriteD(RegwriteDDE),
+        .CSRWriteD(CSRWriteDDE),
+        .MemRD(MemRDDE),
+        .MemValid(MemValidDE),
+        .MemWmask(MemWmaskDE),
+        .MemWriteE(MemWriteEDE),
+        .alucontrol(alucontrolDE),
+        .Jump(JumpDE),
+        .AluSrcA(AluSrcADE),
+        .AluSrcB(AluSrcBDE),
+	//to IFU
+        .pc_plus_imm(pc_plus_immEF),
+        .pc_plus_rs2(pc_plus_rs2EF),
+	//to LSU
+        .aluresult(aluresultES),
+        .crd1S(crd1ES),
+        .pcS(pcES),
+        .immextS(immextES),
+        .pc_plus_4S(pc_plus_4ES),
+        .rd1S(rd1ES),
+        .rd2S(rd2ES),
+	//control signal to LSU
+        .irqS(irqES),
+        .RegwriteDS(RegwriteDES),
+        .CSRWriteDS(CSRWriteDES),
+        .MemRDS(MemRDES),
+        .MemValidS(MemValidES),
+        .MemWmaskS(MemWmaskES),
+        .MemWriteES(MemWriteEES),
+	//control signal to IFU
+        .PCSrc(PCSrcEF)
+	);
+	ysyx_23060171_lsu lsu(
+		.clk(clk),
+	//from EXU
+    	.aluresult(aluresultES),
+    	.crd1S(crd1ES),
+    	.pcS(pcES),
+    	.immextS(immextES),
+   		.pc_plus_4S(pc_plus_4ES),
+    	.rd1S(rd1ES),
+    	.rd2S(rd2ES),
+	//control signal from EXU
+    	.irqS(irqES),
+    	.RegwriteDS(RegwriteDES),
+    	.CSRWriteDS(CSRWriteDES),
+    	.MemRDS(MemRDES),
+    	.MemValidS(MemValidES),
+    	.MemWmaskS(MemWmaskES),
+    	.MemWriteES(MemWriteEES),
+	//to WBU
+    	.rd1W(rd1LW),
+    	.aluresultW(aluresultLW),
+    	.crd1W(crd1LW),
+    	.pcW(pcLW),
+    	.immextW(immextLW),
+    	.pc_plus_4W(pc_plus_4LW),
+    	.MemRW(MemRLW),
+	//control signal to WBU
+    	.irqW(irqLW),
+    	.RegwriteDW(RegwriteDLW),
+    	.CSRWriteDW(CSRWriteDLW)
+	);
+	ysyx_23060171_wbu wbu(
+	//from LSU
+    	.rd1W(rd1LW),
+    	.aluresultW(aluresultLW),
+    	.crd1W(crd1LW),
+    	.pcW(pcLW),
+    	.immextW(immextLW),
+    	.pc_plus_4W(pc_plus_4LW),
+    	.MemRW(MemRLW),
+	//control signal from LSU
+    	.irqW(irqLW),
+    	.RegwriteDW(RegwriteDLW),
+    	.CSRWriteDW(CSRWriteDLW),
+	//to IDU
+    	.WDW(wdWD),
+    	.CWDW(csr_wdWD)
+	);
 endmodule
