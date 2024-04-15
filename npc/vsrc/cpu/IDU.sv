@@ -4,9 +4,13 @@ module ysyx_23060171_idu(
     input [31:0]inst,
     input [31:0]pcD,
     input [31:0]pc_plus_4D,
-    //from WBU
+    //from WBU(WBU use and control gpr and csr,and IDU can not intercept them)
     input [31:0]wd,
     input [31:0]csr_wd,
+	input [4:0]rwW,
+	input [11:0]crwW,
+	input CSRWriteEW,
+	input RegwriteEW,
     //to EXU
     output [31:0]rd1,
     output [31:0]rd2,
@@ -14,11 +18,15 @@ module ysyx_23060171_idu(
     output [31:0]pcE,
     output [31:0]pc_plus_4E,
     output [31:0]immextD,
+	output [4:0]rwE,
+	output [11:0]crwE,
     //control signals------------
     output irqE,
     output irqF,
     output [2:0]RegwriteD,
     output [1:0]CSRWriteD,
+	output RegwriteE,
+	output CSRWriteE,
     output [2:0]MemRD,
     output MemValid,
     output [7:0]MemWmask,
@@ -33,11 +41,11 @@ module ysyx_23060171_idu(
 );
     wire [7:0]irq_no;
     wire [2:0]immtype;
-    wire CSRWriteE;
-    wire RegwriteE;
     wire irq;
     assign pcE = pcD;
-    assign pc_plus_4E = pc_plus_4D;    
+    assign pc_plus_4E = pc_plus_4D;   
+	assign rwE = inst[11:7];
+	assign crwE = inst[31:20];
 	ysyx_23060171_controller controller(
 		.opcode(inst[6:0]),
 		.f3(inst[14:12]),
@@ -63,8 +71,8 @@ module ysyx_23060171_idu(
     assign irqF = irq;
 	ysyx_23060171_gpr	gpr(
 		.clk(clk),
-		.wen(RegwriteE),
-		.waddr(inst[11:7]),
+		.wen(RegwriteEW),
+		.waddr(rwW),
 		.raddr1(inst[19:15]),
 		.raddr2(inst[24:20]),
 		.wdata(wd), 
@@ -75,8 +83,8 @@ module ysyx_23060171_idu(
 		.clk(clk),
 		.irq(irq),
 		.irq_no(irq_no),
-		.wen(CSRWriteE),
-		.waddr(inst[31:20]),
+		.wen(CSRWriteEW),
+		.waddr(crwW),
 		.wdata(csr_wd),
 		.raddr1(inst[31:20]),
 		.rdata1(crd1),

@@ -8,10 +8,14 @@ module ysyx_23060171_lsu(
     input [31:0]pc_plus_4S,
     input [31:0]rd1S,
     input [31:0]rd2S,
+    input [4:0]rwS,
+	input [11:0]crwS,
     //control signal from EXU
     input irqS,
     input [2:0]RegwriteDS,
     input [1:0]CSRWriteDS,
+    input RegwriteES,
+	input CSRWriteES,
     input [2:0]MemRDS,
     input MemValidS,
     input [7:0]MemWmaskS,
@@ -24,10 +28,14 @@ module ysyx_23060171_lsu(
     output [31:0]immextW,
     output [31:0]pc_plus_4W,
     output [31:0]MemRW,
+    output [4:0]rwW,
+	output [11:0]crwW,
     //control signal to WBU
     output irqW,
     output [2:0]RegwriteDW,
-    output [1:0]CSRWriteDW
+    output [1:0]CSRWriteDW,
+    output RegwriteEW,
+	output CSRWriteEW
 );
     wire [31:0]maddr;
 	wire [31:0]place;
@@ -37,12 +45,16 @@ module ysyx_23060171_lsu(
     assign irqW = irqS; 
     assign RegwriteDW = RegwriteDS;
     assign CSRWriteDW = CSRWriteDS;
+    assign RegwriteEW = RegwriteES;
+    assign CSRWriteEW = CSRWriteES;
     assign rd1W = rd1S;
     assign aluresultW = aluresult;
     assign crd1W = crd1S;
     assign pcW = pcS;
     assign immextW = immextS;
     assign pc_plus_4W = pc_plus_4S;
+    assign rwW = rwS;
+    assign crwW = crwS;
 
 	assign maddr = aluresult & (~32'h3);
 	assign place = aluresult - maddr;

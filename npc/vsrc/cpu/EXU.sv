@@ -6,10 +6,14 @@ module ysyx_23060171_exu(
     input [31:0]pcE,
     input [31:0]pc_plus_4E,
     input [31:0]immextE,
+    input [4:0]rwE,
+	input [11:0]crwE,
     //control signal from IDU
     input irq,
     input [2:0]RegwriteD,
     input [1:0]CSRWriteD,
+	input RegwriteE,
+	input CSRWriteE,
     input [2:0]MemRD,
     input MemValid,
     input [7:0]MemWmask,
@@ -29,10 +33,14 @@ module ysyx_23060171_exu(
     output [31:0]pc_plus_4S,
     output [31:0]rd1S,
     output [31:0]rd2S,
+    output [4:0]rwS,
+	output [11:0]crwS,
     //control signal to ISU
     output irqS,
     output [2:0]RegwriteDS,
     output [1:0]CSRWriteDS,
+    output RegwriteES,
+	output CSRWriteES,
     output [2:0]MemRDS,
     output MemValidS,
     output [7:0]MemWmaskS,
@@ -46,6 +54,8 @@ module ysyx_23060171_exu(
     assign irqS = irq;
     assign RegwriteDS = RegwriteD;
     assign CSRWriteDS = CSRWriteD;
+    assign RegwriteES = RegwriteE;
+    assign CSRWriteES = CSRWriteE;
     assign MemRDS = MemRD;
     assign MemValidS = MemValid;
     assign MemWmaskS = MemWmask;
@@ -56,6 +66,8 @@ module ysyx_23060171_exu(
     assign rd1S = rd1E;
     assign rd2S = rd2E;
     assign immextS = immextE;
+    assign rwS = rwE;
+    assign crwS = crwE;
 
 	ysyx_23060171_idupc idupc(
         .Jump(Jump),
