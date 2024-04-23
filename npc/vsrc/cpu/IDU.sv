@@ -1,6 +1,6 @@
 module ysyx_23060171_idu(
+	input clk,
     //from IFU
-    input clk,
     input [31:0]inst,
     input [31:0]pcD,
     input [31:0]pc_plus_4D,
@@ -41,7 +41,7 @@ module ysyx_23060171_idu(
 );
     wire [7:0]irq_no;
     wire [2:0]immtype;
-    wire irq;
+    wire irq; 
     assign pcE = pcD;
     assign pc_plus_4E = pc_plus_4D;   
 	assign rwE = inst[11:7];
