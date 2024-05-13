@@ -20,7 +20,9 @@ test:
 verilog:
 	$(call git_commit, "generate verilog")
 	mkdir -p $(BUILD_DIR)
-	mill -i $(PRJ).runMain Elaborate --target-dir $(BUILD_DIR)
+	mkdir -p buildsTemp
+	mill -i $(PRJ).runMain Elaborate --target-dir ./buildsTemp
+	rm -rf ./buildsTemp
 
 help:
 	mill -i $(PRJ).runMain Elaborate --help

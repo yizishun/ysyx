@@ -1,24 +1,26 @@
-package npc
+package npc.core
 
 import chisel3._
 import chisel3.util._
+import npc.mem._
+import npc._
 
-class CoreIO extends Bundle{
-  val imem = Flipped(new imemIO)
-  val dmem = Flipped(new dmemIO)
+class CoreIO(xlen : Int) extends Bundle{
+  val imem = Flipped(new imemIO(xlen))
+  val dmem = Flipped(new dmemIO(xlen))
 }
 
-class Core extends Module {
-  val io = IO(new CoreIO)
-  val ifu = Module(new IFU)
-  val idu = Module(new IDU)
-  val exu = Module(new EXU)
-  val lsu = Module(new LSU)
-  val wbu = Module(new WBU)
+/*class Core(val conf : CoreConfig) extends Module {
+  val io = IO(new CoreIO(conf.xlen))
+  val ifu = Module(new IFU(conf))
+  val idu = Module(new IDU(conf))
+  val exu = Module(new EXU(conf))
+  val lsu = Module(new LSU(conf))
+  val wbu = Module(new WBU(conf))
 
   //"state" element in npc core
-  val gpr = Module(new gpr)
-  val csr = Module(new csr)
+  val gpr = Module(new gpr(conf))
+  val csr = Module(new csr(conf))
 
   StageConnect(ifu.io.out, idu.io.in)
   StageConnect(idu.io.out, exu.io.in)
@@ -36,8 +38,11 @@ class Core extends Module {
   wbu.io.gpr <> gpr.io.write
   idu.io.csr <> csr.io.read
   wbu.io.csr <> csr.io.write
-}
+}*/
 
+class Core(val conf : CoreConfig) extends Module {
+  val io = IO(new CoreIO(conf.xlen))
+}
 object StageConnect {
   def apply[T <: Data](left: DecoupledIO[T], right: DecoupledIO[T]) = {
     val arch = "single"

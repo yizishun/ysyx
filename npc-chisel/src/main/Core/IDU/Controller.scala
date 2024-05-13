@@ -1,0 +1,262 @@
+package npc.core.idu
+
+import chisel3.util.BitPat
+import chisel3._
+import chisel3.util._
+
+object Instructions {
+  // Loads
+  def LB   =  BitPat("b?????????????????000?????0000011")
+  def LH   =  BitPat("b?????????????????001?????0000011")
+  def LW   =  BitPat("b?????????????????010?????0000011")
+  def LBU  =  BitPat("b?????????????????100?????0000011")
+  def LHU  =  BitPat("b?????????????????101?????0000011")
+  // Stores
+  def SB   =  BitPat("b?????????????????000?????0100011")
+  def SH   =  BitPat("b?????????????????001?????0100011")
+  def SW   =  BitPat("b?????????????????010?????0100011")
+  // Shifts
+  def SLL  =  BitPat("b0000000??????????001?????0110011")
+  def SLLI =  BitPat("b0000000??????????001?????0010011")
+  def SRL  =  BitPat("b0000000??????????101?????0110011")
+  def SRLI =  BitPat("b0000000??????????101?????0010011")
+  def SRA  =  BitPat("b0100000??????????101?????0110011")
+  def SRAI =  BitPat("b0100000??????????101?????0010011")
+  // Arithmetic
+  def ADD  =  BitPat("b0000000??????????000?????0110011")
+  def ADDI =  BitPat("b?????????????????000?????0010011")
+  def SUB  =  BitPat("b0100000??????????000?????0110011")
+  def LUI  =  BitPat("b?????????????????????????0110111")
+  def AUIPC=  BitPat("b?????????????????????????0010111")
+  // Logical
+  def XOR  =  BitPat("b0000000??????????100?????0110011")
+  def XORI =  BitPat("b?????????????????100?????0010011")
+  def OR   =  BitPat("b0000000??????????110?????0110011")
+  def ORI  =  BitPat("b?????????????????110?????0010011")
+  def AND  =  BitPat("b0000000??????????111?????0110011")
+  def ANDI =  BitPat("b?????????????????111?????0010011")
+  // Compare
+  def SLT  =  BitPat("b0000000??????????010?????0110011")
+  def SLTI =  BitPat("b?????????????????010?????0010011")
+  def SLTU =  BitPat("b0000000??????????011?????0110011")
+  def SLTIU=  BitPat("b?????????????????011?????0010011")
+  // Branches
+  def BEQ  =  BitPat("b?????????????????000?????1100011")
+  def BNE  =  BitPat("b?????????????????001?????1100011")
+  def BLT  =  BitPat("b?????????????????100?????1100011")
+  def BGE  =  BitPat("b?????????????????101?????1100011")
+  def BLTU =  BitPat("b?????????????????110?????1100011")
+  def BGEU =  BitPat("b?????????????????111?????1100011")
+  // Jump & Link
+  def JAL  =  BitPat("b?????????????????????????1101111")
+  def JALR =  BitPat("b?????????????????000?????1100111")
+  // CSR Access
+  def CSRRW = BitPat("b?????????????????001?????1110011")
+  def CSRRS = BitPat("b?????????????????010?????1110011")
+  // Change Level
+  def ECALL = BitPat("b00000000000000000000000001110011")
+  def EBREAK= BitPat("b00000000000100000000000001110011")
+  def MRET  = BitPat("b00110000001000000000000001110011")
+
+  def NOP   = BitPat.bitPatToUInt(BitPat("b00000000000000000000000000010011"))
+}
+
+object Control {
+  // MemRD
+  val RXXXX    = 0.U(3.W)
+  val RBYTE    = 0.U(3.W)
+  val RHALFW   = 1.U(3.W)
+  val RWORD    = 2.U(3.W)
+  val RBYTEU   = 3.U(3.W)
+  val RHALFWU  = 4.U(3.W)
+  
+  // MemWriteE
+  val MWRITE   = true.B
+  val MNWRITE  = false.B
+  
+  // MemWmask
+  val WXXXX    = "b00000001".U(8.W)
+  val WBYTE    = "b00000001".U(8.W)
+  val WHALFW   = "b00000011".U(8.W)
+  val WWORD    = "b00001111".U(8.W)
+  
+  // MemValid
+  val VALID    = true.B
+  val INVALID  = false.B
+  
+  // CSRWriteE
+  val CSRWRITE = true.B
+  val CSRNWRITE= false.B
+  
+  // RegwriteE
+  val RWRITE   = true.B
+  val RNWRITE  = false.B
+  
+  // RegwriteD
+  val RWDXXX      = 0.U(3.W)
+  val RAluresult   = 0.U(3.W)
+  val RImm         = 1.U(3.W)
+  val RPcPlus4     = 2.U(3.W)
+  val RMemRD       = 3.U(3.W)
+  val RCSR         = 4.U(3.W)
+  
+  // CSRWriteD
+  val CRWDXX  = 0.U(2.W)
+  val CRD1     = 0.U(2.W)
+  val CRD1OR  = 1.U(2.W)
+  val CPC      = 2.U(2.W)
+  
+  // immtype
+  val ImmX    = 0.U(3.W)
+  val ImmI    = 0.U(3.W)
+  val ImmU    = 1.U(3.W)
+  val ImmJ    = 2.U(3.W)
+  val ImmS    = 3.U(3.W)
+  val ImmB    = 4.U(3.W)
+  
+  // AluSrcA
+  val ALUaXX  = 0.U(1.W)
+  val ALUaPC  = 1.U(1.W)
+  val ALUaRD1 = 0.U(1.W)
+  
+  // AluSrcB
+  val ALUbXX  = 0.U(1.W)
+  val ALUbimm = 1.U(1.W)
+  val ALUbRD2 = 0.U(1.W)
+  
+  // Jump
+  val NJump   = "b1111".U(4.W)
+  val Jumpbeq = "b0000".U(4.W)
+  val Jumpbne = "b0001".U(4.W)
+  val Jumpblt = "b0100".U(4.W)
+  val Jumpbge = "b0101".U(4.W)
+  val Jumpbltu= "b0110".U(4.W)
+  val Jumpbgeu= "b0111".U(4.W)
+  val Jumpjal = "b1000".U(4.W)
+  val Jumpjalr= "b1001".U(4.W)
+  val Jumpmret= "b1010".U(4.W)
+  
+  //PCSrc
+  val PcXXXXXXX = 0.U(3.W)
+  val PcPlus4 = 0.U(3.W)
+  val PcPlusImm = 1.U(3.W)
+  val PcPlusRs2 = 2.U(3.W)
+  val Mtvec = 3.U(3.W)
+  val Mepc = 4.U(3.W)
+  
+  // Interrupt Request (IRQ)
+  val NIRQ   = false.B
+  val IRQ    = true.B
+  
+  // IRQ Number
+  val IRQ_XXXXXX = 0.U(8.W)
+  val IRQ_MECALL = "b00001011".U(8.W)
+  
+  import npc.core.exu.AluOp._
+  import Instructions._
+
+  // format: off
+  val default =
+  //                                                    
+  //              Jump     MemWriteE RegwriteE CSRWriteE AluSrcA  AluSrcB immtype AluCtrl  MemValid  MemRD   MemWmask RegwriteD CSRWriteD IRQ   IRQN
+  //               |           |          |         |        |      |        |       |        |        |        |        |           |     |      |
+             List(NJump   , MNWRITE, RNWRITE,  CSRNWRITE, ALUaXX , ALUbXX , ImmX,  ALU_XXX , INVALID, RXXXX  , WXXXX , RWDXXX    , CRWDXX, NIRQ, IRQ_XXXXXX)
+  val map = Array(
+    LUI   -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaXX , ALUbXX , ImmU,  ALU_XXX , INVALID, RXXXX  , WXXXX , RImm      , CRWDXX, NIRQ, IRQ_XXXXXX),
+    AUIPC -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaPC , ALUbimm, ImmU,  ALU_ADD , INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    JAL   -> List(Jumpjal , MNWRITE, RWRITE ,  CSRNWRITE, ALUaPC , ALUbimm, ImmJ,  ALU_ADD , INVALID, RXXXX  , WXXXX , RPcPlus4  , CRWDXX, NIRQ, IRQ_XXXXXX),
+    JALR  -> List(Jumpjalr, MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbimm, ImmI,  ALU_ADD , INVALID, RXXXX  , WXXXX , RPcPlus4  , CRWDXX, NIRQ, IRQ_XXXXXX),
+    BEQ   -> List(Jumpbeq , MNWRITE, RNWRITE,  CSRNWRITE, ALUaRD1, ALUbRD2, ImmB,  ALU_SUB , INVALID, RXXXX  , WXXXX , RWDXXX    , CRWDXX, NIRQ, IRQ_XXXXXX),
+    BNE   -> List(Jumpbne , MNWRITE, RNWRITE,  CSRNWRITE, ALUaRD1, ALUbRD2, ImmB,  ALU_SUB , INVALID, RXXXX  , WXXXX , RWDXXX    , CRWDXX, NIRQ, IRQ_XXXXXX),
+    BLT   -> List(Jumpblt , MNWRITE, RNWRITE,  CSRNWRITE, ALUaRD1, ALUbRD2, ImmB,  ALU_CMP , INVALID, RXXXX  , WXXXX , RWDXXX    , CRWDXX, NIRQ, IRQ_XXXXXX),
+    BGE   -> List(Jumpbge , MNWRITE, RNWRITE,  CSRNWRITE, ALUaRD1, ALUbRD2, ImmB,  ALU_CMP , INVALID, RXXXX  , WXXXX , RWDXXX    , CRWDXX, NIRQ, IRQ_XXXXXX),
+    BLTU  -> List(Jumpbltu, MNWRITE, RNWRITE,  CSRNWRITE, ALUaRD1, ALUbRD2, ImmB,  ALU_CMPU, INVALID, RXXXX  , WXXXX , RWDXXX    , CRWDXX, NIRQ, IRQ_XXXXXX),
+    BGEU  -> List(Jumpbgeu, MNWRITE, RNWRITE,  CSRNWRITE, ALUaRD1, ALUbRD2, ImmB,  ALU_CMPU, INVALID, RXXXX  , WXXXX , RWDXXX    , CRWDXX, NIRQ, IRQ_XXXXXX),
+    ADDI  -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbimm, ImmI,  ALU_ADD , INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    SLTI  -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbimm, ImmI,  ALU_CMP , INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    SLTIU -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbimm, ImmI,  ALU_CMPU, INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    XORI  -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbimm, ImmI,  ALU_XOR , INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    ORI   -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbimm, ImmI,  ALU_OR  , INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    ANDI  -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbimm, ImmI,  ALU_AND , INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    SLLI  -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbimm, ImmI,  ALU_SLL , INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    SRLI  -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbimm, ImmI,  ALU_SRL , INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    SRAI  -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbimm, ImmI,  ALU_SRA , INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    ADD   -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbRD2, ImmX,  ALU_ADD , INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    SUB   -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbRD2, ImmX,  ALU_SUB , INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    SLL   -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbRD2, ImmX,  ALU_SLL , INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    SLT   -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbRD2, ImmX,  ALU_CMP , INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    SLTU  -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbRD2, ImmX,  ALU_CMPU, INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    XOR   -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbRD2, ImmX,  ALU_XOR , INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    SRL   -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbRD2, ImmX,  ALU_SRL , INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    SRA   -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbRD2, ImmX,  ALU_SRA , INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    OR    -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbRD2, ImmX,  ALU_OR  , INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    AND   -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbRD2, ImmX,  ALU_AND , INVALID, RXXXX  , WXXXX , RAluresult, CRWDXX, NIRQ, IRQ_XXXXXX),
+    SW    -> List(NJump   , MWRITE , RNWRITE,  CSRNWRITE, ALUaRD1, ALUbimm, ImmS,  ALU_ADD , VALID  , RXXXX  , WWORD , RWDXXX    , CRWDXX, NIRQ, IRQ_XXXXXX),
+    SH    -> List(NJump   , MWRITE , RNWRITE,  CSRNWRITE, ALUaRD1, ALUbimm, ImmS,  ALU_ADD , VALID  , RXXXX  , WHALFW, RWDXXX    , CRWDXX, NIRQ, IRQ_XXXXXX),
+    SB    -> List(NJump   , MWRITE , RNWRITE,  CSRNWRITE, ALUaRD1, ALUbimm, ImmS,  ALU_ADD , VALID  , RXXXX  , WBYTE , RWDXXX    , CRWDXX, NIRQ, IRQ_XXXXXX),
+    LW    -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbimm, ImmI,  ALU_ADD , VALID  , RWORD  , WWORD , RMemRD    , CRWDXX, NIRQ, IRQ_XXXXXX),
+    LH    -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbimm, ImmI,  ALU_ADD , VALID  , RHALFW , WWORD , RMemRD    , CRWDXX, NIRQ, IRQ_XXXXXX),
+    LB    -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbimm, ImmI,  ALU_ADD , VALID  , RBYTE  , WWORD , RMemRD    , CRWDXX, NIRQ, IRQ_XXXXXX),
+    LBU   -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbimm, ImmI,  ALU_ADD , VALID  , RBYTEU , WWORD , RMemRD    , CRWDXX, NIRQ, IRQ_XXXXXX),
+    LHU   -> List(NJump   , MNWRITE, RWRITE ,  CSRNWRITE, ALUaRD1, ALUbimm, ImmI,  ALU_ADD , VALID  , RHALFWU, WWORD , RMemRD    , CRWDXX, NIRQ, IRQ_XXXXXX),
+    ECALL -> List(NJump   , MNWRITE, RNWRITE,  CSRNWRITE, ALUaXX , ALUbXX , ImmX,  ALU_XXX , INVALID, RXXXX  , WXXXX , RWDXXX    , CPC   , IRQ , IRQ_MECALL),
+    EBREAK-> List(NJump   , MNWRITE, RNWRITE,  CSRNWRITE, ALUaXX , ALUbXX , ImmX,  ALU_XXX , INVALID, RXXXX  , WXXXX , RWDXXX    , CRWDXX, NIRQ, IRQ_XXXXXX),
+    MRET  -> List(Jumpmret, MNWRITE, RNWRITE,  CSRNWRITE, ALUaXX , ALUbXX , ImmX,  ALU_XXX , INVALID, RXXXX  , WXXXX , RWDXXX    , CRWDXX, NIRQ, IRQ_XXXXXX),
+    CSRRW -> List(NJump   , MNWRITE, RWRITE ,  CSRWRITE , ALUaXX , ALUbXX , ImmX,  ALU_XXX , INVALID, RXXXX  , WXXXX , RCSR      , CRD1   , NIRQ, IRQ_XXXXXX),
+    CSRRS -> List(NJump   , MNWRITE, RWRITE ,  CSRWRITE , ALUaXX , ALUbXX , ImmX,  ALU_XXX , INVALID, RXXXX  , WXXXX , RCSR      , CRD1OR, NIRQ, IRQ_XXXXXX),
+)
+  // format: on
+}
+
+class Ebreak extends BlackBox{
+  val io = IO(new Bundle{
+    val inst = Input(UInt(32.W))
+  })
+}
+
+class ControlIO extends Bundle{
+  val inst = Input(UInt(32.W))
+	val irq = Output(Bool())
+	val irq_no = Output(UInt(8.W))
+	val MemWriteE = Output(Bool())
+	val MemWmask = Output(UInt(8.W))
+	val MemValid = Output(Bool())
+	val MemRD = Output(UInt(3.W))
+	val alucontrol = Output(UInt(4.W))
+	val CSRWriteE = Output(Bool())
+	val RegwriteE = Output(Bool())
+	val immtype = Output(UInt(3.W))
+	val AluSrcA = Output(UInt(1.W))
+	val AluSrcB = Output(UInt(1.W))
+	val CSRWriteD = Output(UInt(2.W))
+	val RegwriteD = Output(UInt(3.W))
+	val Jump = Output(UInt(4.W))
+}
+
+class Controller extends Module{
+  val io = IO(new ControlIO)
+  val controlsignals = ListLookup(io.inst, Control.default, Control.map)
+
+  io.immtype := controlsignals(6)
+
+  io.alucontrol := controlsignals(7)
+  io.Jump := controlsignals(0)
+  io.AluSrcA := controlsignals(4)
+  io.AluSrcB := controlsignals(5)
+
+  io.MemRD := controlsignals(9)
+  io.MemValid := controlsignals(8)
+  io.MemWmask := controlsignals(10)
+  io.MemWriteE := controlsignals(1)
+
+  io.RegwriteE := controlsignals(2)
+  io.CSRWriteE := controlsignals(3)
+  io.RegwriteD := controlsignals(11)
+  io.CSRWriteD := controlsignals(12)
+
+  io.irq := controlsignals(13)
+  io.irq_no := controlsignals(14)
+
+  val ebreak = Module(new Ebreak)
+  ebreak.io.inst := io.inst
+}

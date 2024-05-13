@@ -11,8 +11,9 @@ object Elaborate extends App {
   "-o=builds/sv-gen"
   )
 
+  val config = npc.MiniConfig()
   circt.stage.ChiselStage.emitSystemVerilogFile(
-    new gcd.DecoupledGcd(32),
+    new npc.core.csr(config.core),
     args, 
     firtoolOptions
   )

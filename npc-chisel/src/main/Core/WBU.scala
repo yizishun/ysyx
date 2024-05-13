@@ -1,2 +1,2 @@
-package npc.Core
+package npc.core
 
