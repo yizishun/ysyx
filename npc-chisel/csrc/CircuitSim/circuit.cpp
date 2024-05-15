@@ -2,7 +2,7 @@
 #include <memory.h>
 #include <common.h>
 #include <ftrace.h>
-Vnpc cpu;
+VNPC cpu;
 extern "C" void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
 static void statistic();
 void difftest_step();
@@ -13,16 +13,16 @@ word_t pc, snpc, dnpc,inst , prev_pc;
 static uint8_t opcode;
 
 void single_cycle(){  //  0 --> 0 > 1 --> 1 > 0 this is a cycle in cpu  _|-|_|-
-	cpu.clk=0;   //negedge 1->0 no
+	cpu.clock=0;   //negedge 1->0 no
     cpu.eval();  //process 0->0 refresh combination logic and make them stable
-	cpu.clk=1;   //posedge 0->1 refresh sequential logic
+	cpu.clock=1;   //posedge 0->1 refresh sequential logic
     cpu.eval();  //process 1->1 refresh sequential logic(sim)
 }
 
 void reset(int n) {
-	cpu.rst = 1;
+	cpu.reset = 1;
  	while (n -- > 0) single_cycle();
-	cpu.rst = 0;
+	cpu.reset = 0;
 	dump_wave_inc();
 }
 
@@ -51,7 +51,9 @@ void record_inst_trace(char *p, uint8_t *inst){
 
 static void trace_and_difftest(){
 	/* DiffTest */
+	#ifdef CONFIG_DIFFTEST
 	difftest_step();
+	#endif
 
 	/* watchpoint check */
 	extern int check_w();
@@ -92,12 +94,12 @@ void cpu_exec(uint32_t n){
 	//max inst to print to stdout
 	g_print_step = (n < MAX_INST_TO_PRINT);
 	while(n > 0){
-		prev_pc = cpu.rootp -> ysyx_23060171_cpu__DOT__pcFD;
+		prev_pc = cpu.rootp -> NPC__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
 		snpc = pc + 4;
 		exec_once();
-		inst = cpu.rootp -> ysyx_23060171_cpu__DOT__instFD;
-		pc = cpu.rootp -> ysyx_23060171_cpu__DOT__pcFD;
-		dnpc = cpu.rootp -> ysyx_23060171_cpu__DOT__pcFD;
+		inst = cpu.rootp -> NPC__DOT___imem_inst;
+		pc = cpu.rootp -> NPC__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
+		dnpc = cpu.rootp -> NPC__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
 		get_reg();
 		g_nr_guest_inst ++;
 		#ifdef CONFIG_TRACE

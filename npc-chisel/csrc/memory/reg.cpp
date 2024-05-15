@@ -2,8 +2,9 @@
 #include <svdpi.h>
 #include <circuit.h>
 uint32_t gpr[REGNUM];
+uint32_t csr[4];
 void isa_reg_display();
-extern Vysyx_23060171_cpu cpu;
+extern VNPC cpu;
 const char *regs[] = {
   "$0", "ra", "sp", "gp", "tp", "t0", "t1", "t2",
   "s0", "s1", "a0", "a1", "a2", "a3", "a4", "a5",
@@ -14,7 +15,10 @@ const char *regs[] = {
 void get_reg(){
   int i;
   for(i = 0;i < REGNUM; i++)
-    gpr[i] = cpu.rootp -> ysyx_23060171_cpu__DOT__idu__DOT__gpr__DOT__rf[i];
+    gpr[i] = cpu.rootp -> NPC__DOT__core__DOT__gpr__DOT__rf_ext__DOT__Memory[i];
+  for(i = 0;i < 4;i++)
+    csr[i] = cpu.rootp -> NPC__DOT__core__DOT__csr__DOT__rf_ext__DOT__Memory[i];
+    //0:mstatus 1:mtvec 2:mepc 3:mcause
 }
 
 void isa_reg_display() {
@@ -31,6 +35,10 @@ void isa_reg_display() {
       } 
     }
   printf("\n");
+  printf("dut-mstatus = %#x\n",csr[0]);
+  printf("dut-mtvec = %#x\n",csr[1]);
+  printf("dut-mepc = %#x\n",csr[2]);
+  printf("dut-mcause = %#x\n",csr[3]);
 }
 
 uint32_t isa_reg_str2val(const char *s, bool *success) {

@@ -15,7 +15,11 @@ void init_difftest(char *ref_so_file, long img_size);
 extern "C" void init_disasm(const char *triple);
 
 static void welcome() {
+  #ifdef CONFIG_TRACE
   Log("Trace: %s", ANSI_FMT("ON", ANSI_FG_GREEN));
+  #else
+  Log("Trace: %s", ANSI_FMT("OFF", ANSI_FG_RED));
+  #endif
   Log("If trace is enabled, a log file will be generated "
         "to record the trace. This may lead to a large log file. "
         "If it is not necessary, you can disable it in menuconfig");

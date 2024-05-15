@@ -11,5 +11,5 @@ class JumpPcIO extends Bundle{
 
 class JumpPc extends Module{
   val io = IO(new JumpPcIO)
-  io.nextpc := (io.pc + io.imm)&(1.U(32.W))
+  io.nextpc := (io.pc + io.imm)&(~1.U(32.W))
 }

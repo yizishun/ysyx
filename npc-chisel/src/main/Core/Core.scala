@@ -10,7 +10,7 @@ class CoreIO(xlen : Int) extends Bundle{
   val dmem = Flipped(new dmemIO(xlen))
 }
 
-/*class Core(val conf : CoreConfig) extends Module {
+class Core(val conf : CoreConfig) extends Module {
   val io = IO(new CoreIO(conf.xlen))
   val ifu = Module(new IFU(conf))
   val idu = Module(new IDU(conf))
@@ -18,7 +18,7 @@ class CoreIO(xlen : Int) extends Bundle{
   val lsu = Module(new LSU(conf))
   val wbu = Module(new WBU(conf))
 
-  //"state" element in npc core
+  //"state" elements in npc core
   val gpr = Module(new gpr(conf))
   val csr = Module(new csr(conf))
 
@@ -27,28 +27,25 @@ class CoreIO(xlen : Int) extends Bundle{
   StageConnect(exu.io.out, lsu.io.in)
   StageConnect(lsu.io.out, wbu.io.in)
 
-  idu.io.imem <> io.imem
-  lsu.io.dmem <> io.dmem
+  ifu.io.pc.idu := idu.io.pc
+  ifu.io.pc.exu := exu.io.pc
 
-  ifu.io.pcFromIdu := idu.io.pcToIfu
-  ifu.io.pcFromExu := exu.io.pcToIfu
-  ifu.io.pcSrcFromIdu := idu.io.pcSrcToIfu
+  //Connect to the "state" elements in npc
+  ifu.io.imem :<>= io.imem
+  idu.io.gpr :<>= gpr.io.read
+  idu.io.csr :<>= csr.io.read
 
-  idu.io.gpr <> gpr.io.read
-  wbu.io.gpr <> gpr.io.write
-  idu.io.csr <> csr.io.read
-  wbu.io.csr <> csr.io.write
-}*/
-
-class Core(val conf : CoreConfig) extends Module {
-  val io = IO(new CoreIO(conf.xlen))
+  lsu.io.dmem :<>= io.dmem
+  wbu.io.gpr :<>= gpr.io.write
+  wbu.io.csr :<>= csr.io.write
 }
+
 object StageConnect {
   def apply[T <: Data](left: DecoupledIO[T], right: DecoupledIO[T]) = {
-    val arch = "single"
+    val arch = "multi"
     if      (arch == "single")   { right.bits := left.bits }
-    else if (arch == "multi")    { right <> left }
-    else if (arch == "pipeline") { right <> RegEnable(left, left.fire) }
-    else if (arch == "ooo")      { right <> Queue(left, 16) }
+    else if (arch == "multi")    { right :<>= left }
+    else if (arch == "pipeline") { right :<>= RegEnable(left, left.fire) }
+    else if (arch == "ooo")      { right :<>= Queue(left, 16) }
   }
 }

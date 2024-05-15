@@ -1,13 +1,13 @@
 #ifndef __CIRCUIT_H__
 #define __CIRCUIT_H__
-#include <Vnpc.h>
+#include <VNPC.h>
 #include <verilated.h>
 #include <verilated_vcd_c.h>
 #include <svdpi.h>
-#include <Vnpc__Dpi.h>
-#include <Vnpc___024root.h>
+#include <VNPC__Dpi.h>
+#include <VNPC___024root.h>
 #include <common.h>
-extern Vnpc cpu;
+extern VNPC cpu;
 extern word_t inst,pc;
 //circuit
 void single_cycle();

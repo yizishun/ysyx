@@ -13,7 +13,7 @@ class ImmIO extends Bundle{
 class Imm extends Module{
   val io = IO(new ImmIO)
 
-  val immI = io.inst(31, 12).asSInt
+  val immI = io.inst(31, 20).asSInt
   val immU = Cat(io.inst(31, 12), 0.U(12.W)).asSInt
   val immJ = Cat(io.inst(31), io.inst(19, 12), io.inst(20), io.inst(30, 21), 0.U(1.W)).asSInt
   val immS = Cat(io.inst(31, 25), io.inst(11, 7)).asSInt

@@ -13,7 +13,7 @@ object Elaborate extends App {
 
   val config = npc.MiniConfig()
   circt.stage.ChiselStage.emitSystemVerilogFile(
-    new npc.core.csr(config.core),
+    npc.NPC(config),
     args, 
     firtoolOptions
   )

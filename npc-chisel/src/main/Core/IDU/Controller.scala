@@ -208,54 +208,75 @@ object Control {
   // format: on
 }
 
-class Ebreak extends BlackBox{
+class Ebreak extends BlackBox with HasBlackBoxPath{
   val io = IO(new Bundle{
     val inst = Input(UInt(32.W))
   })
+  addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/core/idu/Ebreak.sv")
 }
 
-class ControlIO extends Bundle{
-  val inst = Input(UInt(32.W))
-	val irq = Output(Bool())
-	val irq_no = Output(UInt(8.W))
+class IDUSignals extends Bundle{
+	val immtype = Output(UInt(3.W))
+}
+
+class EXUSignals extends Bundle{
+	val alucontrol = Output(UInt(4.W))
+	val Jump = Output(UInt(4.W))
+	val AluSrcA = Output(UInt(1.W))
+	val AluSrcB = Output(UInt(1.W))
+}
+
+class LSUSignals extends Bundle{
 	val MemWriteE = Output(Bool())
 	val MemWmask = Output(UInt(8.W))
 	val MemValid = Output(Bool())
 	val MemRD = Output(UInt(3.W))
-	val alucontrol = Output(UInt(4.W))
+}
+
+class WBUSignals extends Bundle{
 	val CSRWriteE = Output(Bool())
 	val RegwriteE = Output(Bool())
-	val immtype = Output(UInt(3.W))
-	val AluSrcA = Output(UInt(1.W))
-	val AluSrcB = Output(UInt(1.W))
 	val CSRWriteD = Output(UInt(2.W))
 	val RegwriteD = Output(UInt(3.W))
-	val Jump = Output(UInt(4.W))
+}
+
+class Signals extends Bundle{
+	val irq = Output(Bool())
+	val irq_no = Output(UInt(8.W))
+  val idu = new IDUSignals
+  val exu = new EXUSignals
+  val lsu = new LSUSignals
+  val wbu = new WBUSignals
+}
+
+class ControlIO extends Bundle{
+  val inst = Input(UInt(32.W))
+  val signals = new Signals
 }
 
 class Controller extends Module{
   val io = IO(new ControlIO)
   val controlsignals = ListLookup(io.inst, Control.default, Control.map)
 
-  io.immtype := controlsignals(6)
+  io.signals.idu.immtype := controlsignals(6)
 
-  io.alucontrol := controlsignals(7)
-  io.Jump := controlsignals(0)
-  io.AluSrcA := controlsignals(4)
-  io.AluSrcB := controlsignals(5)
+  io.signals.exu.alucontrol := controlsignals(7)
+  io.signals.exu.Jump := controlsignals(0)
+  io.signals.exu.AluSrcA := controlsignals(4)
+  io.signals.exu.AluSrcB := controlsignals(5)
 
-  io.MemRD := controlsignals(9)
-  io.MemValid := controlsignals(8)
-  io.MemWmask := controlsignals(10)
-  io.MemWriteE := controlsignals(1)
+  io.signals.lsu.MemRD := controlsignals(9)
+  io.signals.lsu.MemValid := controlsignals(8)
+  io.signals.lsu.MemWmask := controlsignals(10)
+  io.signals.lsu.MemWriteE := controlsignals(1)
 
-  io.RegwriteE := controlsignals(2)
-  io.CSRWriteE := controlsignals(3)
-  io.RegwriteD := controlsignals(11)
-  io.CSRWriteD := controlsignals(12)
+  io.signals.wbu.RegwriteE := controlsignals(2)
+  io.signals.wbu.CSRWriteE := controlsignals(3)
+  io.signals.wbu.RegwriteD := controlsignals(11)
+  io.signals.wbu.CSRWriteD := controlsignals(12)
 
-  io.irq := controlsignals(13)
-  io.irq_no := controlsignals(14)
+  io.signals.irq := controlsignals(13)
+  io.signals.irq_no := controlsignals(14)
 
   val ebreak = Module(new Ebreak)
   ebreak.io.inst := io.inst

@@ -20,9 +20,11 @@ class dmemIO(xlen: Int) extends Bundle{
   val rdata = Output(UInt(xlen.W))
 }
 
-class Imem(coreConfig: CoreConfig) extends BlackBox{
+class Imem(coreConfig: CoreConfig) extends BlackBox with HasBlackBoxPath{
   val io = IO(new imemIO(coreConfig.xlen))
+  addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/mem/Mem.sv")
 }
-class Dmem(coreConfig: CoreConfig) extends BlackBox{
+class Dmem(coreConfig: CoreConfig) extends BlackBox with HasBlackBoxPath{
   val io = IO(new dmemIO(coreConfig.xlen))
+  addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/mem/Mem.sv")
 } 

@@ -1,8 +1,10 @@
-TOPNAME = GCD
+TOPNAME = NPC
 
 BUILD_DIR = ./builds
 OBJ_DIR = $(BUILD_DIR)/obj_dir #generated c++ and mk files
 SV_GEN_DIR = $(BUILD_DIR)/sv-gen #generated systemVerilog files
+BIN = $(BUILD_DIR)/$(TOPNAME)
+REWRITE = $(NPC_HOME)/scripts/rewrite.mk
 
 PRJ = playground
 
@@ -14,6 +16,7 @@ VERILATOR_FLAGS += --trace
 VSRCS = $(shell find $(abspath $(SV_GEN_DIR)) -name "*.v" -or -name "*.sv")
 CSRCS = $(shell find $(abspath ./csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 
+#mill
 test:
 	mill -i $(PRJ).test
 
@@ -38,14 +41,25 @@ clean:
 
 .PHONY: test verilog help reformat checkformat clean
 
-sim: $(VSRCS)
+#verilator
+$(BIN): $(VSRCS) $(CSRCS)
 	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
 	@echo "$(COLOR_YELLOW)[VERILATE]$(COLOR_NONE) $(notdir $(BUILD_DIR))/$(notdir $(BIN))"
 	@rm -rf $(OBJ_DIR)
 	@mkdir -p $(BUILD_DIR)
 	$(VERILATOR) $(VERILATOR_FLAGS) \
 		--top-module $(TOPNAME) $^ \
-		--Mdir $(OBJ_DIR)
+		--Mdir $(OBJ_DIR) --exe -o $(abspath $(BIN))
+	@make -s -C $(OBJ_DIR) -f $(REWRITE)
+
+override ARGS ?= --log=$(BUILD_DIR)/npc-log.txt --diff=$(NPC_HOME)/tools/nemu-diff/riscv32-nemu-interpreter-so
+NPC_EXEC := $(BIN) $(ARGS) $(IMG)
+run: $(BIN)	
+	@echo "$(COLOR_YELLOW)[Run CPU]$(COLOR_NONE)"
+	$(NPC_EXEC)
+#wave
+wave:
+	gtkwave $(BUILD_DIR)/waveform.vcd &
 
 COLOR_RED   		= \033[1;31m
 COLOR_GREEN 		= \033[1;32m

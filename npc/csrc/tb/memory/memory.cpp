@@ -1,6 +1,7 @@
 #include <memory.h>
 #include <common.h>
 #include <device.h>
+extern bool is_skip_diff;
 static const uint32_t img[] = {
 	0b00000000110000000000001011101111, //jal   x5 12         0x80000000
 	0b00000000000000000001001000110111, //lui   x4 1          0x80000004
@@ -47,6 +48,8 @@ void init_flag(){ //bug fix
 extern "C" uint32_t pmem_read(uint32_t paddr){
 	if(!((paddr >= 0x80000000 && paddr <= 0x87ffffff) || (paddr == RTC_ADDR) || (paddr == RTC_ADDR + 4))) 
 		return 0;
+	if(paddr == RTC_ADDR || paddr == RTC_ADDR + 4)
+		is_skip_diff = true;
 	init_flag();
 	//printf("\ndev_r = %d\n",device_read);
 	#ifdef CONFIG_TRACE
@@ -77,6 +80,9 @@ extern "C" uint32_t pmem_read(uint32_t paddr){
 extern "C" void pmem_write(int waddr, int wdata, char wmask){
 	if(!((waddr >= 0x80000000 && waddr <= 0x87ffffff) || (waddr == SERIAL_PORT))) 
 		return;
+	if(waddr == SERIAL_PORT){
+		is_skip_diff = true;
+	}
 
 	init_flag();
 #ifdef CONFIG_TRACE

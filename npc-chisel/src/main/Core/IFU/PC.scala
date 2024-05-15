@@ -8,7 +8,7 @@ class pcIO extends Bundle{
   val pc = Output(UInt(32.W))
 }
 
-class pc extends Module{
+class PC extends Module{
   val io = IO(new pcIO)
   val pcReg = RegInit("h8000_0000".U(32.W))
   pcReg := io.nextpc

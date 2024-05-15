@@ -17,16 +17,24 @@ object CsrReg{
   val mcauseIn = 3.U(2.W)
 }
 
-class csrIO(xlen: Int) extends Bundle{
+class csrReadIO(xlen: Int) extends Bundle{
   val irq = Input(Bool())
   val irq_no = Input(UInt(8.W))
-  val wdata = Input(UInt(xlen.W))
-  val waddr = Input(UInt(12.W))
-  val wen = Input(Bool())
   val raddr1 = Input(UInt(12.W))
 	val rdata1 = Output(UInt(xlen.W))
   val mtvec = Output(UInt(xlen.W))
   val mepc = Output(UInt(xlen.W))
+}
+
+class csrWriteIO(xlen: Int) extends Bundle{
+  val wdata = Input(UInt(xlen.W))
+  val waddr = Input(UInt(12.W))
+  val wen = Input(Bool())
+}
+
+class csrIO(xlen: Int) extends Bundle{
+  val read = new csrReadIO(xlen)
+  val write = new csrWriteIO(xlen)
 }
 
 class csr(conf: CoreConfig) extends Module{
@@ -36,27 +44,27 @@ class csr(conf: CoreConfig) extends Module{
   import CsrReg._
   val waddr_in = Wire(UInt(2.W))
   val raddr_in = Wire(UInt(2.W))
-  waddr_in := MuxLookup(io.waddr, csrxx)(Seq(
+  waddr_in := MuxLookup(io.write.waddr, csrxx)(Seq(
     mstatus -> mstatusIn,
     mtvec -> mtvecIn,
     mepc -> mepcIn,
     mcause -> mcauseIn
   ))
-  raddr_in := MuxLookup(io.raddr1, csrxx)(Seq(
+  raddr_in := MuxLookup(io.read.raddr1, csrxx)(Seq(
     mstatus -> mstatusIn,
     mtvec -> mtvecIn,
     mepc -> mepcIn,
     mcause -> mcauseIn
   ))
-  io.rdata1 := rf(raddr_in)
-  io.mtvec := rf(mtvecIn)
-  io.mepc := rf(mepcIn)
+  io.read.rdata1 := rf(raddr_in)
+  io.read.mtvec := rf(mtvecIn)
+  io.read.mepc := rf(mepcIn)
   rf(mstatusIn) := 0x1800.U
-  when(io.wen){
-    rf(waddr_in) := io.wdata
+  when(io.write.wen){
+    rf(waddr_in) := io.write.wdata
   }
-  when(io.irq){
-    rf(mcauseIn) := io.irq_no.asUInt
-    rf(mepcIn) := io.wdata
+  when(io.read.irq){
+    rf(mcauseIn) := io.read.irq_no.asUInt
+    rf(mepcIn) := io.write.wdata
   }
 }
