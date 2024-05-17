@@ -60,10 +60,10 @@ class csr(conf: CoreConfig) extends Module{
   io.read.mtvec := rf(mtvecIn)
   io.read.mepc := rf(mepcIn)
   rf(mstatusIn) := 0x1800.U
-  when(io.write.wen){
+  when(io.write.wen & ~(io.read.irq)){
     rf(waddr_in) := io.write.wdata
   }
-  when(io.read.irq){
+  when(io.write.wen & io.read.irq){
     rf(mcauseIn) := io.read.irq_no.asUInt
     rf(mepcIn) := io.write.wdata
   }

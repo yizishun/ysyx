@@ -17,7 +17,6 @@ static const uint32_t img[] = {
 };
 static uint8_t *pmem = NULL;
 static int32_t device_read = 0;
-static int32_t device_write;
 static uint64_t timer = 0;
 void init_mem(size_t size){ 
 	pmem = (uint8_t *)malloc(size * sizeof(uint8_t));
@@ -39,8 +38,6 @@ void record_mem_trace(int rw,paddr_t addr, int len){
 }
 
 void init_flag(){ //bug fix
-	if(device_write < 0)
-		device_write = 0;
 	if(device_read < 0)
 		device_read = 0;
 }
@@ -86,17 +83,13 @@ extern "C" void pmem_write(int waddr, int wdata, char wmask){
 		is_skip_diff = true;
 	}
 
-	init_flag();
 #ifdef CONFIG_TRACE
 #ifdef CONFIG_MTRACE
 	record_mem_trace(WRITE,waddr,wmask);	
 	log_write("%s\n", mtrace);
 #endif
 #endif
-	//printf("\ndev_w = %d\n",device_write);
-	if(device_write == 3) device_write = 0;
-	if(waddr == SERIAL_PORT && device_write == 0) {device_write++; putc((char)wdata,stderr); return;}
-	else if(waddr == SERIAL_PORT && device_write != 0) {device_write++; return;}
+	if(waddr == SERIAL_PORT) {putc((char)wdata,stderr); return;}
 	
 	uint8_t *vaddr = guest_to_host(waddr);
 	uint8_t *iaddr;

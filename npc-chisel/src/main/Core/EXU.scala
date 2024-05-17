@@ -34,58 +34,87 @@ class ExuIO extends Bundle{
 
 class EXU(val conf: npc.CoreConfig) extends Module{
   val io = IO(new ExuIO)
-  io.out.valid := 1.U
-  io.in.ready := 1.U
-
 //place modules
   val alu = Module(new exu.Alu(conf.xlen))
   val idupc = Module(new exu.IduPC)
   val jumpPc = Module(new exu.JumpPc)
 
-//place mux
-  import idu.Control._
-  val alusrcA = Wire(UInt(32.W))
-  val alusrcB = Wire(UInt(32.W))
-  alusrcA := MuxLookup(io.in.bits.signals.exu.AluSrcA, io.in.bits.rd1)(Seq(
-    ALUaPC -> io.in.bits.pc,
-    ALUaRD1-> io.in.bits.rd1
+  val s_BeforeFire1 :: s_BetweenFire12 :: Nil = Enum(2)
+  val state = RegInit(s_BeforeFire1)
+  state := MuxLookup(state, s_BeforeFire1)(Seq(
+      s_BeforeFire1   -> Mux(io.in.fire, s_BetweenFire12, s_BeforeFire1),
+      s_BetweenFire12 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12)
   ))
 
-  alusrcB := MuxLookup(io.in.bits.signals.exu.AluSrcB, io.in.bits.rd2)(Seq(
-    ALUbimm -> io.in.bits.immext,
-    ALUbRD2 -> io.in.bits.rd2
-  ))
+  SetupEXU()
 
-//place wires
-  //Alu module
-  alu.io.A := alusrcA
-  alu.io.B := alusrcB
-  alu.io.AluControl := io.in.bits.signals.exu.alucontrol
+  //default,it will error if no do this
+  io.in.ready := false.B
+  io.out.valid := false.B
+  
+  switch(state){
+    is(s_BeforeFire1){
+      io.in.ready := true.B
+      io.out.valid := false.B
+      //disable all sequential logic
+    }
+    is(s_BetweenFire12){
+      io.in.ready := false.B
+      io.out.valid := true.B
+      //save all output to regs
+    }
+  }
 
-  //IduPc module
-  idupc.io.Jump := io.in.bits.signals.exu.Jump
-  idupc.io.zf := alu.io.Zf
-  idupc.io.cmp := alu.io.result(0)
 
-  //JumpPc module
-  jumpPc.io.pc := io.in.bits.pc
-  jumpPc.io.imm := io.in.bits.immext
 
-  //EXU module(wrapper)
-    //pc values back to IFU
-  io.pc.PcPlusImm := jumpPc.io.nextpc
-  io.pc.PcPlusRs2 := alu.io.result & (~1.U(32.W))
-  io.pc.PCSrc := idupc.io.PCSrc
-    //out to LSU
-  io.out.bits.signals := io.in.bits.signals
-  io.out.bits.aluresult := alu.io.result
-  io.out.bits.crd1 := io.in.bits.crd1
-  io.out.bits.pc := io.in.bits.pc
-  io.out.bits.immext := io.in.bits.immext
-  io.out.bits.PcPlus4 := io.in.bits.PcPlus4
-  io.out.bits.rd1 := io.in.bits.rd1
-  io.out.bits.rd2 := io.in.bits.rd2
-  io.out.bits.rw := io.in.bits.rw
-	io.out.bits.crw := io.in.bits.crw
+//----------------------------------------------------------------------------------------------------  
+  def SetupEXU():Unit = {
+  //place mux
+    import idu.Control._
+    val alusrcA = Wire(UInt(32.W))
+    val alusrcB = Wire(UInt(32.W))
+    alusrcA := MuxLookup(io.in.bits.signals.exu.AluSrcA, io.in.bits.rd1)(Seq(
+      ALUaPC -> io.in.bits.pc,
+      ALUaRD1-> io.in.bits.rd1
+    ))
+  
+    alusrcB := MuxLookup(io.in.bits.signals.exu.AluSrcB, io.in.bits.rd2)(Seq(
+      ALUbimm -> io.in.bits.immext,
+      ALUbRD2 -> io.in.bits.rd2
+    ))
+  
+  //place wires
+    //Alu module
+    alu.io.A := alusrcA
+    alu.io.B := alusrcB
+    alu.io.AluControl := io.in.bits.signals.exu.alucontrol
+  
+    //IduPc module
+    idupc.io.Jump := io.in.bits.signals.exu.Jump
+    idupc.io.zf := alu.io.Zf
+    idupc.io.cmp := alu.io.result(0)
+  
+    //JumpPc module
+    jumpPc.io.pc := io.in.bits.pc
+    jumpPc.io.imm := io.in.bits.immext
+  
+    //EXU module(wrapper)
+      //pc values back to IFU
+    io.pc.PcPlusImm := jumpPc.io.nextpc
+    io.pc.PcPlusRs2 := alu.io.result & (~1.U(32.W))
+    io.pc.PCSrc := idupc.io.PCSrc
+      //out to LSU
+    io.out.bits.signals := io.in.bits.signals
+    io.out.bits.aluresult := alu.io.result
+    io.out.bits.crd1 := io.in.bits.crd1
+    io.out.bits.pc := io.in.bits.pc
+    io.out.bits.immext := io.in.bits.immext
+    io.out.bits.PcPlus4 := io.in.bits.PcPlus4
+    io.out.bits.rd1 := io.in.bits.rd1
+    io.out.bits.rd2 := io.in.bits.rd2
+    io.out.bits.rw := io.in.bits.rw
+  	io.out.bits.crw := io.in.bits.crw
+  
+  }
   
 }

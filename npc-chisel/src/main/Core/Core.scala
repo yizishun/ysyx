@@ -26,6 +26,7 @@ class Core(val conf : CoreConfig) extends Module {
   StageConnect(idu.io.out, exu.io.in)
   StageConnect(exu.io.out, lsu.io.in)
   StageConnect(lsu.io.out, wbu.io.in)
+  StageConnect(wbu.io.out, ifu.io.in)
 
   ifu.io.pc.idu := idu.io.pc
   ifu.io.pc.exu := exu.io.pc

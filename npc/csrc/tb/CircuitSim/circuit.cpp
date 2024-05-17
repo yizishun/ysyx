@@ -15,8 +15,14 @@ static uint8_t opcode;
 void single_cycle(){  //  0 --> 0 > 1 --> 1 > 0 this is a cycle in cpu  _|-|_|-
 	cpu.clk=0;   //negedge 1->0 no
     cpu.eval();  //process 0->0 refresh combination logic and make them stable
+	#ifdef CONFIG_WAVE
+	dump_wave_inc();
+	#endif
 	cpu.clk=1;   //posedge 0->1 refresh sequential logic
     cpu.eval();  //process 1->1 refresh sequential logic(sim)
+	#ifdef CONFIG_WAVE
+	dump_wave_inc();
+	#endif
 }
 
 void reset(int n) {
@@ -83,9 +89,6 @@ static void trace_and_difftest(){
 /* cpu single cycle in exec */
 static void exec_once(){
 	single_cycle();
-	#ifdef CONFIG_WAVE
-	dump_wave_inc();
-	#endif
 }
 
 void cpu_exec(uint32_t n){

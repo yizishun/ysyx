@@ -9,6 +9,7 @@
 #include <common.h>
 extern VNPC cpu;
 extern word_t inst,pc;
+extern uint64_t g_nr_guest_inst;
 //circuit
 void single_cycle();
 void cpu_exec(uint32_t n);

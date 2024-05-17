@@ -33,43 +33,69 @@ class IduIO(xlen: Int) extends Bundle{
 
 class IDU(val conf: npc.CoreConfig) extends Module{
   val io = IO(new IduIO(conf.xlen))
-  io.out.valid := 1.U
-  io.in.ready := 1.U
-
 //place modules
   val controller = Module(new idu.Controller)
   val imm = Module(new idu.Imm)
 
-//place wires
-  //Controller module
-  controller.io.inst := io.in.bits.inst
+  val s_BeforeFire1 :: s_BetweenFire12 :: Nil = Enum(2)
+  val state = RegInit(s_BeforeFire1)
+  state := MuxLookup(state, s_BeforeFire1)(Seq(
+      s_BeforeFire1   -> Mux(io.in.fire, s_BetweenFire12, s_BeforeFire1),
+      s_BetweenFire12 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12)
+  ))
 
-  //Imm module
-  imm.io.inst := io.in.bits.inst
-  imm.io.immtype := controller.io.signals.idu.immtype
+  SetupIDU()
 
-  //GPR module(external)
-  io.gpr.raddr1 := io.in.bits.inst(19, 15)
-  io.gpr.raddr2 := io.in.bits.inst(24, 20)
+  //default,it will error if no do this
+  io.in.ready := false.B
+  io.out.valid := false.B
 
-  //CSR module(external)
-  io.csr.irq := controller.io.signals.irq
-  io.csr.irq_no := controller.io.signals.irq_no
-  io.csr.raddr1 := io.in.bits.inst(31, 20)
+  switch(state){
+    is(s_BeforeFire1){
+      io.in.ready := true.B
+      io.out.valid := false.B
+      //disable all sequential logic
+    }
+    is(s_BetweenFire12){
+      io.in.ready := false.B
+      io.out.valid := true.B
+      //save all output into regs
+    }
+  }
 
-  //IFU module(wrapper)
-    //pc value back to IFU
-  io.pc.mepc := io.csr.mepc
-  io.pc.mtvec := io.csr.mtvec
-  io.pc.irq := controller.io.signals.irq
-    //out to EXU
-  io.out.bits.signals := controller.io.signals
-  io.out.bits.rd1 := io.gpr.rdata1
-  io.out.bits.rd2 := io.gpr.rdata2
-  io.out.bits.crd1 := io.csr.rdata1
-  io.out.bits.pc := io.in.bits.pc
-  io.out.bits.PcPlus4 := io.in.bits.PcPlus4
-  io.out.bits.immext := imm.io.immext
-  io.out.bits.rw := io.in.bits.inst(11, 7)
-  io.out.bits.crw := io.in.bits.inst(31, 20)
+//-----------------------------------------------------------------------
+  def SetupIDU():Unit ={
+  //place wires
+    //Controller module
+    controller.io.inst := io.in.bits.inst
+  
+    //Imm module
+    imm.io.inst := io.in.bits.inst
+    imm.io.immtype := controller.io.signals.idu.immtype
+  
+    //GPR module(external)
+    io.gpr.raddr1 := io.in.bits.inst(19, 15)
+    io.gpr.raddr2 := io.in.bits.inst(24, 20)
+  
+    //CSR module(external)
+    io.csr.irq := controller.io.signals.irq
+    io.csr.irq_no := controller.io.signals.irq_no
+    io.csr.raddr1 := io.in.bits.inst(31, 20)
+  
+    //IFU module(wrapper)
+      //pc value back to IFU
+    io.pc.mepc := io.csr.mepc
+    io.pc.mtvec := io.csr.mtvec
+    io.pc.irq := controller.io.signals.irq
+      //out to EXU
+    io.out.bits.signals := controller.io.signals
+    io.out.bits.rd1 := io.gpr.rdata1
+    io.out.bits.rd2 := io.gpr.rdata2
+    io.out.bits.crd1 := io.csr.rdata1
+    io.out.bits.pc := io.in.bits.pc
+    io.out.bits.PcPlus4 := io.in.bits.PcPlus4
+    io.out.bits.immext := imm.io.immext
+    io.out.bits.rw := io.in.bits.inst(11, 7)
+    io.out.bits.crw := io.in.bits.inst(31, 20)
+  }
 }

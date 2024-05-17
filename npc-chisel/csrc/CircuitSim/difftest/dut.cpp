@@ -113,6 +113,8 @@ void difftest_step() {
 
   if(!checkregs(&ref_r)){
     isa_reg_display();
+    printf("total cycle : %llu\n",g_nr_guest_inst);
+    dump_wave_inc();
     assert(0);
   }
 }

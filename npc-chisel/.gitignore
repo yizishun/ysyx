@@ -6,6 +6,7 @@
 !*.scala
 !*.[cSh]
 !*.v
+!*.sv
 !*.cpp
 !*.cc
 !.gitignore

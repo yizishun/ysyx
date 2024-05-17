@@ -13,10 +13,16 @@ word_t pc, snpc, dnpc,inst , prev_pc;
 static uint8_t opcode;
 
 void single_cycle(){  //  0 --> 0 > 1 --> 1 > 0 this is a cycle in cpu  _|-|_|-
-	cpu.clock=0;   //negedge 1->0 no
-    cpu.eval();  //process 0->0 refresh combination logic and make them stable
 	cpu.clock=1;   //posedge 0->1 refresh sequential logic
     cpu.eval();  //process 1->1 refresh sequential logic(sim)
+	#ifdef CONFIG_WAVE
+	dump_wave_inc();
+	#endif
+	cpu.clock=0;   //negedge 1->0 no
+    cpu.eval();  //process 0->0 refresh combination logic and make them stable
+	#ifdef CONFIG_WAVE
+	dump_wave_inc();
+	#endif
 }
 
 void reset(int n) {
@@ -52,7 +58,9 @@ void record_inst_trace(char *p, uint8_t *inst){
 static void trace_and_difftest(){
 	/* DiffTest */
 	#ifdef CONFIG_DIFFTEST
-	difftest_step();
+	if(prev_pc != pc){
+		difftest_step();
+	}
 	#endif
 
 	/* watchpoint check */
@@ -85,9 +93,6 @@ static void trace_and_difftest(){
 /* cpu single cycle in exec */
 static void exec_once(){
 	single_cycle();
-	#ifdef CONFIG_WAVE
-	dump_wave_inc();
-	#endif
 }
 
 void cpu_exec(uint32_t n){
@@ -110,7 +115,7 @@ void cpu_exec(uint32_t n){
 }
 
 static void statistic() {
-  Log("total guest instructions = %llu", g_nr_guest_inst);
+  Log("total cycle = %llu", g_nr_guest_inst);
 }
 
 extern "C" void npc_trap(){
