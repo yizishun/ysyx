@@ -20,43 +20,93 @@ class IfuIO(xlen: Int) extends Bundle{
   //pc value from IDU and EXU
   val pc = new pcIO
   //Connext to the external imem
-  val imem = Flipped(new npc.mem.imemIO(xlen))
+  val imem = Flipped(new npc.mem.memIO(xlen))
 }
 
 
 class IFU(val conf: npc.CoreConfig) extends Module{
   val io = IO(new IfuIO(conf.xlen))
+  //disable AW W B channel
+
+  io.imem.awaddr := 0.U
+  io.imem.awvalid := 0.U
+  io.imem.wdata := 0.U
+  io.imem.wstrb := 0.U
+  io.imem.wvalid := 0.U
+  io.imem.bready := 0.U
   //place modules
   val addpc = Module(new ifu.Addpc)
   val pc = Module(new ifu.PC)
 
-  val s_BeforeFire1 :: s_BetweenFire12 :: Nil = Enum(2)
-  val state = RegInit(s_BetweenFire12)
-  state := MuxLookup(state, s_BeforeFire1)(Seq(
-      s_BeforeFire1   -> Mux(io.in.fire, s_BetweenFire12, s_BeforeFire1),
-      s_BetweenFire12 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12)
+  //Beteen Modules handshake reg
+  val in_ready = RegInit(io.in.ready)
+  val out_valid = RegInit(io.out.valid)
+  io.in.ready := in_ready
+  io.out.valid := out_valid
+
+  //AXI handshake reg
+  val imem_arvalid = RegInit(io.imem.arvalid)
+  val imem_rready = RegInit(io.imem.rready)
+  val imem_araddr = RegInit(io.imem.araddr)
+  io.imem.arvalid := imem_arvalid
+  io.imem.rready := imem_rready
+  io.imem.araddr := imem_araddr
+
+  //LSFR
+  val lfsr = RegInit(3.U(4.W))
+  lfsr := Cat(lfsr(2,0), lfsr(0)^lfsr(1)^lfsr(2))
+
+  //Delay
+  val delay = RegInit(lfsr)
+
+  //state transition
+  val sc_BeforeFire1 :: sc_BetweenFire12_1 :: sc_BetweenFire12_2 :: Nil = Enum(3)
+  val stateC = RegInit(sc_BetweenFire12_1)
+  val nextStateC = WireDefault(stateC)
+  nextStateC := MuxLookup(stateC, sc_BeforeFire1)(Seq(
+      sc_BeforeFire1   -> Mux(io.in.fire, sc_BetweenFire12_1, sc_BeforeFire1),
+      sc_BetweenFire12_1 -> Mux(io.imem.rvalid & imem_rready, sc_BetweenFire12_2, sc_BetweenFire12_1),
+      sc_BetweenFire12_2 -> Mux(io.out.fire, sc_BeforeFire1, sc_BetweenFire12_2)
   ))
-  val prevState = RegNext(state, 0.U)
+  stateC := nextStateC
 
   SetupIFU()
 
-  //default,it will error if not do this
-  io.in.ready := false.B
-  io.out.valid := false.B
-  io.imem.validPC := false.B
-
-  switch(state){
-    is(s_BeforeFire1){
-      io.out.valid := false.B
-      io.in.ready := true.B
+  //output logic
+  switch(nextStateC){
+    is(sc_BeforeFire1){
+      //between modules
+      out_valid := false.B
+      in_ready := true.B
+      //AXI4-Lite
+      delay := lfsr
+      imem_arvalid := false.B
+      imem_rready := false.B
       //disable all sequential logic
-      io.imem.validPC := false.B
     }
-    is(s_BetweenFire12){
-      io.in.ready := false.B
-      io.out.valid := io.imem.validInst
+    is(sc_BetweenFire12_1){
+      //between modules
+      in_ready := false.B
+      out_valid := io.imem.rvalid & (io.imem.rresp === 0.U)
+      //AXI4-Lite
+      when(delay === 0.U){
+        imem_arvalid := true.B
+        imem_rready := true.B
+      }.otherwise{
+        delay := delay - 1.U
+        imem_arvalid := false.B
+        imem_rready := false.B
+      }
       //save all output into regs
-      io.imem.validPC := Mux(state =/= prevState, true.B, false.B)
+    }
+    is(sc_BetweenFire12_2){
+      //between modules
+      in_ready := false.B
+      out_valid := io.imem.rvalid & (io.imem.rresp === 0.U)
+      //AXI4-Lite
+      imem_arvalid := false.B
+      imem_rready := false.B
+      //save all output into regs
     }
   }
 
@@ -91,13 +141,13 @@ class IFU(val conf: npc.CoreConfig) extends Module{
     //Imem module(external)
     io.imem.clk := clock
     io.imem.rst := reset
-    io.imem.pc := pc.io.pc
+    imem_araddr := pc.io.pc
     pc.io.wen := true.B & io.in.valid
   
     //IFU module(wrapper)
     io.out.bits.PcPlus4 := addpc.io.nextpc
     io.out.bits.pc := pc.io.pc
-    io.out.bits.inst := io.imem.inst
+    io.out.bits.inst := io.imem.rdata
 
   }
 }

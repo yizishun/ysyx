@@ -39,28 +39,35 @@ class EXU(val conf: npc.CoreConfig) extends Module{
   val idupc = Module(new exu.IduPC)
   val jumpPc = Module(new exu.JumpPc)
 
+  val in_ready = RegInit(io.in.ready)
+  val out_valid = RegInit(io.out.valid)
+  io.in.ready := in_ready
+  io.out.valid := out_valid
+
   val s_BeforeFire1 :: s_BetweenFire12 :: Nil = Enum(2)
   val state = RegInit(s_BeforeFire1)
-  state := MuxLookup(state, s_BeforeFire1)(Seq(
+  val nextState = WireDefault(state)
+  nextState := MuxLookup(state, s_BeforeFire1)(Seq(
       s_BeforeFire1   -> Mux(io.in.fire, s_BetweenFire12, s_BeforeFire1),
       s_BetweenFire12 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12)
   ))
+  state := nextState
 
   SetupEXU()
 
   //default,it will error if no do this
-  io.in.ready := false.B
-  io.out.valid := false.B
+  in_ready := false.B
+  out_valid := false.B
   
-  switch(state){
+  switch(nextState){
     is(s_BeforeFire1){
-      io.in.ready := true.B
-      io.out.valid := false.B
+      in_ready := true.B
+      out_valid := false.B
       //disable all sequential logic
     }
     is(s_BetweenFire12){
-      io.in.ready := false.B
-      io.out.valid := true.B
+      in_ready := false.B
+      out_valid := true.B
       //save all output to regs
     }
   }

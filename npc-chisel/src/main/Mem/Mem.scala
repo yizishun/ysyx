@@ -4,32 +4,34 @@ import chisel3._
 import chisel3.util._
 import npc._
 
-class imemIO(xlen: Int) extends Bundle{
+class memIO(xlen: Int) extends Bundle{
   val clk = Input(Clock())
   val rst = Input(Reset())
-  val validPC = Input(Bool())
-  val pc = Input(UInt(xlen.W))
-  val inst = Output(UInt(xlen.W))
-  val validInst = Output(Bool())
-}
-class dmemIO(xlen: Int) extends Bundle{
-  val clk = Input(Clock())
-  val rst = Input(Reset())
-  val wen = Input(Bool())
-  val valid = Input(Bool())
-  val raddr = Input(UInt(xlen.W))
-  val waddr = Input(UInt(xlen.W))
-  val wdata = Input(UInt(xlen.W)) 
-  val wmask = Input(UInt(8.W))
-  val validData = Output(Bool())
+  //AR
+  val araddr = Input(UInt(xlen.W))
+  val arvalid = Input(Bool())
+  val arready = Output(Bool())
+  //R
   val rdata = Output(UInt(xlen.W))
+  val rresp = Output(UInt(2.W))
+  val rvalid = Output(Bool())
+  val rready = Input(Bool())
+  //AW
+  val awaddr = Input(UInt(xlen.W))
+  val awvalid = Input(Bool())
+  val awready = Output(Bool())
+  //W
+  val wdata = Input(UInt(xlen.W))
+  val wstrb = Input(UInt((xlen/8).W))
+  val wvalid = Input(Bool())
+  val wready = Output(Bool())
+  //B
+  val bresp = Output(UInt(2.W))
+  val bvalid = Output(Bool())
+  val bready = Input(Bool())
 }
 
-class Imem(coreConfig: CoreConfig) extends BlackBox with HasBlackBoxPath{
-  val io = IO(new imemIO(coreConfig.xlen))
-  addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/mem/Mem.sv")
-}
-class Dmem(coreConfig: CoreConfig) extends BlackBox with HasBlackBoxPath{
-  val io = IO(new dmemIO(coreConfig.xlen))
+class Mem(coreConfig: CoreConfig) extends BlackBox with HasBlackBoxPath{
+  val io = IO(new memIO(coreConfig.xlen))
   addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/mem/Mem.sv")
 } 

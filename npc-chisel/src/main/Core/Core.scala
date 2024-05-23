@@ -6,8 +6,8 @@ import npc.mem._
 import npc._
 
 class CoreIO(xlen : Int) extends Bundle{
-  val imem = Flipped(new imemIO(xlen))
-  val dmem = Flipped(new dmemIO(xlen))
+  val imem = Flipped(new memIO(xlen))
+  val dmem = Flipped(new memIO(xlen))
 }
 
 class Core(val conf : CoreConfig) extends Module {
