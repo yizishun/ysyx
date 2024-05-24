@@ -11,14 +11,18 @@ object NPC{
 
 class NPC(val coreConfig : CoreConfig) extends Module {
   val core = Module(new Core(coreConfig))
-  val mem = Module(new npc.mem.Mem(coreConfig))
-  val uart = Module(new npc.mem.Uart(coreConfig))
+
   val arb = Module(new npc.mem.Arbiter(coreConfig))
   val xbar = Module(new npc.mem.Xbar(coreConfig))
+
+  val mem = Module(new npc.mem.Mem(coreConfig))
+  val uart = Module(new npc.mem.Uart(coreConfig))
+  val clint = Module(new npc.mem.Clint(coreConfig))
 
   core.io.imem :<>= arb.io.imem
   core.io.dmem :<>= arb.io.dmem
   arb.io.mem :<>= xbar.io.arb
+  xbar.io.clint :<>= clint.io
   xbar.io.uart :<>= uart.io
   xbar.io.sram :<>= mem.io
   

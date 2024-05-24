@@ -8,6 +8,7 @@ static void statistic();
 void difftest_step();
 #define MAX_INST_TO_PRINT 10
 uint64_t g_nr_guest_inst = 0;
+static uint64_t g_timer = 0;
 static bool g_print_step = false;
 word_t pc, snpc, dnpc,inst , prev_pc;
 static uint8_t opcode;
@@ -101,7 +102,12 @@ void cpu_exec(uint32_t n){
 	while(n > 0){
 		prev_pc = cpu.rootp -> NPC__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
 		snpc = pc + 4;
+
+  		uint64_t timer_start = get_time();
 		exec_once();
+  		uint64_t timer_end = get_time();
+  		g_timer += timer_end - timer_start;
+
 		if(cpu.rootp -> NPC__DOT__core__DOT__ifu__DOT__nextStateC == 2)
 			inst = cpu.rootp -> NPC__DOT___mem_rdata;
 		pc = cpu.rootp -> NPC__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
@@ -117,6 +123,10 @@ void cpu_exec(uint32_t n){
 
 static void statistic() {
   Log("total cycle = %llu", g_nr_guest_inst);
+  Log("host time spent = %llu us", g_timer);
+  Log("1 clock = %lf us",(double)g_timer/ (double)g_nr_guest_inst);
+  if (g_timer > 0) Log("simulation frequency = %llu inst/s", g_nr_guest_inst * 1000000 / g_timer);
+  else Log("Finish running in less than 1 us and can not calculate the simulation frequency");
 }
 
 extern "C" void npc_trap(){

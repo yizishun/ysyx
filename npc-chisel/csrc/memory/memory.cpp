@@ -46,7 +46,7 @@ extern "C" uint32_t pmem_read(uint32_t paddr){
 	if(!((paddr >= 0x80000000 && paddr <= 0x87ffffff) || (paddr == RTC_ADDR) || (paddr == RTC_ADDR + 4))) 
 		return 0;
 	if(paddr == RTC_ADDR || paddr == RTC_ADDR + 4)
-		is_skip_diff = true;
+		assert(0);
 	init_flag();
 	//printf("\ndev_r = %d\n",device_read);
 	#ifdef CONFIG_TRACE
