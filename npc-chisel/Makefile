@@ -59,7 +59,7 @@ run: $(BIN)
 	$(NPC_EXEC)
 #wave
 wave:
-	gtkwave $(BUILD_DIR)/waveform.vcd &
+	gtkwave $(BUILD_DIR)/waveform.vcd $(BUILD_DIR)/save.gtkw &
 
 COLOR_RED   		= \033[1;31m
 COLOR_GREEN 		= \033[1;32m

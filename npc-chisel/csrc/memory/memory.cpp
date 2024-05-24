@@ -80,7 +80,7 @@ extern "C" void pmem_write(int waddr, int wdata, char wmask){
 	if(!((waddr >= 0x80000000 && waddr <= 0x87ffffff) || (waddr == SERIAL_PORT))) 
 		return;
 	if(waddr == SERIAL_PORT){
-		is_skip_diff = true;
+		assert(0);
 	}
 
 #ifdef CONFIG_TRACE
@@ -89,8 +89,6 @@ extern "C" void pmem_write(int waddr, int wdata, char wmask){
 	log_write("%s\n", mtrace);
 #endif
 #endif
-	if(waddr == SERIAL_PORT) {putc((char)wdata,stderr); return;}
-	
 	uint8_t *vaddr = guest_to_host(waddr);
 	uint8_t *iaddr;
 	int i;
@@ -102,4 +100,9 @@ extern "C" void pmem_write(int waddr, int wdata, char wmask){
 			j++;
 		}
 	}
+}
+
+extern "C" void skip(){
+	is_skip_diff = true;
+	return;
 }

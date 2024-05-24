@@ -35,3 +35,8 @@ class Mem(coreConfig: CoreConfig) extends BlackBox with HasBlackBoxPath{
   val io = IO(new memIO(coreConfig.xlen))
   addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/mem/Mem.sv")
 } 
+
+class Uart(coreConfig: CoreConfig) extends BlackBox with HasBlackBoxPath{
+  val io = IO(new memIO(coreConfig.xlen))
+  addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/mem/UART.sv")
+} 

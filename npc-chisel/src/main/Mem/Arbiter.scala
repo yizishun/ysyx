@@ -71,23 +71,23 @@ class Arbiter(val coreConfig: CoreConfig) extends Module{
 
 //--------------------------------------------------------------------------
   //state transition
-  val s_slect :: s_worki :: s_workd :: s_worki_1 :: s_workd_1 :: Nil = Enum(5)
-  val state = RegInit(s_slect)
-  val nextState = WireDefault(s_slect)
-  nextState := MuxLookup(state, s_slect)(Seq(
-    s_slect -> MuxCase(s_slect, Array(
+  val s_select :: s_worki :: s_workd :: s_worki_1 :: s_workd_1 :: Nil = Enum(5)
+  val state = RegInit(s_select)
+  val nextState = WireDefault(s_select)
+  nextState := MuxLookup(state, s_select)(Seq(
+    s_select -> MuxCase(s_select, Seq(
       (io.imem.arvalid & imem_arready) -> s_worki,
       ((io.dmem.arvalid & dmem_arready) || (io.dmem.awvalid & dmem_awready & io.dmem.wvalid & dmem_wready)).asBool -> s_workd
     )),
     s_worki -> Mux(io.mem.rready & io.mem.rvalid, s_worki_1, s_worki),
-    s_worki_1 -> Mux(io.imem.rready & io.imem.rvalid, s_slect, s_worki_1),
+    s_worki_1 -> Mux(io.imem.rready & io.imem.rvalid, s_select, s_worki_1),
     s_workd -> Mux((io.mem.rready & io.mem.rvalid)|(io.mem.bready & io.mem.bvalid), s_workd_1, s_workd),
-    s_workd_1 -> Mux((io.dmem.rready & io.dmem.rvalid)|(io.dmem.bready & io.dmem.bvalid), s_slect, s_workd_1)
+    s_workd_1 -> Mux((io.dmem.rready & io.dmem.rvalid)|(io.dmem.bready & io.dmem.bvalid), s_select, s_workd_1)
   ))
   state := nextState
 
   switch(nextState){
-    is(s_slect){
+    is(s_select){
       DefaultMem()
       DefaultDmem()
       DefaultImem()

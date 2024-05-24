@@ -102,7 +102,7 @@ void cpu_exec(uint32_t n){
 		prev_pc = cpu.rootp -> NPC__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
 		snpc = pc + 4;
 		exec_once();
-		if(cpu.rootp -> NPC__DOT__core__DOT__ifu__DOT__nextStateC == 1 | cpu.rootp -> NPC__DOT__core__DOT__ifu__DOT__nextStateC == 2)
+		if(cpu.rootp -> NPC__DOT__core__DOT__ifu__DOT__nextStateC == 2)
 			inst = cpu.rootp -> NPC__DOT___mem_rdata;
 		pc = cpu.rootp -> NPC__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
 		dnpc = cpu.rootp -> NPC__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
