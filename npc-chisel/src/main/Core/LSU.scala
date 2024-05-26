@@ -2,6 +2,7 @@ package npc.core
 
 import chisel3._
 import chisel3.util._
+import npc.bus.AXI4
 
 class LsuOutIO extends Bundle{
   val signals = new Bundle{
@@ -24,11 +25,18 @@ class LsuIO(xlen: Int) extends Bundle{
   val in = Flipped(Decoupled(new ExuOutIO))
   val out = Decoupled(new LsuOutIO)
   //connect to the external "state" elements(i.e.dmem)
-  val dmem = Flipped(new npc.mem.memIO(xlen))
+  val dmem = Flipped(new AXI4)
 }
 
 class LSU(val conf: npc.CoreConfig) extends Module{
   val io = IO(new LsuIO(conf.xlen))
+  io.dmem.arid := 0.U
+  io.dmem.arlen := 0.U
+  io.dmem.arburst := 0.U
+  io.dmem.awid := 0.U
+  io.dmem.awlen := 0.U
+  io.dmem.awburst := 0.U
+  io.dmem.wlast := false.B
 
   //Between Modules handshake reg
   val in_ready = RegInit(io.in.ready)
@@ -38,13 +46,17 @@ class LSU(val conf: npc.CoreConfig) extends Module{
 
   //AXI handshake reg
   val dmem_arvalid = RegInit(io.dmem.arvalid)
+  val dmem_arsize = RegInit(io.dmem.arsize)
   val dmem_rready = RegInit(io.dmem.rready)
   val dmem_awvalid = RegInit(io.dmem.awvalid)
+  val dmem_awsize = RegInit(io.dmem.awsize)
   val dmem_wvalid = RegInit(io.dmem.wvalid)
   val dmem_bready = RegInit(io.dmem.bready)
   io.dmem.arvalid := dmem_arvalid
+  io.dmem.arsize := dmem_arsize
   io.dmem.rready := dmem_rready
   io.dmem.awvalid := dmem_awvalid
+  io.dmem.awsize := dmem_awsize
   io.dmem.wvalid := dmem_wvalid
   io.dmem.bready := dmem_bready
 
@@ -77,6 +89,7 @@ class LSU(val conf: npc.CoreConfig) extends Module{
 
   SetupLSU()
   
+  import npc.core.idu.Control._
   //output logic
   switch(nextState){
     is(s_BeforeFire1){
@@ -87,8 +100,10 @@ class LSU(val conf: npc.CoreConfig) extends Module{
       //AXI4-Lite
       delay := lfsr
       dmem_arvalid := false.B
+      dmem_arsize := 2.U
       dmem_rready := false.B
       dmem_awvalid := false.B
+      dmem_awsize := 2.U
       dmem_wvalid := false.B
       dmem_bready := false.B
     }
@@ -98,8 +113,10 @@ class LSU(val conf: npc.CoreConfig) extends Module{
       out_valid := true.B
       //AXI4-Lite
       dmem_arvalid := false.B
+      dmem_arsize := 2.U
       dmem_rready := false.B
       dmem_awvalid := false.B
+      dmem_awsize := 2.U
       dmem_wvalid := false.B
       dmem_bready := false.B
     }
@@ -111,10 +128,22 @@ class LSU(val conf: npc.CoreConfig) extends Module{
       when(delay === 0.U){
           //AR
         dmem_arvalid := Mux(isLoad, true.B, false.B)
+        dmem_arsize := MuxLookup(io.in.bits.signals.lsu.MemRD, 2.U)(Seq(
+          RBYTE   -> 0.U,
+          RHALFW  -> 1.U,
+          RWORD   -> 2.U,
+          RBYTEU  -> 0.U,
+          RHALFWU -> 1.U
+        ))
           //R
         dmem_rready := Mux(isLoad, true.B, false.B)
           //AW
         dmem_awvalid := Mux(isStore, true.B, false.B)
+        dmem_awsize := MuxLookup(io.in.bits.signals.lsu.MemWmask, 2.U)(Seq(
+          WBYTE  -> 0.U,
+          WHALFW -> 1.U,
+          WWORD  -> 2.U
+        ))
           //W
         dmem_wvalid := Mux(isStore, true.B, false.B)
           //B
@@ -122,8 +151,10 @@ class LSU(val conf: npc.CoreConfig) extends Module{
       }.otherwise{
         delay := delay - 1.U
         dmem_arvalid := false.B
+        dmem_arsize := 2.U
         dmem_rready := false.B
         dmem_awvalid := false.B
+        dmem_awsize := 2.U
         dmem_wvalid := false.B
         dmem_bready := false.B
       }
@@ -137,12 +168,14 @@ class LSU(val conf: npc.CoreConfig) extends Module{
       //AXI4-Lite
         //AR
       dmem_arvalid := false.B
+      dmem_arsize := 2.U
         //R
       dmem_rready := false.B
         //AW
       dmem_awvalid := false.B
         //W
       dmem_wvalid := false.B
+      dmem_awsize := 2.U
         //B
       dmem_bready := false.B
       //save all output to regs
@@ -162,8 +195,6 @@ class LSU(val conf: npc.CoreConfig) extends Module{
   	place := io.in.bits.aluresult - maddr
   	RealMemWmask := io.in.bits.signals.lsu.MemWmask << place(1, 0)
     //Dmem module(external)
-    io.dmem.clk := clock
-    io.dmem.rst := reset
     io.dmem.araddr := maddr
     io.dmem.awaddr := maddr
     io.dmem.wdata := io.in.bits.rd2

@@ -2,12 +2,13 @@ package npc.core
 
 import chisel3._
 import chisel3.util._
-import npc.mem._
+import npc.dev._
 import npc._
+import npc.bus.AXI4
 
 class CoreIO(xlen : Int) extends Bundle{
-  val imem = Flipped(new memIO(xlen))
-  val dmem = Flipped(new memIO(xlen))
+  val imem = Flipped(new AXI4)
+  val dmem = Flipped(new AXI4)
 }
 
 class Core(val conf : CoreConfig) extends Module {

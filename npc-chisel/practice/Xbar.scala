@@ -1,8 +1,9 @@
-package npc.mem
+package npc.bus
 
 import chisel3._
 import chisel3.util._
 import npc._
+import npc.dev._
 
 class xbarIO(xlen: Int) extends Bundle{
   val arb = new memIO(xlen)

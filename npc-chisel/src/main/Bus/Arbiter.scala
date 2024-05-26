@@ -1,19 +1,31 @@
-package npc.mem
+package npc.bus
 
 import chisel3._
 import chisel3.util._
 import npc._
+import npc.dev._
 
 class arbiterIO(xlen: Int) extends Bundle{
-  val imem = new memIO(xlen)
-  val dmem = new memIO(xlen)
-  val mem = Flipped(new memIO(xlen))
+  val imem = new AXI4
+  val dmem = new AXI4
+  val mem = Flipped(new AXI4)
 }
 
 class Arbiter(val coreConfig: CoreConfig) extends Module{
   val io = IO(new arbiterIO(coreConfig.xlen))
-  io.mem.clk := clock
-  io.mem.rst := reset
+  io.imem.rid := 0.U
+  io.imem.rlast := true.B
+  io.imem.bid := 0.U
+  io.dmem.rid := 0.U
+  io.dmem.rlast := true.B
+  io.dmem.bid := 0.U
+  io.mem.arid := 0.U
+  io.mem.arlen := 0.U
+  io.mem.arburst := 0.U
+  io.mem.awid := 0.U
+  io.mem.awlen := 0.U
+  io.mem.awburst := 0.U
+  io.mem.wlast := false.B
 
   //imem reg
   val imem_arready = RegInit(io.imem.arready)
@@ -52,18 +64,22 @@ class Arbiter(val coreConfig: CoreConfig) extends Module{
   //mem reg
   val mem_araddr = RegInit(io.mem.araddr)
   val mem_arvalid = RegInit(io.mem.arvalid)
+  val mem_arsize = RegInit(io.mem.arsize)
   val mem_rready = RegInit(io.mem.rready)
   val mem_awaddr = RegInit(io.mem.awaddr)
   val mem_awvalid = RegInit(io.mem.awvalid)
+  val mem_awsize = RegInit(io.mem.awsize)
   val mem_wdata = RegInit(io.mem.wdata)
   val mem_wstrb = RegInit(io.mem.wstrb)
   val mem_wvalid = RegInit(io.mem.wvalid)
   val mem_bready = RegInit(io.mem.bready)
   io.mem.araddr := mem_araddr
   io.mem.arvalid := mem_arvalid
+  io.mem.arsize := mem_arsize
   io.mem.rready := mem_rready
   io.mem.awaddr := mem_awaddr
   io.mem.awvalid := mem_awvalid
+  io.mem.awsize := mem_awsize
   io.mem.wdata := mem_wdata
   io.mem.wstrb := mem_wstrb
   io.mem.wvalid := mem_wvalid
@@ -142,9 +158,11 @@ def ConnectImem(): Unit = {
 
   mem_araddr := io.imem.araddr
   mem_arvalid := io.imem.arvalid
+  mem_arsize := io.imem.arsize
   mem_rready := io.imem.rready
   mem_awaddr := io.imem.awaddr
   mem_awvalid := io.imem.awvalid
+  mem_awsize := io.imem.awsize
   mem_wdata := io.imem.wdata
   mem_wstrb := io.imem.wstrb
   mem_wvalid := io.imem.wvalid
@@ -163,9 +181,11 @@ def ConnectDmem(): Unit = {
 
   mem_araddr := io.dmem.araddr
   mem_arvalid := io.dmem.arvalid
+  mem_arsize := io.dmem.arsize
   mem_rready := io.dmem.rready
   mem_awaddr := io.dmem.awaddr
   mem_awvalid := io.dmem.awvalid
+  mem_awsize := io.dmem.awsize
   mem_wdata := io.dmem.wdata
   mem_wstrb := io.dmem.wstrb
   mem_wvalid := io.dmem.wvalid
@@ -175,9 +195,11 @@ def ConnectDmem(): Unit = {
 def DefaultMem(): Unit = {
   mem_araddr := DontCare
   mem_arvalid := false.B
+  mem_arsize := 2.U
   mem_rready := false.B
   mem_awaddr := false.B
   mem_awvalid := false.B
+  mem_awsize := 2.U
   mem_wdata := DontCare
   mem_wstrb := 0.U
   mem_wvalid := false.B

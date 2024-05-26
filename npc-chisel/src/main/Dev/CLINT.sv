@@ -2,29 +2,44 @@ module Clint(
     input clk,
     input rst,
     //AR
-    input [31:0]araddr,
-    input arvalid,
-    output arready,
+    input [31:0]axi_araddr,
+    input axi_arvalid,
+    input [3:0]axi_arid,
+    input [7:0]axi_arlen,
+    input [2:0]axi_arsize,
+    input [1:0]axi_arburst,
+    output axi_arready,
     //R
-    output reg [31:0] rdata,
-    output [1:0] rresp,
-    output rvalid,
-    input rready,
+    output reg [31:0] axi_rdata,
+    output [1:0] axi_rresp,
+    output axi_rvalid,
+    output axi_rlast,
+    output [2:0]axi_rid
+    input axi_rready,
     //AW
-    input [31:0]awaddr,
-    input awvalid,
-    output awready,
+    input [31:0]axi_awaddr,
+    input axi_awvalid,
+    input [3:0]axi_awid,
+    input [7:0]axi_awlen,
+    input [2:0]axi_awsize,
+    input [1:0]axi_awburst,
+    output axi_awready,
     //W
-    input [31:0] wdata,
-    input [3:0] wstrb,
-    input wvalid,
-    output wready,
+    input [31:0] axi_wdata,
+    input [3:0] axi_wstrb,
+    input axi_wvalid,
+    input axi_wlast,
+    output axi_wready,
     //B
-    output [1:0] bresp,
-    output bvalid,
-    input bready
+    output [1:0] axi_bresp,
+    output axi_bvalid,
+    output [3:0]axi_bid,
+    input axi_bready
 );
     import "DPI-C" function void skip();
+    assign axi_rlast = 1'b1;
+    assign axi_rid = 3'b000;
+    assign zxi_bid = 3'b000;
     //mtime reg: Provides the current timer value.
     reg [63:0]mtime;
     always @(posedge clk)begin
@@ -36,12 +51,12 @@ module Clint(
         end
     end
 //Read
-    reg arready_r;
-    reg [1:0]rresp_r;
-    reg rvalid_r;
-    assign arready = arready_r;
-    assign rresp = rresp_r;
-    assign rvalid = rvalid_r;
+    reg axi_arready_r;
+    reg [1:0]axi_rresp_r;
+    reg axi_rvalid_r;
+    assign axi_arready = axi_arready_r;
+    assign axi_rresp = axi_rresp_r;
+    assign axi_rvalid = axi_rvalid_r;
     parameter sr_beforeFire1 = 1'b0;
     parameter sr_betweenFire12 = 1'b1;
 
@@ -71,10 +86,10 @@ module Clint(
     always @(*) begin
         case(stateR)
             sr_beforeFire1:begin
-                nextStateR = arvalid & arready_r ? sr_betweenFire12:sr_beforeFire1;
+                nextStateR = axi_arvalid & axi_arready_r ? sr_betweenFire12:sr_beforeFire1;
             end
             sr_betweenFire12:begin
-                nextStateR = rvalid_r & rready ? sr_beforeFire1:sr_betweenFire12;
+                nextStateR = axi_rvalid_r & axi_rready ? sr_beforeFire1:sr_betweenFire12;
             end
             default:begin
                 nextStateR = sr_beforeFire1;
@@ -85,52 +100,52 @@ module Clint(
     always @(posedge clk) begin
         case(nextStateR)
             sr_beforeFire1:begin
-                arready_r <= 1'b1;
-                rresp_r <= 2'b00;
-                rvalid_r <= 1'b0;
+                axi_arready_r <= 1'b1;
+                axi_rresp_r <= 2'b00;
+                axi_rvalid_r <= 1'b0;
                 delayR <= lfsr;
             end
             sr_betweenFire12:begin
-                arready_r <= 1'b0;
+                axi_arready_r <= 1'b0;
                 delayR <= delayR - 1;
                 if(delayR == 0)begin
                     skip();
-                    if(araddr == 32'ha0000048)begin
-                        rdata <= mtime[31:0];
-                        rresp_r <= 2'b00;
-                        rvalid_r <= 1'b1;
+                    if(axi_araddr == 32'ha0000048)begin
+                        axi_rdata <= mtime[31:0];
+                        axi_rresp_r <= 2'b00;
+                        axi_rvalid_r <= 1'b1;
                     end
-                    else if(araddr == 32'ha000004c)begin
-                        rdata <= mtime[63:32];
-                        rresp_r <= 2'b00;
-                        rvalid_r <= 1'b1;
+                    else if(axi_araddr == 32'ha000004c)begin
+                        axi_rdata <= mtime[63:32];
+                        axi_rresp_r <= 2'b00;
+                        axi_rvalid_r <= 1'b1;
                     end
                     else begin
-                        rvalid_r <= 1'b1;
-                        rresp_r <= 2'b01;
-                        $error("invalid addr:%h",araddr);
+                        axi_rvalid_r <= 1'b1;
+                        axi_rresp_r <= 2'b01;
+                        $error("invalid addr:%h",axi_araddr);
                     end
                 end
                 else begin
-                    rvalid_r <= 1'b0;
+                    axi_rvalid_r <= 1'b0;
                 end
             end
             default:begin
-                arready_r <= 1'b1;
-                rresp_r <= 2'b00;
-                rvalid_r <= 1'b0;
+                axi_arready_r <= 1'b1;
+                axi_rresp_r <= 2'b00;
+                axi_rvalid_r <= 1'b0;
             end
         endcase
     end
 //Wirte   
-    reg awready_r;
-    reg wready_r;
-    reg [1:0]bresp_r;
-    reg bvalid_r;
-    assign awready = awready_r;
-    assign wready = wready_r;
-    assign bresp = bresp_r;
-    assign bvalid = bvalid_r;
+    reg axi_awready_r;
+    reg axi_wready_r;
+    reg [1:0]axi_bresp_r;
+    reg axi_bvalid_r;
+    assign axi_awready = axi_awready_r;
+    assign axi_wready = axi_wready_r;
+    assign axi_bresp = axi_bresp_r;
+    assign axi_bvalid = axi_bvalid_r;
     parameter sw_beforeFire1 = 1'b0;
     parameter sw_betweenFire12 = 1'b1;
 
@@ -151,10 +166,10 @@ module Clint(
     always @(*)begin
         case(stateW)
             sw_beforeFire1:begin
-                nextStateW = (awvalid & awready_r) & (wvalid & wready_r) ? sw_betweenFire12:sw_beforeFire1;
+                nextStateW = (axi_awvalid & axi_awready_r) & (axi_wvalid & axi_wready_r) ? sw_betweenFire12:sw_beforeFire1;
             end
             sw_betweenFire12:begin
-                nextStateW = (bvalid_r & bready) ? sw_beforeFire1:sw_betweenFire12;
+                nextStateW = (axi_bvalid_r & axi_bready) ? sw_beforeFire1:sw_betweenFire12;
             end
         endcase
     end
@@ -162,24 +177,24 @@ module Clint(
     always @(posedge clk)begin
         case(nextStateW)
             sw_beforeFire1:begin
-                awready_r <= 1'b1;
-                wready_r <= 1'b1;
-                bresp_r <= 2'b00;
-                bvalid_r <= 1'b0;
+                axi_awready_r <= 1'b1;
+                axi_wready_r <= 1'b1;
+                axi_bresp_r <= 2'b00;
+                axi_bvalid_r <= 1'b0;
                 delayW <= lfsr;
             end
             sw_betweenFire12:begin
-                awready_r <= 1'b0;
-                wready_r <= 1'b0;
-                bresp_r <= 2'b00;
+                axi_awready_r <= 1'b0;
+                axi_wready_r <= 1'b0;
+                axi_bresp_r <= 2'b00;
                 delayW <= delayW - 1;
                 if(delayW == 0)begin
-                    bvalid_r <= 1'b1;
+                    axi_bvalid_r <= 1'b1;
                     skip();
                     $error("You cannot write to mtime");
                 end
                 else begin
-                    bvalid_r <= 1'b0;
+                    axi_bvalid_r <= 1'b0;
                 end
             end
         endcase

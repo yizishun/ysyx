@@ -1,4 +1,4 @@
-package npc.mem
+package npc.dev
 
 import chisel3._
 import chisel3.util._
@@ -33,7 +33,7 @@ class memIO(xlen: Int) extends Bundle{
 
 class Mem(coreConfig: CoreConfig) extends BlackBox with HasBlackBoxPath{
   val io = IO(new memIO(coreConfig.xlen))
-  addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/mem/Mem.sv")
+  addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/Dev/Mem.sv")
 } 
 
 class Uart(coreConfig: CoreConfig) extends BlackBox with HasBlackBoxPath{
@@ -42,6 +42,10 @@ class Uart(coreConfig: CoreConfig) extends BlackBox with HasBlackBoxPath{
 }
 
 class Clint(coreConfig: CoreConfig) extends BlackBox with HasBlackBoxPath{
-  val io = IO(new memIO(coreConfig.xlen))
+  val io = IO(new Bundle {
+    val clk = Input(Clock())
+    val rst = Input(Reset())
+    val axi = new npc.bus.AXI4
+  })
   addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/Dev/CLINT.sv")
 }

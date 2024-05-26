@@ -2,6 +2,7 @@ package npc.core
 
 import chisel3._
 import chisel3.util._
+import npc.bus.AXI4
 
 class pcIO extends Bundle{
   val idu = Flipped(new IduPcIO)
@@ -20,20 +21,27 @@ class IfuIO(xlen: Int) extends Bundle{
   //pc value from IDU and EXU
   val pc = new pcIO
   //Connext to the external imem
-  val imem = Flipped(new npc.mem.memIO(xlen))
+  val imem = Flipped(new AXI4)
 }
 
 
 class IFU(val conf: npc.CoreConfig) extends Module{
   val io = IO(new IfuIO(conf.xlen))
   //disable AW W B channel
-
-  io.imem.awaddr := 0.U
-  io.imem.awvalid := 0.U
-  io.imem.wdata := 0.U
+  io.imem.arid := 0.U
+  io.imem.arlen := 0.U
+  io.imem.arburst := 0.U
+  io.imem.awaddr := DontCare
+  io.imem.awvalid := false.B
+  io.imem.awid := 0.U
+  io.imem.awlen := 0.U
+  io.imem.awsize := 0.U
+  io.imem.awburst := 0.U
+  io.imem.wdata := DontCare
   io.imem.wstrb := 0.U
   io.imem.wvalid := 0.U
-  io.imem.bready := 0.U
+  io.imem.wlast := false.B
+  io.imem.bready := false.B
   //place modules
   val addpc = Module(new ifu.Addpc)
   val pc = Module(new ifu.PC)
@@ -48,7 +56,9 @@ class IFU(val conf: npc.CoreConfig) extends Module{
   val imem_arvalid = RegInit(io.imem.arvalid)
   val imem_rready = RegInit(io.imem.rready)
   val imem_araddr = RegInit(io.imem.araddr)
+  val imem_arsize = RegInit(io.imem.arsize)
   io.imem.arvalid := imem_arvalid
+  io.imem.arsize := imem_arsize
   io.imem.rready := imem_rready
   io.imem.araddr := imem_araddr
 
@@ -82,6 +92,7 @@ class IFU(val conf: npc.CoreConfig) extends Module{
       delay := lfsr
       imem_arvalid := false.B
       imem_rready := false.B
+      imem_arsize := 2.U
       //disable all sequential logic
     }
     is(sc_BetweenFire12_1){
@@ -92,10 +103,12 @@ class IFU(val conf: npc.CoreConfig) extends Module{
       when(delay === 0.U){
         imem_arvalid := true.B
         imem_rready := true.B
+        imem_arsize := 2.U
       }.otherwise{
         delay := delay - 1.U
         imem_arvalid := false.B
         imem_rready := false.B
+        imem_arsize := 2.U
       }
       //save all output into regs
     }
@@ -106,6 +119,7 @@ class IFU(val conf: npc.CoreConfig) extends Module{
       //AXI4-Lite
       imem_arvalid := false.B
       imem_rready := false.B
+      imem_arsize := 2.U
       //save all output into regs
     }
   }
@@ -139,8 +153,6 @@ class IFU(val conf: npc.CoreConfig) extends Module{
     pc.io.nextpc := nextpc
   
     //Imem module(external)
-    io.imem.clk := clock
-    io.imem.rst := reset
     imem_araddr := pc.io.pc
     pc.io.wen := true.B & io.in.valid
   
