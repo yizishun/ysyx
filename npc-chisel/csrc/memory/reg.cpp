@@ -4,7 +4,7 @@
 uint32_t gpr[REGNUM];
 uint32_t csr[4];
 void isa_reg_display();
-extern VNPC cpu;
+extern VysyxSoCFull cpu;
 const char *regs[] = {
   "$0", "ra", "sp", "gp", "tp", "t0", "t1", "t2",
   "s0", "s1", "a0", "a1", "a2", "a3", "a4", "a5",
@@ -15,9 +15,9 @@ const char *regs[] = {
 void get_reg(){
   int i;
   for(i = 0;i < REGNUM; i++)
-    gpr[i] = cpu.rootp -> NPC__DOT__core__DOT__gpr__DOT__rf_ext__DOT__Memory[i];
+    gpr[i] = cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__gpr__DOT__rf_ext__DOT__Memory[i];
   for(i = 0;i < 4;i++)
-    csr[i] = cpu.rootp -> NPC__DOT__core__DOT__csr__DOT__rf_ext__DOT__Memory[i];
+    csr[i] = cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__csr__DOT__rf_ext__DOT__Memory[i];
     //0:mstatus 1:mtvec 2:mepc 3:mcause
 }
 

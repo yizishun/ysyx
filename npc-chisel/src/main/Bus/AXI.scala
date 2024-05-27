@@ -18,7 +18,7 @@ class AXI4 extends Bundle{
   val rresp = Output(UInt(2.W))
   val rvalid = Output(Bool())
   val rlast = Output(Bool())
-  val rid = Output(UInt(3.W))
+  val rid = Output(UInt(4.W))
   val rready = Input(Bool())
   //AW
   val awaddr = Input(UInt(32.W))

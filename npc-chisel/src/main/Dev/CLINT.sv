@@ -10,11 +10,11 @@ module Clint(
     input [1:0]axi_arburst,
     output axi_arready,
     //R
-    output reg [31:0] axi_rdata,
+    output reg [63:0] axi_rdata,
     output [1:0] axi_rresp,
     output axi_rvalid,
     output axi_rlast,
-    output [2:0]axi_rid
+    output [3:0]axi_rid,
     input axi_rready,
     //AW
     input [31:0]axi_awaddr,
@@ -25,8 +25,8 @@ module Clint(
     input [1:0]axi_awburst,
     output axi_awready,
     //W
-    input [31:0] axi_wdata,
-    input [3:0] axi_wstrb,
+    input [63:0] axi_wdata,
+    input [7:0] axi_wstrb,
     input axi_wvalid,
     input axi_wlast,
     output axi_wready,
@@ -38,8 +38,8 @@ module Clint(
 );
     import "DPI-C" function void skip();
     assign axi_rlast = 1'b1;
-    assign axi_rid = 3'b000;
-    assign zxi_bid = 3'b000;
+    assign axi_rid = 4'b0000;
+    assign axi_bid = 4'b0000;
     //mtime reg: Provides the current timer value.
     reg [63:0]mtime;
     always @(posedge clk)begin
@@ -111,12 +111,12 @@ module Clint(
                 if(delayR == 0)begin
                     skip();
                     if(axi_araddr == 32'ha0000048)begin
-                        axi_rdata <= mtime[31:0];
+                        axi_rdata <= {{32'b0} , mtime[31:0]};
                         axi_rresp_r <= 2'b00;
                         axi_rvalid_r <= 1'b1;
                     end
                     else if(axi_araddr == 32'ha000004c)begin
-                        axi_rdata <= mtime[63:32];
+                        axi_rdata <= {{32'b0}, mtime[63:32]};
                         axi_rresp_r <= 2'b00;
                         axi_rvalid_r <= 1'b1;
                     end

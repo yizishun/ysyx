@@ -2,7 +2,7 @@
 #include <memory.h>
 #include <common.h>
 #include <ftrace.h>
-VNPC cpu;
+VysyxSoCFull cpu;
 extern "C" void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
 static void statistic();
 void difftest_step();
@@ -100,7 +100,7 @@ void cpu_exec(uint32_t n){
 	//max inst to print to stdout
 	g_print_step = (n < MAX_INST_TO_PRINT);
 	while(n > 0){
-		prev_pc = cpu.rootp -> NPC__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
+		prev_pc = cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
 		snpc = pc + 4;
 
   		uint64_t timer_start = get_time();
@@ -108,10 +108,10 @@ void cpu_exec(uint32_t n){
   		uint64_t timer_end = get_time();
   		g_timer += timer_end - timer_start;
 
-		if(cpu.rootp -> NPC__DOT__core__DOT__ifu__DOT__nextStateC == 2)
-			inst = cpu.rootp -> NPC__DOT___mem_rdata;
-		pc = cpu.rootp -> NPC__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
-		dnpc = cpu.rootp -> NPC__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
+		if(cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__nextStateC == 2)
+			inst = cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__arb__DOT__imem_rdata;
+		pc = cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
+		dnpc = cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
 		get_reg();
 		g_nr_guest_inst ++;
 		#ifdef CONFIG_TRACE

@@ -10,7 +10,7 @@ object NPC{
 }
 
 class npcIO extends Bundle{
-  val interupt = Input(Bool())
+  val interrupt = Input(Bool())
   val master = Flipped(new npc.bus.AXI4)
   val slave = new npc.bus.AXI4
 }

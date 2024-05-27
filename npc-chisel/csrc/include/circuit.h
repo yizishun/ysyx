@@ -1,13 +1,13 @@
 #ifndef __CIRCUIT_H__
 #define __CIRCUIT_H__
-#include <VNPC.h>
+#include <VysyxSoCFull.h>
 #include <verilated.h>
 #include <verilated_vcd_c.h>
 #include <svdpi.h>
-#include <VNPC__Dpi.h>
-#include <VNPC___024root.h>
+#include <VysyxSoCFull__Dpi.h>
+#include <VysyxSoCFull___024root.h>
 #include <common.h>
-extern VNPC cpu;
+extern VysyxSoCFull cpu;
 extern word_t inst,pc;
 extern uint64_t g_nr_guest_inst;
 //circuit
