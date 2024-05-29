@@ -75,10 +75,10 @@ object Control {
   val MNWRITE  = false.B
   
   // MemWmask
-  val WXXXX    = "b0001".U(4.W)
-  val WBYTE    = "b0001".U(4.W)
-  val WHALFW   = "b0011".U(4.W)
-  val WWORD    = "b1111".U(4.W)
+  val WXXXX    = "b00000001".U(8.W)
+  val WBYTE    = "b00000001".U(8.W)
+  val WHALFW   = "b00000011".U(8.W)
+  val WWORD    = "b00001111".U(8.W)
   
   // MemValid
   val VALID    = true.B
@@ -228,7 +228,7 @@ class EXUSignals extends Bundle{
 
 class LSUSignals extends Bundle{
 	val MemWriteE = Output(Bool())
-	val MemWmask = Output(UInt(4.W))
+	val MemWmask = Output(UInt(8.W))
 	val MemValid = Output(Bool())
 	val MemRD = Output(UInt(3.W))
 }

@@ -25,7 +25,7 @@ void isa_reg_display() {
   int i;
   printf("\ndut-pc=%x\n",pc);
   for(i = 0;i < REGNUM;i++){
-    if(gpr[i] >= 0x80000000){
+    if(gpr[i] >= 0x02000000){
       printf("dut-%3s = %-#11x",regs[i],gpr[i]);
       if(i % 3 == 0) printf("\n");
       }

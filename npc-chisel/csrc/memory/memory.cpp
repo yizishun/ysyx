@@ -106,3 +106,10 @@ extern "C" void skip(){
 	is_skip_diff = true;
 	return;
 }
+
+
+extern "C" void mrom_read(int addr, int *data) {
+	*data = *(int *)guest_to_host(addr);
+	record_mem_trace(READ, addr , sizeof(uint32_t));	
+	return;
+}

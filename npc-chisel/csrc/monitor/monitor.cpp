@@ -88,7 +88,7 @@ void init_monitor(int argc, char *argv[]){
 
   init_log(log_file);
 
-  init_mem(0x7ffffff);
+  init_mem(0x7fffffff);
 
   long img_size = load_img();
 
@@ -98,7 +98,9 @@ void init_monitor(int argc, char *argv[]){
 
   init_sdb();
 
+  #ifdef CONFIG_DIFFTEST
   init_difftest(diff_so_file , img_size);
+  #endif
 
   welcome();
 }

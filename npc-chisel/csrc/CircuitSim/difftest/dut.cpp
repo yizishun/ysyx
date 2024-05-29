@@ -50,7 +50,7 @@ void init_difftest(char *ref_so_file, long img_size) {
   ref_difftest_memcpy(RESET_VECTOR, (void *)guest_to_host(RESET_VECTOR), img_size, DIFFTEST_TO_REF);
   //get dut reg into CPU_state struct
   CPU_state dut_r;
-  dut_r.pc = 0x80000000;
+  dut_r.pc = RESET_VECTOR;
   for(int i = 0;i < REGNUM;i++)
     dut_r.gpr[i] = gpr[i];
   for(int i = 0;i < 4;i++)
@@ -73,7 +73,7 @@ bool static checkregs(struct CPU_state *ref_r){
   if(flag == false){
     printf("ref-pc=%x\n",ref_r -> pc);
     for(i = 0;i < REGNUM;i++){
-    if(ref_r -> gpr[i] >= 0x80000000){
+    if(ref_r -> gpr[i] >= 0x02000000){
         printf("ref-%3s = %-#11x",regs[i],ref_r -> gpr[i]);
         if(i % 3 == 0) printf("\n");
         }

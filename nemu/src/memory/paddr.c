@@ -23,8 +23,22 @@ static uint8_t *pmem = NULL;
 #else // CONFIG_PMEM_GARRAY
 static uint8_t pmem[CONFIG_MSIZE] PG_ALIGN = {};
 #endif
+static uint8_t *mrom = NULL;
+static uint8_t *sram = NULL;
+static void out_of_bound(paddr_t addr);
 
-uint8_t* guest_to_host(paddr_t paddr) { return pmem + paddr - CONFIG_MBASE; }
+uint8_t* guest_to_host(paddr_t paddr) {
+  uint8_t* ptr = NULL;
+  if(in_pmem(paddr)) 
+    ptr = pmem + paddr - CONFIG_MBASE;
+  else if(in_mrom(paddr))
+    ptr = mrom + paddr - MROM_BASE;
+  else if(in_sram(paddr))
+    ptr = sram + paddr - SRAM_BASE;
+  else
+    out_of_bound(paddr);
+  return ptr;
+}
 paddr_t host_to_guest(uint8_t *haddr) { return haddr - pmem + CONFIG_MBASE; }
 
 static word_t pmem_read(paddr_t addr, int len) {
@@ -50,6 +64,17 @@ void init_mem() {
   Log("physical memory area [" FMT_PADDR ", " FMT_PADDR "]", PMEM_LEFT, PMEM_RIGHT);
 }
 
+void init_mrom() {
+  mrom = malloc(0xfff);
+  assert(mrom);
+  Log("mrom area [" FMT_PADDR ", " FMT_PADDR "]", MROM_BASE, MROM_BASE + MROM_SIZE);
+}
+
+void init_sram() {
+  sram = malloc(0x1fff);
+  assert(sram);
+  Log("sram area [" FMT_PADDR ", " FMT_PADDR "]", SRAM_BASE, SRAM_BASE + SRAM_SIZE);
+}
 
 #ifdef CONFIG_MTRACE
 #define READ 0
@@ -73,7 +98,7 @@ word_t paddr_read(paddr_t addr, int len) {
   #ifdef CONFIG_MTRACE_COND
     if (MTRACE_COND) { log_write("%s\n", mtrace); }
   #endif
-  if (likely(in_pmem(addr))) return pmem_read(addr, len);
+  if (likely(in_pmem(addr)) || in_mrom(addr) || in_sram(addr)) return pmem_read(addr, len);
   IFDEF(CONFIG_DEVICE, return mmio_read(addr, len));
   out_of_bound(addr);
   return 0;
@@ -86,7 +111,7 @@ void paddr_write(paddr_t addr, int len, word_t data) {
   #ifdef CONFIG_MTRACE_COND
     if (MTRACE_COND) { log_write("%s content = %d\n", mtrace,data); }
   #endif
-  if (likely(in_pmem(addr))) { pmem_write(addr, len, data); return; }
+  if (likely(in_pmem(addr)) || in_sram(addr)) { pmem_write(addr, len, data); return; }
   IFDEF(CONFIG_DEVICE, mmio_write(addr, len, data); return);
   out_of_bound(addr);
 }

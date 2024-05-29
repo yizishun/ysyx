@@ -74,11 +74,13 @@ static void trace_and_difftest(){
 
 	/* trace(1):instruction trace */
 	char disasm_buf[128] = {0};
-	record_inst_trace(disasm_buf,(uint8_t *)&inst);
-	//print to stdout
-	if(g_print_step) puts(disasm_buf);
-	//print to log file
-	log_write("%s\n", disasm_buf);
+	if(cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__lmrom__DOT___mrom_rdata != 0){
+		record_inst_trace(disasm_buf,(uint8_t *)&inst);
+		//print to stdout
+		if(g_print_step) puts(disasm_buf);
+		//print to log file
+		log_write("%s\n", disasm_buf);
+	}
 
 	#ifdef CONFIG_FTRACE
 	/* trace(2):function trace*/
@@ -108,8 +110,8 @@ void cpu_exec(uint32_t n){
   		uint64_t timer_end = get_time();
   		g_timer += timer_end - timer_start;
 
-		if(cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__nextStateC == 2)
-			inst = cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__arb__DOT__imem_rdata;
+		if(cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__lmrom__DOT___mrom_rdata != 0 && cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__lsu__DOT__nextState == 0)
+			inst = cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__lmrom__DOT___mrom_rdata;
 		pc = cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
 		dnpc = cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
 		get_reg();
@@ -117,7 +119,8 @@ void cpu_exec(uint32_t n){
 		#ifdef CONFIG_TRACE
 		trace_and_difftest();
 		#endif
-		n--;
+		if(cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__lmrom__DOT___mrom_rdata != 0)
+			n--;
 	}
 }
 

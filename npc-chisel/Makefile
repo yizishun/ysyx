@@ -14,7 +14,7 @@ PRJ = playground
 VERILATOR = verilator
 #verilator flag
 VERILATOR_INC = -I$(YSYXSoC)/perip/uart16550/rtl -I$(YSYXSoC)/perip/spi/rtl
-VERILATOR_FLAGS += -MMD -cc -O3 --x-assign fast --x-initial fast --noassert -j 5
+VERILATOR_FLAGS += -MMD -cc -O3 --x-assign fast --x-initial fast --noassert -j 5 -autoflush
 VERILATOR_FLAGS += --trace
 VERILATOR_FLAGS += --timescale "1ns/1ns" --no-timing
 VERILATOR_FLAGS += $(VERILATOR_INC)

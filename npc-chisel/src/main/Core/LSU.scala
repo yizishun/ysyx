@@ -76,13 +76,14 @@ class LSU(val conf: npc.CoreConfig) extends Module{
   val delay = RegInit(lfsr)
 
   //state transition
-  val s_BeforeFire1 :: s_BetweenFire12 :: s_BetweenFire12_1 :: s_BetweenFire12_2 ::Nil = Enum(4)
+  val s_BeforeFire1 :: s_BetweenFire12 :: s_BetweenFire12_1_1 :: s_BetweenFire12_1_2 ::s_BetweenFire12_2 ::Nil = Enum(5)
   val state = RegInit(s_BeforeFire1)
   val nextState = WireDefault(state)
   nextState := MuxLookup(state, s_BeforeFire1)(Seq(
-      s_BeforeFire1   -> Mux(io.in.fire, Mux(notLS, s_BetweenFire12, s_BetweenFire12_1), s_BeforeFire1),
+      s_BeforeFire1   -> Mux(io.in.fire, Mux(notLS, s_BetweenFire12, s_BetweenFire12_1_1), s_BeforeFire1),
       s_BetweenFire12 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12),
-      s_BetweenFire12_1 -> Mux((io.dmem.rvalid & dmem_rready)|(io.dmem.bvalid & dmem_bready), s_BetweenFire12_2, s_BetweenFire12_1),
+      s_BetweenFire12_1_1 -> Mux((io.dmem.arvalid & io.dmem.arready)|(io.dmem.awvalid & io.dmem.arready & io.dmem.wvalid & io.dmem.wready),s_BetweenFire12_1_2, s_BetweenFire12_1_1),
+      s_BetweenFire12_1_2 -> Mux((io.dmem.rvalid & dmem_rready)|(io.dmem.bvalid & dmem_bready), s_BetweenFire12_2, s_BetweenFire12_1_2),
       s_BetweenFire12_2 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12_2)
   ))
   state := nextState
@@ -120,7 +121,7 @@ class LSU(val conf: npc.CoreConfig) extends Module{
       dmem_wvalid := false.B
       dmem_bready := false.B
     }
-    is(s_BetweenFire12_1){
+    is(s_BetweenFire12_1_1){
       //between modules
       in_ready := false.B
       out_valid := Mux(isLoad, io.dmem.rvalid & (io.dmem.rresp === 0.U), io.dmem.bvalid & (io.dmem.bresp === 0.U))
@@ -136,7 +137,7 @@ class LSU(val conf: npc.CoreConfig) extends Module{
           RHALFWU -> 1.U
         ))
           //R
-        dmem_rready := Mux(isLoad, true.B, false.B)
+        dmem_rready := Mux(isLoad, false.B, false.B)
           //AW
         dmem_awvalid := Mux(isStore, true.B, false.B)
         dmem_awsize := MuxLookup(io.in.bits.signals.lsu.MemWmask, 2.U)(Seq(
@@ -147,7 +148,7 @@ class LSU(val conf: npc.CoreConfig) extends Module{
           //W
         dmem_wvalid := Mux(isStore, true.B, false.B)
           //B
-        dmem_bready := Mux(isStore, true.B, false.B)
+        dmem_bready := Mux(isStore, false.B, false.B)
       }.otherwise{
         delay := delay - 1.U
         dmem_arvalid := false.B
@@ -160,6 +161,35 @@ class LSU(val conf: npc.CoreConfig) extends Module{
       }
       //save all output to regs
 
+    }
+    is(s_BetweenFire12_1_2){
+      //between modules
+      in_ready := false.B
+      out_valid := Mux(isLoad, io.dmem.rvalid & (io.dmem.rresp === 0.U), io.dmem.bvalid & (io.dmem.bresp === 0.U))
+      //AXI4-Lite
+        //AR
+      dmem_arvalid := Mux(isLoad, false.B, false.B)
+      dmem_arsize := MuxLookup(io.in.bits.signals.lsu.MemRD, 2.U)(Seq(
+        RBYTE   -> 0.U,
+        RHALFW  -> 1.U,
+        RWORD   -> 2.U,
+        RBYTEU  -> 0.U,
+        RHALFWU -> 1.U
+      ))
+        //R
+      dmem_rready := Mux(isLoad, true.B, false.B)
+        //AW
+      dmem_awvalid := Mux(isStore, false.B, false.B)
+      dmem_awsize := MuxLookup(io.in.bits.signals.lsu.MemWmask, 2.U)(Seq(
+        WBYTE  -> 0.U,
+        WHALFW -> 1.U,
+        WWORD  -> 2.U
+      ))
+        //W
+      dmem_wvalid := Mux(isStore, false.B, false.B)
+        //B
+      dmem_bready := Mux(isStore, true.B, false.B)
+      //save all output to regs
     }
     is(s_BetweenFire12_2){
       //between modules
@@ -187,20 +217,24 @@ class LSU(val conf: npc.CoreConfig) extends Module{
   def SetupLSU():Unit = {
   //place wires
     val maddr = Wire(UInt(32.W))
+    val tempmaddr = Wire(UInt(32.W))
     val place = Wire(UInt(32.W))
-    val RealMemWmask = Wire(UInt(4.W))
+    val dataplace = Wire(UInt(32.W))
+    val RealMemWmask = Wire(UInt(8.W))
     val rdplace = Wire(UInt(32.W))
     //some operation before connect to dmem
   	maddr := io.in.bits.aluresult & (~3.U(32.W))
+    tempmaddr := io.in.bits.aluresult & (~7.U(32.W))
   	place := io.in.bits.aluresult - maddr
-  	RealMemWmask := io.in.bits.signals.lsu.MemWmask << place(1, 0)
+    dataplace := io.in.bits.aluresult - tempmaddr
+  	RealMemWmask := io.in.bits.signals.lsu.MemWmask << dataplace(2, 0)
     //Dmem module(external)
     io.dmem.araddr := maddr
     io.dmem.awaddr := maddr
-    io.dmem.wdata := io.in.bits.rd2
+    io.dmem.wdata := io.in.bits.rd2 << (dataplace(2, 0) << 3)
     io.dmem.wstrb := RealMemWmask
     //some operation to read data
-    rdplace := io.dmem.rdata >> (place << 3)
+    rdplace := io.dmem.rdata >> (dataplace(2, 0) << 3)
     //LSU module(wrapper)
     io.out.bits.signals := io.in.bits.signals
     io.out.bits.rd1 := io.in.bits.rd1
@@ -214,9 +248,9 @@ class LSU(val conf: npc.CoreConfig) extends Module{
   
   //place mux
     import idu.Control._
-    val rbyte = Cat(io.dmem.rdata(7), rdplace(7, 0)).asSInt
-    val rhalfw = Cat(io.dmem.rdata(15), rdplace(15, 0)).asSInt
-    val rword = io.dmem.rdata.asSInt
+    val rbyte = Cat(rdplace(7), rdplace(7, 0)).asSInt
+    val rhalfw = Cat(rdplace(15), rdplace(15, 0)).asSInt
+    val rword = rdplace.asSInt
     val rbyteu = Cat(0.U, rdplace(7, 0)).asSInt 
     val rhalfwu = Cat(0.U, rdplace(15, 0)).asSInt
     io.out.bits.MemR := MuxLookup(io.in.bits.signals.lsu.MemRD, rbyte)(Seq(

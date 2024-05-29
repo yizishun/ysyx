@@ -6,7 +6,7 @@
 #include <string.h>
 #include <assert.h>
 #include <VysyxSoCFull.h>
-#define RESET_VECTOR 0x80000000
+#define RESET_VECTOR 0x20000000
 #define REGNUM 32
 extern VysyxSoCFull cpu;
 extern uint32_t gpr[REGNUM];

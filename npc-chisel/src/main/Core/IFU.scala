@@ -70,12 +70,13 @@ class IFU(val conf: npc.CoreConfig) extends Module{
   val delay = RegInit(lfsr)
 
   //state transition
-  val sc_BeforeFire1 :: sc_BetweenFire12_1 :: sc_BetweenFire12_2 :: Nil = Enum(3)
-  val stateC = RegInit(sc_BetweenFire12_1)
+  val sc_BeforeFire1 :: sc_BetweenFire12_1_1 :: sc_BetweenFire12_1_2 :: sc_BetweenFire12_2 :: Nil = Enum(4)
+  val stateC = RegInit(sc_BetweenFire12_1_1)
   val nextStateC = WireDefault(stateC)
   nextStateC := MuxLookup(stateC, sc_BeforeFire1)(Seq(
-      sc_BeforeFire1   -> Mux(io.in.fire, sc_BetweenFire12_1, sc_BeforeFire1),
-      sc_BetweenFire12_1 -> Mux(io.imem.rvalid & imem_rready, sc_BetweenFire12_2, sc_BetweenFire12_1),
+      sc_BeforeFire1   -> Mux(io.in.fire, sc_BetweenFire12_1_1, sc_BeforeFire1),
+      sc_BetweenFire12_1_1 -> Mux(io.imem.arvalid & io.imem.arready, sc_BetweenFire12_1_2, sc_BetweenFire12_1_1),
+      sc_BetweenFire12_1_2 -> Mux(io.imem.rvalid & imem_rready, sc_BetweenFire12_2, sc_BetweenFire12_1_2),
       sc_BetweenFire12_2 -> Mux(io.out.fire, sc_BeforeFire1, sc_BetweenFire12_2)
   ))
   stateC := nextStateC
@@ -95,14 +96,14 @@ class IFU(val conf: npc.CoreConfig) extends Module{
       imem_arsize := 2.U
       //disable all sequential logic
     }
-    is(sc_BetweenFire12_1){
+    is(sc_BetweenFire12_1_1){
       //between modules
       in_ready := false.B
       out_valid := io.imem.rvalid & (io.imem.rresp === 0.U)
       //AXI4-Lite
       when(delay === 0.U){
         imem_arvalid := true.B
-        imem_rready := true.B
+        imem_rready := false.B
         imem_arsize := 2.U
       }.otherwise{
         delay := delay - 1.U
@@ -111,6 +112,16 @@ class IFU(val conf: npc.CoreConfig) extends Module{
         imem_arsize := 2.U
       }
       //save all output into regs
+    }
+    is(sc_BetweenFire12_1_2){
+      //between modules
+      in_ready := false.B
+      out_valid := io.imem.rvalid & (io.imem.rresp === 0.U)
+      //AXI4-Lite
+      imem_arvalid := false.B
+      imem_rready := true.B
+      imem_arsize := 2.U
+
     }
     is(sc_BetweenFire12_2){
       //between modules
