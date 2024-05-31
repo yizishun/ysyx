@@ -112,6 +112,7 @@ void paddr_write(paddr_t addr, int len, word_t data) {
     if (MTRACE_COND) { log_write("%s content = %d\n", mtrace,data); }
   #endif
   if (likely(in_pmem(addr)) || in_sram(addr)) { pmem_write(addr, len, data); return; }
+  if (in_uart(addr)) return;
   IFDEF(CONFIG_DEVICE, mmio_write(addr, len, data); return);
   out_of_bound(addr);
 }

@@ -151,6 +151,9 @@ object Control {
   // IRQ Number
   val IRQ_XXXXXX = 0.U(8.W)
   val IRQ_MECALL = "b00001011".U(8.W)
+  val IRQ_IAF    = "b00000001".U(8.W)
+  val IRQ_LAF    = "b00000101".U(8.W)
+  val IRQ_SAF    = "b00000111".U(8.W)
   
   import npc.core.exu.AluOp._
   import Instructions._
@@ -241,8 +244,6 @@ class WBUSignals extends Bundle{
 }
 
 class Signals extends Bundle{
-	val irq = Output(Bool())
-	val irq_no = Output(UInt(8.W))
   val idu = new IDUSignals
   val exu = new EXUSignals
   val lsu = new LSUSignals
@@ -250,6 +251,8 @@ class Signals extends Bundle{
 }
 
 class ControlIO extends Bundle{
+	val irq = Output(Bool())
+	val irq_no = Output(UInt(8.W))
   val inst = Input(UInt(32.W))
   val signals = new Signals
 }
@@ -275,8 +278,8 @@ class Controller extends Module{
   io.signals.wbu.RegwriteD := controlsignals(11)
   io.signals.wbu.CSRWriteD := controlsignals(12)
 
-  io.signals.irq := controlsignals(13)
-  io.signals.irq_no := controlsignals(14)
+  io.irq := controlsignals(13)
+  io.irq_no := controlsignals(14)
 
   val ebreak = Module(new Ebreak)
   ebreak.io.inst := io.inst

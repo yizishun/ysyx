@@ -3,6 +3,7 @@
 #include "ysyxSoC.h"
 extern char _heap_start;
 int main(const char *args);
+void bootloader();
 
 extern char _pmem_start;
 #define PMEM_SIZE (0xfff)
@@ -25,6 +26,7 @@ void halt(int code) {
 }
 
 void _trm_init() {
+  bootloader();
   int ret = main(mainargs);
   halt(ret);
 }

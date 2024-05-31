@@ -3,7 +3,9 @@ package npc.core
 import chisel3._
 import chisel3.util._
 
-class WbuOutIO extends Bundle{}
+class WbuOutIO extends Bundle{
+
+}
 
 class WbuIO(xlen: Int) extends Bundle{
   val in = Flipped(Decoupled(new LsuOutIO))
@@ -11,10 +13,13 @@ class WbuIO(xlen: Int) extends Bundle{
   //connect to the external "state" elements(i.e.gpr,csr)
   val gpr = Flipped(new gprWriteIO(xlen))
   val csr = Flipped(new csrWriteIO(xlen))
+  val irq = new IrqIO
 }
 
 class WBU(val conf: npc.CoreConfig) extends Module{
   val io = IO(new WbuIO(conf.xlen))
+  val irq = Wire(Bool())
+  irq := io.irq.irqIn.reduce(_ | _) | io.irq.irqOut
 
   val in_ready = RegInit(io.in.ready)
   val out_valid = RegInit(io.out.valid)
@@ -28,6 +33,9 @@ class WBU(val conf: npc.CoreConfig) extends Module{
       s_BeforeFire1   -> Mux(io.in.fire, s_BetweenFire12, s_BeforeFire1),
       s_BetweenFire12 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12)
   ))
+  when(irq){
+    nextState := s_BeforeFire1
+  }
   state := nextState
 
   SetupWBU()
@@ -54,6 +62,8 @@ class WBU(val conf: npc.CoreConfig) extends Module{
 
   //------------------------------------------------------------------------------------------------------
   def SetupWBU():Unit = {
+    val irq = Wire(Bool())
+    irq := io.irq.irqIn.reduce(_ | _) | io.irq.irqOut
   //place mux
     import idu.Control._
     val CSRWriteD_irq = Wire(UInt(2.W))
@@ -65,7 +75,7 @@ class WBU(val conf: npc.CoreConfig) extends Module{
       RCSR -> io.in.bits.crd1
     ))
   
-    CSRWriteD_irq := MuxLookup(io.in.bits.signals.irq, CPC)(Seq(
+    CSRWriteD_irq := MuxLookup(irq, CPC)(Seq(
       false.B -> io.in.bits.signals.wbu.CSRWriteD,
       true.B -> CPC
     ))
@@ -83,5 +93,8 @@ class WBU(val conf: npc.CoreConfig) extends Module{
     //CSR module(external)
     io.csr.waddr := io.in.bits.crw
     io.csr.wen := io.in.bits.signals.wbu.CSRWriteE
+    //WBU(wrapper)
+    io.irq.irqOut := false.B
+    io.irq.irqOutNo := DontCare
   }
 }

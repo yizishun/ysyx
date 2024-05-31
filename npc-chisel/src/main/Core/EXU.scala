@@ -13,7 +13,6 @@ class ExuOutIO extends Bundle{
   val signals = new Bundle{
     val lsu = new idu.LSUSignals
     val wbu = new idu.WBUSignals
-    val irq = Output(Bool())
   }
   val aluresult = Output(UInt(32.W))
   val crd1 = Output(UInt(32.W))
@@ -30,10 +29,13 @@ class ExuIO extends Bundle{
   val in = Flipped(Decoupled(new IduOutIO))
   val out = Decoupled(new ExuOutIO)
   val pc = new ExuPcIO
+  val irq = new IrqIO
 }
 
 class EXU(val conf: npc.CoreConfig) extends Module{
   val io = IO(new ExuIO)
+  val irq = Wire(Bool())
+  irq := io.irq.irqIn.reduce(_ | _) | io.irq.irqOut
 //place modules
   val alu = Module(new exu.Alu(conf.xlen))
   val idupc = Module(new exu.IduPC)
@@ -51,6 +53,9 @@ class EXU(val conf: npc.CoreConfig) extends Module{
       s_BeforeFire1   -> Mux(io.in.fire, s_BetweenFire12, s_BeforeFire1),
       s_BetweenFire12 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12)
   ))
+  when(irq){
+    nextState := s_BeforeFire1
+  }
   state := nextState
 
   SetupEXU()
@@ -111,6 +116,8 @@ class EXU(val conf: npc.CoreConfig) extends Module{
     io.pc.PcPlusRs2 := alu.io.result & (~1.U(32.W))
     io.pc.PCSrc := idupc.io.PCSrc
       //out to LSU
+    io.irq.irqOut := false.B
+    io.irq.irqOutNo := DontCare
     io.out.bits.signals := io.in.bits.signals
     io.out.bits.aluresult := alu.io.result
     io.out.bits.crd1 := io.in.bits.crd1

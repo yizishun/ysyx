@@ -3,6 +3,7 @@ package npc.core
 import chisel3._
 import chisel3.util._
 import npc.bus.AXI4
+import npc.core.idu.Control._
 
 class pcIO extends Bundle{
   val idu = Flipped(new IduPcIO)
@@ -22,11 +23,18 @@ class IfuIO(xlen: Int) extends Bundle{
   val pc = new pcIO
   //Connext to the external imem
   val imem = Flipped(new AXI4)
+  val irq = new IrqIO
 }
 
 
 class IFU(val conf: npc.CoreConfig) extends Module{
   val io = IO(new IfuIO(conf.xlen))
+  val irq = Wire(Bool())
+  val irqR = RegInit(false.B)
+  val irqNoR = RegInit(0.U)
+  io.irq.irqOut := irqR
+  io.irq.irqOutNo := irqNoR
+  irq := io.irq.irqIn.reduce(_ | _) | io.irq.irqOut
   //disable AW W B channel
   io.imem.arid := 0.U
   io.imem.arlen := 0.U
@@ -79,6 +87,9 @@ class IFU(val conf: npc.CoreConfig) extends Module{
       sc_BetweenFire12_1_2 -> Mux(io.imem.rvalid & imem_rready, sc_BetweenFire12_2, sc_BetweenFire12_1_2),
       sc_BetweenFire12_2 -> Mux(io.out.fire, sc_BeforeFire1, sc_BetweenFire12_2)
   ))
+  when(irq){
+    nextStateC := sc_BetweenFire12_1_1
+  }
   stateC := nextStateC
 
   SetupIFU()
@@ -117,6 +128,10 @@ class IFU(val conf: npc.CoreConfig) extends Module{
       //between modules
       in_ready := false.B
       out_valid := io.imem.rvalid & (io.imem.rresp === 0.U)
+      when(io.imem.rvalid & (io.imem.rresp =/= 0.U)){
+        irqR := true.B
+        irqNoR := IRQ_IAF
+      }
       //AXI4-Lite
       imem_arvalid := false.B
       imem_rready := true.B
@@ -138,12 +153,11 @@ class IFU(val conf: npc.CoreConfig) extends Module{
   
 //-----------------------------------------------------------------------------------
   def SetupIFU():Unit = {
-  
+
   //place mux
-    import npc.core.idu.Control._
     val PCSrc = Wire(UInt(3.W))
     val nextpc = Wire(UInt(32.W))
-    PCSrc := MuxLookup(io.pc.idu.irq, PcXXXXXXX)(Seq(
+    PCSrc := MuxLookup(irq, PcXXXXXXX)(Seq(
       false.B -> io.pc.exu.PCSrc,
       true.B -> Mtvec
     ))
@@ -165,9 +179,11 @@ class IFU(val conf: npc.CoreConfig) extends Module{
   
     //Imem module(external)
     imem_araddr := pc.io.pc
-    pc.io.wen := true.B & io.in.valid
+    pc.io.wen := Mux(irq, true.B, io.in.valid)
   
     //IFU module(wrapper)
+    io.irq.irqOut := false.B
+    io.irq.irqOutNo := DontCare
     io.out.bits.PcPlus4 := addpc.io.nextpc
     io.out.bits.pc := pc.io.pc
     io.out.bits.inst := io.imem.rdata
