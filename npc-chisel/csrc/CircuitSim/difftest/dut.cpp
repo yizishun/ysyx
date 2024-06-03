@@ -12,6 +12,7 @@ void (*ref_difftest_memcpy)(paddr_t addr, void *buf, size_t n, bool direction) =
 void (*ref_difftest_regcpy)(void *dut, bool direction) = NULL;
 void (*ref_difftest_exec)(uint64_t n) = NULL;
 void (*ref_difftest_raise_intr)(uint64_t NO) = NULL;
+bool (*ref_difftest_skip)() = NULL;
 
 enum { DIFFTEST_TO_DUT, DIFFTEST_TO_REF };
 
@@ -36,6 +37,8 @@ void init_difftest(char *ref_so_file, long img_size) {
 
   void (*ref_difftest_init)() = (void(*)())dlsym(handle, "difftest_init");
   assert(ref_difftest_init);
+
+  ref_difftest_skip = (bool(*)())dlsym(handle, "difftest_skip");
   #ifdef CONFIG_TRACE
   #ifdef CONFIG_DIFFTEST
   Log("Differential testing: %s", ANSI_FMT("ON", ANSI_FG_GREEN));
@@ -93,6 +96,10 @@ bool static checkregs(struct CPU_state *ref_r){
 
 void difftest_step() {
   if(ref_difftest_memcpy == NULL) return;
+  CPU_state ref_r;
+  ref_difftest_exec(1);
+  ref_difftest_regcpy(&ref_r, DIFFTEST_TO_DUT);
+  is_skip_diff = ref_difftest_skip();
   if(is_skip_diff == true){
     is_skip_diff = false;
     int i;
@@ -107,9 +114,6 @@ void difftest_step() {
     ref_difftest_regcpy(&dut_r, DIFFTEST_TO_REF);
     return;
   }
-  CPU_state ref_r;
-  ref_difftest_exec(1);
-  ref_difftest_regcpy(&ref_r, DIFFTEST_TO_DUT);
 
   if(!checkregs(&ref_r)){
     isa_reg_display();

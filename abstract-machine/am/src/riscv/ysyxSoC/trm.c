@@ -16,8 +16,22 @@ Area heap = RANGE(&_heap_start, PMEM_END);
 #endif
 static const char mainargs[] = MAINARGS;
 
+void init_uart(uint16_t div) {
+  outb(UART_REG_LC, 0b10000011);
+  outb(UART_REG_DL2, (uint8_t)(div >> 8));
+  outb(UART_REG_DL1, (uint8_t)div);
+  outb(UART_REG_LC, 0b00000011);
+}
+
 void putch(char ch) {
-  outb(UART_ADDR, ch);
+  uint8_t lsr;
+  uint8_t tfe;
+  do
+  {
+    lsr = inb(UART_REG_LS);
+    tfe = (lsr >> UART_LS_TFE) & 1;
+  } while (tfe == 0);
+  outb(UART_REG_RB, ch);
 }
 
 void halt(int code) {
@@ -27,6 +41,7 @@ void halt(int code) {
 
 void _trm_init() {
   bootloader();
+  init_uart(300);
   int ret = main(mainargs);
   halt(ret);
 }

@@ -74,3 +74,11 @@ __EXPORT void difftest_init(int port) {
   /* Perform ISA dependent initialization. */
   init_isa();
 }
+
+//addition
+__EXPORT bool difftest_skip() {
+  extern bool skip;
+  bool skip_temp = skip;
+  skip = false;
+  return skip_temp;
+}

@@ -233,21 +233,17 @@ class LSU(val conf: npc.CoreConfig) extends Module{
 //------------------------------------------------------------------------------------------------------
   def SetupLSU():Unit = {
   //place wires
-    val maddr = Wire(UInt(32.W))
     val tempmaddr = Wire(UInt(32.W))
-    val place = Wire(UInt(32.W))
     val dataplace = Wire(UInt(32.W))
     val RealMemWmask = Wire(UInt(8.W))
     val rdplace = Wire(UInt(32.W))
     //some operation before connect to dmem
-  	maddr := io.in.bits.aluresult & (~3.U(32.W))
     tempmaddr := io.in.bits.aluresult & (~7.U(32.W))
-  	place := io.in.bits.aluresult - maddr
     dataplace := io.in.bits.aluresult - tempmaddr
   	RealMemWmask := io.in.bits.signals.lsu.MemWmask << dataplace(2, 0)
     //Dmem module(external)
-    io.dmem.araddr := maddr
-    io.dmem.awaddr := maddr
+    io.dmem.araddr := io.in.bits.aluresult
+    io.dmem.awaddr := io.in.bits.aluresult
     io.dmem.wdata := io.in.bits.rd2 << (dataplace(2, 0) << 3)
     io.dmem.wstrb := RealMemWmask
     //some operation to read data

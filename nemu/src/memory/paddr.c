@@ -18,6 +18,9 @@
 #include <device/mmio.h>
 #include <isa.h>
 
+//difftese
+bool skip = false;
+
 #if   defined(CONFIG_PMEM_MALLOC)
 static uint8_t *pmem = NULL;
 #else // CONFIG_PMEM_GARRAY
@@ -99,6 +102,7 @@ word_t paddr_read(paddr_t addr, int len) {
     if (MTRACE_COND) { log_write("%s\n", mtrace); }
   #endif
   if (likely(in_pmem(addr)) || in_mrom(addr) || in_sram(addr)) return pmem_read(addr, len);
+  if (in_uart(addr)) {skip = true; return 0;}
   IFDEF(CONFIG_DEVICE, return mmio_read(addr, len));
   out_of_bound(addr);
   return 0;
