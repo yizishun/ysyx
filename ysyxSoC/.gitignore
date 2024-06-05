@@ -1,2 +1,5 @@
 build/
 out/
+!src/*/*
+!src/*
+!*.scala

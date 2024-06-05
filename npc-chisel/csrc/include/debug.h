@@ -4,6 +4,7 @@
 #include <common.h>
 #include <stdio.h>
 #include <utils.h>
+#include <circuit.h>
 
 #define Log(format, ...) \
     _Log(ANSI_FMT("[%s:%d %s] " format, ANSI_FG_BLUE) "\n", \
@@ -16,6 +17,8 @@
       extern FILE* log_fp; \
       extern void assert_fail_msg(); \
       assert_fail_msg(); \
+      dump_wave_inc(); \
+      close_wave(); \
       assert(cond); \
     } \
   } while (0)

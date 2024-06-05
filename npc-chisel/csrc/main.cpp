@@ -3,7 +3,6 @@
 #include <utils.h>
 void init_monitor(int, char *[]);
 void sdb_mainloop();
-extern "C" void flash_read(int addr, int *data) { assert(0); }
 
 int main(int argc, char *argv[]){
 	Verilated::commandArgs(argc, argv);

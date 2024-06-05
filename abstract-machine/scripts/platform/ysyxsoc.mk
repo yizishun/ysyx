@@ -14,7 +14,7 @@ CFLAGS    += -fdata-sections -ffunction-sections
 LDFLAGS   += -T $(AM_HOME)/scripts/linkersoc.ld \
 						 --defsym=_pmem_start=0x20000000 --defsym=_entry_offset=0x0 \
 						 --defsym=_sram_start=0x0f000000
-LDFLAGS   += --gc-sections -e _start
+LDFLAGS   += --gc-sections --print-map -e _start
 CFLAGS += -DMAINARGS=\"$(mainargs)\"
 NPCFLAGS += -l $(shell dirname $(IMAGE).bin)/npc_log.txt
 #NPCFLAGS += -e $(IMAGE).elf
