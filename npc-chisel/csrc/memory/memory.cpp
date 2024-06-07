@@ -59,14 +59,14 @@ void init_mem(size_t size){
 	pmem = (uint8_t *)malloc(size * sizeof(uint8_t));
 	memcpy(pmem , img , sizeof(img));
 	if(pmem == NULL){exit(0);}
-	Log("npc physical memory area [%#x, %#lx]",RESET_VECTOR, RESET_VECTOR + size * sizeof(uint8_t));
+	Log("npc physical mrom area [%#x, %#lx]",RESET_VECTOR, RESET_VECTOR + size * sizeof(uint8_t));
 }
 
 void init_flash() {
 	flash = (uint8_t *)malloc(256 * 16 * 16 * 256 * sizeof(uint8_t));
 	if(flash == NULL) assert(0);
-	load(char_test, FLASH_BASE);
 	Log("flash area [%#x, %#x]",FLASH_BASE, FLASH_BASE + FLASH_SIZE);
+	Log("npc physical flash area [%#x, %#x]", FLASH_BASE, FLASH_BASE + FLASH_SIZE);
 }
 
 void record_mem_trace(int rw,paddr_t addr, int len){
@@ -80,6 +80,7 @@ void record_mem_trace(int rw,paddr_t addr, int len){
 
 
 extern "C" void mrom_read(int addr, int *data) {
+	assert(0);
 	int align_addr = addr & (~3);
 	*data = *(int *)guest_to_host(align_addr);
 	record_mem_trace(READ, addr , sizeof(uint32_t));	
@@ -89,6 +90,7 @@ extern "C" void mrom_read(int addr, int *data) {
 extern "C" void flash_read(int addr, int *data) {
 	int align_addr = addr + FLASH_BASE;
 	*data = *(int *)guest_to_host(align_addr);
+	//printf("addr = %#x , data = %#x \n",align_addr, *data);
 	record_mem_trace(READ, addr , sizeof(uint32_t));	
 	return;
 }

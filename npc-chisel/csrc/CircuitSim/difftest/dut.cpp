@@ -50,10 +50,10 @@ void init_difftest(char *ref_so_file, long img_size) {
   #endif
   #endif
   ref_difftest_init();
-  ref_difftest_memcpy(RESET_VECTOR, (void *)guest_to_host(RESET_VECTOR), img_size, DIFFTEST_TO_REF);
+  ref_difftest_memcpy(0x30000000, (void *)guest_to_host(0x30000000), img_size, DIFFTEST_TO_REF);
   //get dut reg into CPU_state struct
   CPU_state dut_r;
-  dut_r.pc = RESET_VECTOR;
+  dut_r.pc = 0x30000000;
   for(int i = 0;i < REGNUM;i++)
     dut_r.gpr[i] = gpr[i];
   for(int i = 0;i < 4;i++)

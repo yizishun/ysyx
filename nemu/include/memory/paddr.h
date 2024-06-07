@@ -25,6 +25,9 @@
 #define MROM_BASE 0x20000000
 #define MROM_SIZE 0xfff 
 
+#define FLASH_BASE 0x30000000
+#define FLASH_SIZE 0x10000000
+
 #define SRAM_BASE 0x0f000000
 #define SRAM_SIZE 0x1fff
 
@@ -42,6 +45,10 @@ static inline bool in_pmem(paddr_t addr) {
 
 static inline bool in_mrom(paddr_t addr) {
   return addr - MROM_BASE < MROM_SIZE;
+}
+
+static inline bool in_flash(paddr_t addr) {
+  return addr - FLASH_BASE < FLASH_SIZE;
 }
 
 static inline bool in_sram(paddr_t addr) {

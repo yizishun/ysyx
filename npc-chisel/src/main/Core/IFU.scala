@@ -186,7 +186,12 @@ class IFU(val conf: npc.CoreConfig) extends Module{
     io.irq.irqOutNo := DontCare
     io.out.bits.PcPlus4 := addpc.io.nextpc
     io.out.bits.pc := pc.io.pc
-    io.out.bits.inst := io.imem.rdata
+    //fit to 64-bit bus
+    val tempmaddr = Wire(UInt(32.W))
+    val dataplace = Wire(UInt(32.W))
+    tempmaddr := imem_araddr & (~7.U(32.W))
+    dataplace := imem_araddr - tempmaddr
+    io.out.bits.inst := io.imem.rdata >> (dataplace(2, 0) << 3)
 
   }
 }

@@ -11,6 +11,6 @@ class pcIO extends Bundle{
 
 class PC extends Module{
   val io = IO(new pcIO)
-  val pcReg = RegEnable(io.nextpc, "h2000_0000".U(32.W), io.wen)
+  val pcReg = RegEnable(io.nextpc, "h3000_0000".U(32.W), io.wen)
   io.pc := pcReg
 }

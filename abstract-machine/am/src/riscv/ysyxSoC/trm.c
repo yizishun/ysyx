@@ -23,6 +23,33 @@ void init_uart(uint16_t div) {
   outb(UART_REG_LC, 0b00000011);
 }
 
+void brandShow(){
+  int i;
+  int index;
+  char buf[10];
+  uint32_t number;
+  uint32_t mvendorid;
+  uint32_t marchid;
+  asm volatile("csrr %0, mvendorid" : "=r"(mvendorid));
+  asm volatile("csrr %0, marchid" : "=r"(marchid));
+  for(i = 3;i >= 0;i--){
+      putch((char)((mvendorid >> i*8) & 0xFF));
+  }
+  putch('\n');
+  number = marchid;
+  index = 0;
+  while (number > 0)
+  {
+    buf[index++] = (number % 10) + '0';
+    number /= 10;
+  }
+  for(i = index - 1;i >= 0;i--){
+    putch(buf[i]);
+  }
+  putch('\n');
+  
+}
+
 void putch(char ch) {
   uint8_t lsr;
   uint8_t tfe;
@@ -42,6 +69,7 @@ void halt(int code) {
 void _trm_init() {
   bootloader();
   init_uart(300);
+  brandShow();
   int ret = main(mainargs);
   halt(ret);
 }
