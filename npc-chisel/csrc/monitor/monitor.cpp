@@ -92,6 +92,8 @@ void init_monitor(int argc, char *argv[]){
 
   init_flash();
 
+  init_psram();
+
   long img_size = load_img();
 
   init_ftrace(elf_file);

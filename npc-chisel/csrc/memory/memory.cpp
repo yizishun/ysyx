@@ -3,6 +3,7 @@
 #include <device.h>
 static uint8_t *pmem = NULL;
 static uint8_t *flash = NULL;
+static uint8_t *psram = NULL;
 char mtrace[128] = {0};
 char *char_test = "/Users/yizishun/ysyx-workbench/char-test.bin";
 #define READ 1
@@ -50,6 +51,8 @@ uint8_t *guest_to_host(uint32_t paddr){
 		return flash + (paddr - FLASH_BASE);
 	else if(in_pmem(paddr))
 		return pmem + (paddr - RESET_VECTOR);
+	else if(in_psram(paddr))
+		return psram + (paddr - PSRAM_BASE);
 	else{
 		panic("%#x is out of bound in npc", paddr);
 	}
@@ -66,7 +69,12 @@ void init_flash() {
 	flash = (uint8_t *)malloc(256 * 16 * 16 * 256 * sizeof(uint8_t));
 	if(flash == NULL) assert(0);
 	Log("flash area [%#x, %#x]",FLASH_BASE, FLASH_BASE + FLASH_SIZE);
-	Log("npc physical flash area [%#x, %#x]", FLASH_BASE, FLASH_BASE + FLASH_SIZE);
+}
+
+void init_psram() {
+	psram = (uint8_t *)malloc(0x20000000 * sizeof(uint8_t));
+	if(psram == NULL) assert(0);
+	Log("psram area [%#x, %#x]",PSRAM_BASE, PSRAM_BASE + PSRAM_SIZE);
 }
 
 void record_mem_trace(int rw,paddr_t addr, int len){
@@ -92,6 +100,22 @@ extern "C" void flash_read(int addr, int *data) {
 	*data = *(int *)guest_to_host(align_addr);
 	//printf("addr = %#x , data = %#x \n",align_addr, *data);
 	record_mem_trace(READ, addr , sizeof(uint32_t));	
+	return;
+}
+
+extern "C" void psram_read(int addr, int *data) {
+	int align_addr = addr + PSRAM_BASE;
+	*data = *(int *)guest_to_host(align_addr);
+	printf("READ  addr = %#x , data = %#x \n",align_addr, *data);
+	record_mem_trace(READ, addr , sizeof(uint32_t));	
+	return;
+}
+
+extern "C" void psram_write(int addr, int wdata) {
+	int align_addr = addr + PSRAM_BASE;
+	printf("WRITE addr = %#x , data = %#x \n",align_addr, wdata);
+	fflush(stdout);
+	*(int *)guest_to_host(align_addr) = wdata;
 	return;
 }
 

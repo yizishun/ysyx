@@ -35,7 +35,6 @@ void brandShow(){
   for(i = 3;i >= 0;i--){
       putch((char)((mvendorid >> i*8) & 0xFF));
   }
-  putch('\n');
   number = marchid;
   index = 0;
   while (number > 0)

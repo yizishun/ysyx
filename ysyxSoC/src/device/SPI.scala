@@ -61,7 +61,7 @@ class APBSPI(address: Seq[AddressSet])(implicit p: Parameters) extends LazyModul
         s_ctrl -> Mux(mspi.io.in.pready, s_ss   , s_ctrl ),
         s_ss   -> Mux(mspi.io.in.pready, s_start, s_ss   ),
         s_start-> Mux(mspi.io.in.pready, s_poll , s_start),
-        s_poll -> Mux(~mspi.io.in.prdata(8) & mspi.io.in.pready, s_get, s_poll),
+        s_poll -> Mux(mspi.io.spi_irq_out, s_get, s_poll),
         s_get  -> Mux(mspi.io.in.pready, s_idle , s_get  ),
         s_idle -> s_tx0
       ))
@@ -81,19 +81,18 @@ class APBSPI(address: Seq[AddressSet])(implicit p: Parameters) extends LazyModul
         s_ctrl  -> "h1000_1010".U,
         s_ss    -> "h1000_1018".U,
         s_start -> "h1000_1010".U,
-        s_poll  -> "h1000_1010".U,
         s_get   -> "h1000_1000".U
       ))
       mspi.io.in.pwdata := MuxLookup(state, 0.U)(Seq(
         s_tx0   -> 0.U,
         s_tx1   -> ((3.U << 24) + (in.paddr & "hff_ffff".U)),
-        s_div   -> 10.U,
-        s_ctrl  -> "b10010001000000".U,
+        s_div   -> 1.U,
+        s_ctrl  -> "b1_1_0_1_0_0_0_1000000".U,
         s_ss    -> 1.U,
-        s_start -> "b10010101000000".U
+        s_start -> "b1_1_0_1_0_1_0_1000000".U
       ))
-      mspi.io.in.psel := in.psel && (state =/= s_idle)
-      mspi.io.in.penable := in.penable && (state =/= s_idle)
+      mspi.io.in.psel := in.psel && (state =/= s_idle) && (state =/= s_poll)
+      mspi.io.in.penable := in.penable && (state =/= s_idle) && (state =/= s_poll)
       mspi.io.in.pwrite := (state === s_tx0) || (state === s_tx1) || (state === s_div) ||
         (state === s_ctrl) || (state === s_ss) || (state === s_start)
       mspi.io.in.pstrb := Mux(mspi.io.in.pwrite, "b1111".U, 0.U)
