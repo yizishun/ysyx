@@ -44,6 +44,7 @@
 module PSRAM_READER (
     input   wire            clk,
     input   wire            rst_n,
+    input   wire            qpi,
     input   wire [23:0]     addr,
     input   wire            rd,
     input   wire [2:0]      size,
@@ -60,7 +61,7 @@ module PSRAM_READER (
     localparam  IDLE = 1'b0,
                 READ = 1'b1;
 
-    wire [7:0]  FINAL_COUNT = 19 + size*2; // was 27: Always read 1 word
+    wire [7:0]  FINAL_COUNT = qpi ? 13 + size*2 : 19 + size*2; // was 21 or 27: Always read 1 word
 
     reg         state, nstate;
     reg [7:0]   counter;
@@ -115,20 +116,42 @@ module PSRAM_READER (
     // Sample with the negedge of sck
     wire[1:0] byte_index = {counter[7:1] - 8'd10}[1:0];
     always @ (posedge clk)
-        if(counter >= 20 && counter <= FINAL_COUNT)
-            if(sck)
-                data[byte_index] <= {data[byte_index][3:0], din}; // Optimize!
+        if(qpi)begin
+            if(counter >= 14 && counter <= FINAL_COUNT)
+                if(sck)
+                    data[byte_index-1] <= {data[byte_index-1][3:0], din}; // Optimize!
+        end
+        else begin
+            if(counter >= 20 && counter <= FINAL_COUNT)
+                if(sck)
+                    data[byte_index] <= {data[byte_index][3:0], din}; // Optimize!
+        end
+    always @(*)begin
+        if(qpi)begin
+            dout     =      (counter == 0)  ?  CMD_EBH[7:4]        :
+                            (counter == 1)  ?  CMD_EBH[3:0]        :
+                            (counter == 2)  ?  saddr[23:20]        :
+                            (counter == 3)  ?  saddr[19:16]        :
+                            (counter == 4)  ?  saddr[15:12]        :
+                            (counter == 5)  ?  saddr[11:8]         :
+                            (counter == 6)  ?  saddr[7:4]          :
+                            (counter == 7)  ?  saddr[3:0]          :
+                            4'h0;
 
-    assign dout     =   (counter < 8)   ?   {3'b0, CMD_EBH[7 - counter]}:
-                        (counter == 8)  ?   saddr[23:20]        :
-                        (counter == 9)  ?   saddr[19:16]        :
-                        (counter == 10) ?   saddr[15:12]        :
-                        (counter == 11) ?   saddr[11:8]         :
-                        (counter == 12) ?   saddr[7:4]          :
-                        (counter == 13) ?   saddr[3:0]          :
-                        4'h0;
+        end
+        else begin
+            dout        =   (counter < 8)   ?   {3'b0, CMD_EBH[7 - counter]}:
+                            (counter == 8)  ?   saddr[23:20]        :
+                            (counter == 9)  ?   saddr[19:16]        :
+                            (counter == 10) ?   saddr[15:12]        :
+                            (counter == 11) ?   saddr[11:8]         :
+                            (counter == 12) ?   saddr[7:4]          :
+                            (counter == 13) ?   saddr[3:0]          :
+                            4'h0;
+        end
+    end
 
-    assign douten   = (counter < 14);
+    assign douten   = qpi? (counter < 8) : (counter < 14);
 
     assign done     = (counter == FINAL_COUNT+1);
 
@@ -145,6 +168,7 @@ endmodule
 module PSRAM_WRITER (
     input   wire            clk,
     input   wire            rst_n,
+    input   wire            qpi,
     input   wire [23:0]     addr,
     input   wire [31: 0]    line,
     input   wire [2:0]      size,
@@ -161,7 +185,7 @@ module PSRAM_WRITER (
     localparam  IDLE = 1'b0,
                 WRITE = 1'b1;
 
-    wire[7:0]        FINAL_COUNT = 13 + size*2;
+    wire[7:0]        FINAL_COUNT = qpi ? 7 + size*2 : 13 + size*2;
 
     reg         state, nstate;
     reg [7:0]   counter;
@@ -212,7 +236,27 @@ module PSRAM_WRITER (
         else if((state == IDLE) && wr)
             saddr <= addr;
 
-    assign dout     =   (counter < 8)   ?   {3'b0, CMD_38H[7 - counter]}:
+    always @(*)begin
+        if(qpi)begin
+             dout     = (counter == 0)  ?   CMD_38H[7:4]        :
+                        (counter == 1)  ?   CMD_38H[3:0]        :
+                        (counter == 2)  ?   saddr[23:20]        :
+                        (counter == 3)  ?   saddr[19:16]        :
+                        (counter == 4)  ?   saddr[15:12]        :
+                        (counter == 5)  ?   saddr[11:8]         :
+                        (counter == 6)  ?   saddr[7:4]          :
+                        (counter == 7)  ?   saddr[3:0]          :
+                        (counter == 8)  ?   line[7:4]           :
+                        (counter == 9)  ?   line[3:0]           :
+                        (counter == 10) ?   line[15:12]         :
+                        (counter == 11) ?   line[11:8]          :
+                        (counter == 12) ?   line[23:20]         :
+                        (counter == 13) ?   line[19:16]         :
+                        (counter == 14) ?   line[31:28]         :
+                        line[27:24];
+        end
+        else begin
+             dout     = (counter < 8)   ?   {3'b0, CMD_38H[7 - counter]}:
                         (counter == 8)  ?   saddr[23:20]        :
                         (counter == 9)  ?   saddr[19:16]        :
                         (counter == 10) ?   saddr[15:12]        :
@@ -227,6 +271,8 @@ module PSRAM_WRITER (
                         (counter == 19) ?   line[19:16]         :
                         (counter == 20) ?   line[31:28]         :
                         line[27:24];
+        end
+    end
 
     assign douten   = (~ce_n);
 

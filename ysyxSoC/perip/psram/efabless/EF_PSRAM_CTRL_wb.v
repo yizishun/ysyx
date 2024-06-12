@@ -32,15 +32,16 @@ module EF_PSRAM_CTRL_wb (
     input   wire        we_i,
 
     // External Interface to Quad I/O
-    output  wire            sck,
-    output  wire            ce_n,
+    output  reg            sck,
+    output  reg            ce_n,
     input   wire [3:0]      din,
-    output  wire [3:0]      dout,
-    output  wire [3:0]      douten
+    output  reg [3:0]      dout,
+    output  reg [3:0]      douten
 );
 
-    localparam  ST_IDLE = 1'b0,
-                ST_WAIT = 1'b1;
+    localparam  ST_IDLE = 2'b00,
+                ST_WAIT = 2'b01,
+                ST_QPI  = 2'b10;
 
     wire        mr_sck;
     wire        mr_ce_n;
@@ -59,6 +60,14 @@ module EF_PSRAM_CTRL_wb (
     wire        mr_done;
     wire        mw_wr;
     wire        mw_done;
+    //QPI mode
+    reg        sck_temp;
+    reg        ce_n_temp;
+    wire        [4:0]FINAL_COUNT = 5'b00111;
+    wire        qpi = 1'b1;
+    wire        qpiDone = (qpiCounter == FINAL_COUNT + 1);
+    reg         [4:0]qpiCounter;
+    wire[7:0]   CMD_35H = 8'h35;
 
     //wire        doe;
 
@@ -69,15 +78,21 @@ module EF_PSRAM_CTRL_wb (
     //wire[3:0]   wb_byte_sel     =   sel_i & {4{wb_we}};
 
     // The FSM
-    reg         state, nstate;
+    reg         [1:0]state, nstate;
     always @ (posedge clk_i or posedge rst_i)
         if(rst_i)
-            state <= ST_IDLE;
+            state <= ST_QPI;
         else
             state <= nstate;
 
     always @* begin
         case(state)
+            ST_QPI  :
+                if(qpiDone)
+                    nstate = ST_IDLE;
+                else
+                    nstate = ST_QPI;
+
             ST_IDLE :
                 if(wb_valid)
                     nstate = ST_WAIT;
@@ -89,7 +104,15 @@ module EF_PSRAM_CTRL_wb (
                     nstate = ST_IDLE;
                 else
                     nstate = ST_WAIT;
+            default : nstate = ST_IDLE;
         endcase
+    end
+    //QPI mode
+    always @(posedge clk_i or posedge rst_i)begin
+        if(rst_i)
+            qpiCounter <= 5'b0;
+        else if(state == ST_QPI & sck & !qpiDone)
+            qpiCounter <= qpiCounter + 1;
     end
 
     wire [2:0]  size =  (sel_i == 4'b0001) ? 1 :
@@ -133,6 +156,7 @@ module EF_PSRAM_CTRL_wb (
     PSRAM_READER MR (
         .clk(clk_i),
         .rst_n(~rst_i),
+        .qpi(qpi),
         .addr({adr_i[23:2],2'b0}),
         .rd(mr_rd),
         //.size(size), Always read a word
@@ -149,6 +173,7 @@ module EF_PSRAM_CTRL_wb (
     PSRAM_WRITER MW (
         .clk(clk_i),
         .rst_n(~rst_i),
+        .qpi(qpi),
         .addr({adr_i[23:0]}),
         .wr(mw_wr),
         .size(size),
@@ -161,10 +186,45 @@ module EF_PSRAM_CTRL_wb (
         .douten(mw_doe)
     );
 
-    assign sck  = wb_we ? mw_sck  : mr_sck;
-    assign ce_n = wb_we ? mw_ce_n : mr_ce_n;
-    assign dout = wb_we ? mw_dout : mr_dout;
-    assign douten  = wb_we ? {4{mw_doe}}  : {4{mr_doe}};
+    always @(*)begin
+       if(state == ST_QPI)begin
+            dout =  (qpiCounter == 0) ? {3'b0, CMD_35H[7]} :
+                    (qpiCounter == 1) ? {3'b0, CMD_35H[6]} :
+                    (qpiCounter == 2) ? {3'b0, CMD_35H[5]} :
+                    (qpiCounter == 3) ? {3'b0, CMD_35H[4]} :
+                    (qpiCounter == 4) ? {3'b0, CMD_35H[3]} :
+                    (qpiCounter == 5) ? {3'b0, CMD_35H[2]} :
+                    (qpiCounter == 6) ? {3'b0, CMD_35H[1]} :
+                    (qpiCounter == 7) ? {3'b0, CMD_35H[0]} :4'h0;
+            douten = {4{qpiCounter < 8}};
+       end 
+       else begin
+            dout = wb_we ? mw_dout : mr_dout;
+            douten  = wb_we ? {4{mw_doe}}  : {4{mr_doe}};
+       end
+    end
+    always @(posedge clk_i or posedge rst_i)begin
+        if(rst_i)
+            ce_n_temp <= 1'b1;
+        else if(state == ST_QPI)
+            ce_n_temp <= 1'b0;
+        else
+            ce_n_temp <= wb_we ? mw_ce_n : mr_ce_n;
+    end
+    assign ce_n = (nstate == ST_QPI) ? ce_n_temp :
+                              wb_we ? mw_ce_n : mr_ce_n;
+    always @(posedge clk_i or posedge rst_i)begin
+        if(rst_i)
+            sck_temp <= 1'b0;
+        else if(state == ST_QPI & !ce_n)begin
+            sck_temp <= ~ sck_temp;
+        end
+        else begin
+            sck_temp  <= wb_we ? mw_sck  : mr_sck;
+        end
+    end
+    assign sck  = (nstate == ST_QPI) ? sck_temp : 
+                              wb_we ? mw_sck  : mr_sck;
 
     assign mw_din = din;
     assign mr_din = din;

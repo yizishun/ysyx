@@ -37,28 +37,37 @@ class psramChisel extends RawModule {
   val io = IO(Flipped(new QSPIIO))
   withClockAndReset((~(io.sck | io.ce_n)).asClock, io.ce_n.asAsyncReset){
     val psramCmd = Module(new psramChisel_cmd)
-    val counter = withClock((~io.sck).asClock){ RegInit(0.U(5.W)) }
+    val counter = withClock((~io.sck).asClock){ RegInit(0.U(5.W)) } //counter is as same as manual
+    val qpi = Reg(Bool())
     val cmd = RegInit(0.U(8.W))
     val addr = RegInit(0.U(24.W))
     val rdata = RegInit(0.U(32.W))
     val wdata = RegInit(0.U(32.W))
     //state transition
-    val s_cmd :: s_addr :: s_wait :: s_rdata_1 :: s_rdata_2 :: s_wdata :: s_err :: s_rfin :: s_wfin ::Nil = Enum(9)
-    val state = RegInit(s_cmd)
-    val nextState = WireDefault(state)
-    nextState := MuxLookup(state, s_cmd)(Seq(
-      s_cmd  -> Mux(counter === 8.U, s_addr, s_cmd),
+    val s_cmd :: s_qcmd :: s_addr :: s_wait :: s_rdata_1 :: s_rdata_2 :: s_wdata :: s_err :: s_rfin :: s_wfin ::Nil = Enum(10)
+    val nextState = Wire(UInt(4.W))
+    val state = withClockAndReset((~io.sck).asClock, io.ce_n.asAsyncReset){Reg(UInt(4.W))}
+    nextState := MuxLookup(Mux(counter === 0.U, Mux(qpi, s_qcmd, cmd), state), s_cmd)(Seq( //state can't reset,borrow a sck to reset
+      s_cmd  -> Mux(counter === 8.U, 
+        Mux(cmd === "h35".U, s_qcmd, s_addr), s_cmd),
+      s_qcmd -> Mux(counter === 2.U, s_addr, s_qcmd),
       s_addr -> 
-        Mux(counter === 14.U, 
+        Mux(counter === Mux(qpi, 8.U, 14.U), 
         Mux(cmd === "hEB".U, s_wait, 
         Mux(cmd === "h38".U, s_wdata, s_err)),s_addr),
-      s_wait -> Mux(counter === 20.U, s_rdata_1, s_wait),
+      s_wait -> Mux(counter === Mux(qpi, 14.U, 20.U), s_rdata_1, s_wait),
       s_rdata_1 -> s_rdata_2,
-      s_rdata_2 -> Mux(counter === 27.U, s_rfin, s_rdata_1),
-      s_wdata -> Mux(counter === 22.U, s_wfin, s_wdata),
+      s_rdata_2 -> Mux(counter === Mux(qpi, 21.U, 27.U), s_rfin, s_rdata_1),
+      s_wdata -> Mux(counter === Mux(qpi, 16.U, 22.U), s_wfin, s_wdata),
+      s_rfin -> Mux(qpi, s_qcmd, s_cmd),
+      s_wfin -> Mux(qpi, s_qcmd, s_cmd)
     ))
+    when(io.ce_n || cmd === "h35".U){
+      nextState := Mux(qpi, s_qcmd, s_cmd) // state can't reset,so reset nextstate
+    }
     state := nextState
-    assert(nextState =/= s_err, "psram: Only support `EB` and `38` command,your command is %d",cmd)
+    assert(nextState =/= s_err, "psram: Only support `EB` , `38` and `35` command,your command is %d",cmd)
+
     //dio logic
     val dout = Wire(UInt(4.W))
     val outEn = Wire(Bool())
@@ -68,14 +77,23 @@ class psramChisel extends RawModule {
     ))
     outEn := (nextState === s_rdata_1) || (nextState === s_rdata_2)
     val di = TriStateInBuf(io.dio, dout, outEn)
+
     //counter plus logic
     counter := counter + 1.U
+
     //cmd logic
     when(nextState === s_cmd && counter <= 6.U){
       cmd := Cat(cmd(6, 0), di(0))
+      //acually cmd is h35 is correct,but sck is disappear at that moment
+      qpi := Mux(qpi, qpi, (cmd === "h1A".U))
     }
+    //QPI mode cmd logic
+    when(nextState === s_qcmd && counter <= 0.U){
+      cmd := Cat(cmd(3, 0), di)
+    }
+    
     //addr logic
-    when(nextState === s_addr && counter <= 12.U){
+    when(nextState === s_addr && counter <= Mux(qpi, 6.U, 12.U)){
       addr := Cat(addr(19, 0), di)
     }
     //get rdata logic
@@ -87,14 +105,14 @@ class psramChisel extends RawModule {
       rdata := rdata << 8
     }
     //wdata logic
-    when(nextState === s_wdata || (counter === 13.U && cmd === "h38".U)){
+    when(nextState === s_wdata || (counter === Mux(qpi, 7.U, 13.U) && cmd === "h38".U)){
       wdata := Cat(wdata(27, 0), di)
     }
     psramCmd.io.clock := io.sck.asClock
     psramCmd.io.cmd := cmd
     psramCmd.io.addr := addr
     psramCmd.io.ren := (nextState === s_wait)
-    psramCmd.io.wen := (nextState === s_wfin) || (counter === 21.U)
+    psramCmd.io.wen := (nextState === s_wfin) || (counter === Mux(qpi, 15.U, 21.U))
     psramCmd.io.wdata := wdata
   }
 }
@@ -117,17 +135,20 @@ class psramChisel_cmd extends BlackBox with HasBlackBoxInline{
   |     input        ren,
   |     input        wen,
   |     input  [31:0]wdata,
-  |     output [31:0]rdata
+  |     output reg[31:0]rdata
   |); 
   |   import "DPI-C" function void psram_read(input int addr, output int data);
   |   import "DPI-C" function void psram_write(input int addr, input int wdata);
-  |   always@(posedge clock)begin
+  |   always@(*)begin
+  |     rdata = 32'h0;
   |     if(cmd == 8'hEB && ren) psram_read(addr, rdata);
-  |     else if(cmd == 8'h38 && wen) psram_write(addr, wdata);
   |     else if((wen | ren) && cmd != 8'hEB && cmd != 8'h38)begin
-  |      $fwrite(32'h80000002, "Assertion failed: Unsupport command `%xh`, only support `EBh` and `38h` command\n", cmd);
+  |      $fwrite(32'h80000002, "Assertion failed: Unsupport command `%xh`, only support `EBh`, `38h` and `35` command\n", cmd);
   |      $fatal;
   |     end
+  |   end
+  |   always@(posedge clock)begin
+  |     if(cmd == 8'h38 && wen) psram_write(addr, wdata);
   |   end
   |endmodule
   """.stripMargin)
