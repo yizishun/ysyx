@@ -91,7 +91,7 @@ class psramChisel extends RawModule {
     when(nextState === s_qcmd && counter <= 0.U){
       cmd := Cat(cmd(3, 0), di)
     }
-    
+
     //addr logic
     when(nextState === s_addr && counter <= Mux(qpi, 6.U, 12.U)){
       addr := Cat(addr(19, 0), di)
@@ -105,14 +105,24 @@ class psramChisel extends RawModule {
       rdata := rdata << 8
     }
     //wdata logic
+    val wdataCounter = RegInit(0.U(4.W))
+    val diExtend = Wire(UInt(32.W))
+    diExtend := di
+    val shiftPositions = VecInit(Seq(4.U, 0.U, 12.U, 8.U, 20.U, 16.U, 28.U, 24.U))
     when(nextState === s_wdata || (counter === Mux(qpi, 7.U, 13.U) && cmd === "h38".U)){
-      wdata := Cat(wdata(27, 0), di)
+      wdata := wdata | (diExtend << shiftPositions(wdataCounter))
+      wdataCounter := wdataCounter + 1.U
     }
+    psramCmd.io.wstrb := MuxLookup(wdataCounter, 0.U)(Seq(
+      2.U -> "b0001".U,
+      4.U -> "b0011".U,
+      8.U -> "b1111".U
+    ))
     psramCmd.io.clock := io.sck.asClock
     psramCmd.io.cmd := cmd
     psramCmd.io.addr := addr
     psramCmd.io.ren := (nextState === s_wait)
-    psramCmd.io.wen := (nextState === s_wfin) || (counter === Mux(qpi, 15.U, 21.U))
+    psramCmd.io.wen := (nextState === s_wfin) || (counter >= Mux(qpi, 8.U, 14.U))
     psramCmd.io.wdata := wdata
   }
 }
@@ -125,6 +135,7 @@ class psramChisel_cmd extends BlackBox with HasBlackBoxInline{
     val ren = Input(Bool())
     val wen = Input(Bool())
     val wdata = Input(UInt(32.W))
+    val wstrb = Input(UInt(32.W))
     val rdata = Output(UInt(32.W))
   })
   setInline("psramChisel_cmd.v",
@@ -135,10 +146,11 @@ class psramChisel_cmd extends BlackBox with HasBlackBoxInline{
   |     input        ren,
   |     input        wen,
   |     input  [31:0]wdata,
+  |     input  [31:0]wstrb,
   |     output reg[31:0]rdata
   |); 
   |   import "DPI-C" function void psram_read(input int addr, output int data);
-  |   import "DPI-C" function void psram_write(input int addr, input int wdata);
+  |   import "DPI-C" function void psram_write(input int addr, input int wdata, input int wstrb);
   |   always@(*)begin
   |     rdata = 32'h0;
   |     if(cmd == 8'hEB && ren) psram_read(addr, rdata);
@@ -148,7 +160,7 @@ class psramChisel_cmd extends BlackBox with HasBlackBoxInline{
   |     end
   |   end
   |   always@(posedge clock)begin
-  |     if(cmd == 8'h38 && wen) psram_write(addr, wdata);
+  |     if(cmd == 8'h38 && wen) psram_write(addr, wdata, wstrb);
   |   end
   |endmodule
   """.stripMargin)

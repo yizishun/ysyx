@@ -19,12 +19,13 @@ module psram_top_apb (
 
   wire [3:0] din, dout, douten;
   wire ack;
+  wire [31:0]in_prdata_t;
   EF_PSRAM_CTRL_wb u0 (
     .clk_i(clock),
     .rst_i(reset),
     .adr_i(in_paddr),
     .dat_i(in_pwdata),
-    .dat_o(in_prdata),
+    .dat_o(in_prdata_t),
     .sel_i(in_pstrb),
     .cyc_i(in_psel),
     .stb_i(in_psel),
@@ -45,5 +46,7 @@ module psram_top_apb (
   assign qspi_dio[2] = douten[2] ? dout[2] : 1'bz;
   assign qspi_dio[3] = douten[3] ? dout[3] : 1'bz;
   assign din = qspi_dio;
+  //assign in_prdata = {in_prdata_t[7:0], in_prdata_t[15:8], in_prdata_t[23:16], in_prdata_t[31:24]};
+  assign in_prdata = in_prdata_t;
 
 endmodule

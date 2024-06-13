@@ -106,16 +106,31 @@ extern "C" void flash_read(int addr, int *data) {
 extern "C" void psram_read(int addr, int *data) {
 	int align_addr = addr + PSRAM_BASE;
 	*data = *(int *)guest_to_host(align_addr);
-	printf("READ  addr = %#x , data = %#x \n",align_addr, *data);
+	//printf("READ  addr = %#x , data = %#x \n",align_addr, *data);
 	record_mem_trace(READ, addr , sizeof(uint32_t));	
 	return;
 }
 
-extern "C" void psram_write(int addr, int wdata) {
+extern "C" void psram_write(int addr, int wdata, int wstrb) {
 	int align_addr = addr + PSRAM_BASE;
-	printf("WRITE addr = %#x , data = %#x \n",align_addr, wdata);
 	fflush(stdout);
-	*(int *)guest_to_host(align_addr) = wdata;
+	switch (wstrb)
+	{
+	case 0b0001:
+		*(uint8_t *)guest_to_host(align_addr) = wdata;
+		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d\n",align_addr, wdata, wstrb);
+		break;
+	case 0b0011:
+		*(uint16_t *)guest_to_host(align_addr) = wdata;
+		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d\n",align_addr, wdata, wstrb);
+		break;
+	case 0b1111:
+		*(uint32_t *)guest_to_host(align_addr) = wdata;
+		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d\n",align_addr, wdata, wstrb);
+		break;
+	default:
+		break;
+	}
 	return;
 }
 

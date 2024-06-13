@@ -158,7 +158,7 @@ module PSRAM_READER (
     generate
         genvar i;
         for(i=0; i<4; i=i+1)
-            assign line[i*8+7: i*8] = data[i];
+            assign line[i*8+7: i*8] = data[3-i];
     endgenerate
 
 
