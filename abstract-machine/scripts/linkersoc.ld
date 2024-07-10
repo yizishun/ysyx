@@ -1,21 +1,44 @@
 ENTRY(_start)
-PHDRS { text PT_LOAD; data PT_LOAD; }
-
-MEMORY {
-  flash : ORIGIN = 0x30000000, LENGTH = 256M
-  psram : ORIGIN = 0x80000000, LENGTH = 521M
+PHDRS 
+{ 
+  text PT_LOAD; 
+  data PT_LOAD; 
+  fsbl PT_LOAD;
+  ssbl PT_LOAD;
 }
 
-SECTIONS {
-  /* _pmem_start and _entry_offset are defined in LDFLAGS */
+MEMORY 
+{
+  flash : ORIGIN = 0x30000000, LENGTH = 16M
+  psram : ORIGIN = 0x80000000, LENGTH = 4M
+  sram : ORIGIN = 0x0f000000, LENGTH = 8K
+}
+
+SECTIONS 
+{
   . = ORIGIN(flash);
-  .text : 
+
+  .text.fsbootloader :
   {
     *(entry)
+    _fsbl = .;
+    *(.text.fsbl)
+    _efsbl = .;
+  } > flash AT >flash : fsbl
+
+  .text.ssbootloader :
+  {
+    _ssbl = .;
+    *(.text.ssbl)
+    _essbl = .;
+  } > psram AT >flash : ssbl
+
+  .text : 
+  {
+    _text = .;
     *(.text*)
     _etext = .;
-  } > flash AT >flash : text
-  etext = .;
+  } > psram AT >flash : text
 
   .rodata : 
   {
@@ -23,9 +46,16 @@ SECTIONS {
     *(.rodata*)
     *(.srodata*)
     _erodata = .;
-  } > flash AT >flash
+  } > psram AT >flash
 
-  .data : 
+  .rela ALIGN(1) :
+  {
+    _rela = .;
+    *(.rela*);
+    _erela = .;
+  }
+
+  .data ALIGN(1) : 
   {
     _data = .;
     *(.data*)
@@ -33,20 +63,20 @@ SECTIONS {
     _edata = .;
   } > psram AT >flash : data
 
-  .bss : 
+  .bss ALIGN(1) : 
   {
-	  _bstart = .;
+    _bstart = .;
     *(.bss*)
     *(.sbss*)
     *(.scommon)
     _bend = .;
   } > psram AT >flash
 
-  _stack_top = ALIGN(0x10);
-  . = _stack_top + 0x80000;
-  _stack_pointer = .;
   end = .;
   _end = .;
   _heap_start = ALIGN(0x10);
   _heap_end = _heap_start + 0x40000;
-}
+  _stack_top = _sram_start;
+  . = _stack_top + _sram_size - 0x100;
+  _stack_pointer = .;
+} 

@@ -3,11 +3,11 @@
 #include "ysyxSoC.h"
 extern char _heap_start;
 int main(const char *args);
-void bootloader();
 
-extern char _pmem_start;
+extern char _psram_start;
+extern char _psram_size;
 #define PMEM_SIZE (0xfff)
-#define PMEM_END  ((uintptr_t)&_pmem_start + PMEM_SIZE)
+#define PMEM_END  ((uintptr_t)&_psram_start + (0x400000))
 #define npc_trap(code) asm volatile("mv a0, %0; ebreak" : :"r"(code))
 
 Area heap = RANGE(&_heap_start, PMEM_END);
@@ -66,8 +66,7 @@ void halt(int code) {
 }
 
 void _trm_init() {
-  bootloader();
-  init_uart(300);
+  init_uart(30);
   brandShow();
   int ret = main(mainargs);
   halt(ret);
