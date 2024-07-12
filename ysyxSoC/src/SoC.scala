@@ -142,7 +142,7 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
 
     val psram = Module(new psramChisel)
     psram.io <> masic.psram
-    val sdram = Module(new sdram)
+    val sdram = Module(new sdramChisel)
     sdram.io <> masic.sdram
 
     val externalPins = IO(new Bundle{

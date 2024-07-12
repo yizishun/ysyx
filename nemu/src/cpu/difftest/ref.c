@@ -69,10 +69,12 @@ __EXPORT void difftest_init(int port) {
   void init_mrom();
   void init_sram();
   void init_flash();
+  void init_sdram();
   init_mem();
   init_mrom();
   init_sram();
   init_flash();
+  init_sdram();
   /* Perform ISA dependent initialization. */
   init_isa();
 }

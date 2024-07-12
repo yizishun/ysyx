@@ -94,6 +94,8 @@ void init_monitor(int argc, char *argv[]){
 
   init_psram();
 
+  init_sdram();
+
   long img_size = load_img();
 
   init_ftrace(elf_file);

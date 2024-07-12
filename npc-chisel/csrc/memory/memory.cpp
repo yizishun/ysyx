@@ -4,6 +4,7 @@
 static uint8_t *pmem = NULL;
 static uint8_t *flash = NULL;
 static uint8_t *psram = NULL;
+static uint8_t *sdram = NULL;
 char mtrace[128] = {0};
 char *char_test = "/Users/yizishun/ysyx-workbench/char-test.bin";
 #define READ 1
@@ -53,6 +54,8 @@ uint8_t *guest_to_host(uint32_t paddr){
 		return pmem + (paddr - RESET_VECTOR);
 	else if(in_psram(paddr))
 		return psram + (paddr - PSRAM_BASE);
+	else if(in_sdram(paddr))
+		return sdram + (paddr - SDRAM_BASE);
 	else{
 		panic("%#x is out of bound in npc", paddr);
 	}
@@ -75,6 +78,12 @@ void init_psram() {
 	psram = (uint8_t *)malloc(0x20000000 * sizeof(uint8_t));
 	if(psram == NULL) assert(0);
 	Log("psram area [%#x, %#x]",PSRAM_BASE, PSRAM_BASE + PSRAM_SIZE);
+}
+
+void init_sdram() {
+	sdram = (uint8_t *)malloc(0x20000000 * sizeof(uint8_t));
+	if(sdram == NULL) assert(0);
+	Log("sdram area [%#x, %#x]",SDRAM_BASE, SDRAM_BASE + SDRAM_SIZE);
 }
 
 void record_mem_trace(int rw,paddr_t addr, int len){
@@ -134,8 +143,38 @@ extern "C" void psram_write(int addr, int wdata, int wstrb) {
 	return;
 }
 
+extern "C" void sdram_read(int ba, int ra, int ca, int *data) {
+	int align_addr = ba * ra * ca + SDRAM_BASE;
+	*data = *(int *)guest_to_host(align_addr);
+	//printf("READ  addr = %#x , data = %#x \n",align_addr, *data);
+	record_mem_trace(READ, align_addr , sizeof(uint32_t));	
+	return;
+}
 
 
+extern "C" void sdram_write(int ba, int ra, int ca, int wdata, int wstrb) {
+	int align_addr = ba * ra * ca + SDRAM_BASE;
+	fflush(stdout);
+	switch (wstrb)
+	{
+	case 0b0001:
+		*(uint8_t *)guest_to_host(align_addr) = wdata;
+		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d\n",align_addr, wdata, wstrb);
+		break;
+	case 0b0011:
+		*(uint16_t *)guest_to_host(align_addr) = wdata;
+		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d\n",align_addr, wdata, wstrb);
+		break;
+	case 0b1111:
+		assert(0);
+		*(uint32_t *)guest_to_host(align_addr) = wdata;
+		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d\n",align_addr, wdata, wstrb);
+		break;
+	default:
+		break;
+	}
+	return;
+}
 
 //static int32_t device_read = 0;
 //static uint64_t timer = 0;

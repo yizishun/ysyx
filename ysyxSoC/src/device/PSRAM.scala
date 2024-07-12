@@ -33,7 +33,8 @@ class psramChisel extends RawModule {
   //because the cmd,addr....reg is regard as wire
   //so I should do something to make bahvior is correct ,even thouth it's logic is incorrect
   //the reason why I do this is maybe verilator is only support two state 
-  //so the code the ysyx'material given has z is not suppoted,so it will cause some UB.
+  //so the code the ysyx'material given has z is not suppoted,so it will cause some UB,
+  //or maybe the clk is not stable.
   val io = IO(Flipped(new QSPIIO))
   withClockAndReset((~(io.sck | io.ce_n)).asClock, io.ce_n.asAsyncReset){
     val psramCmd = Module(new psramChisel_cmd)
