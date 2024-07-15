@@ -1,3 +1,4 @@
+void halt(int code);
 void ssbl(volatile char *src) __attribute__((section(".text.ssbl"), noinline));
 void fsbl() __attribute__((section(".text.fsbl")));
 void _trm_init();

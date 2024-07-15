@@ -9,7 +9,6 @@ import freechips.rocketchip.amba.apb._
 import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.util._
-import freechips.rocketchip.rocket.PRV.U
 
 object sdramCmd{
   val ACTIVE = 3.U
@@ -19,6 +18,7 @@ object sdramCmd{
   val NOP = 7.U
   val LOADMODE = 0.U
   val BURSTTERMINATE = 6.U
+  val AUTOFRESH = 1.U
 }
 
 class SDRAMIO extends Bundle {
@@ -68,43 +68,58 @@ class sdramChisel extends RawModule {
     val colAddr = Reg(Vec(4, UInt(9.W)))
     val mode = RegInit(0.U(13.W))
     val dataI = RegInit(0.U(16.W))
-    val dataO = RegInit(0.U(16.W))
+    val dataO = Wire(UInt(16.W))
+    val dqmask = RegInit(0.U(2.W))
     
-    bankAddr := Mux(cmd === ACTIVE || cmd === READ || cmd === WRITE || cmd === PRECHARGE, io.ba, bankAddr)
-    cmd := Cat(Cat(io.cs, io.ras), Cat(io.cas, io.we))
+    val cmdw = Wire(UInt(4.W))
+    cmdw := Cat(Cat(io.cs, io.ras), Cat(io.cas, io.we))
+    cmd := cmdw
+    dqmask := io.dqm
+    bankAddr := Mux(cmdw === ACTIVE || cmdw === READ || cmdw === WRITE || cmdw === PRECHARGE, io.ba, bankAddr)
     //state
-    val s_idle :: s_read :: s_readWaitCas :: s_write :: s_writeWaitCas :: Nil = Enum(5)
+    val s_idle :: s_read :: s_readWaitCas :: s_write :: Nil = Enum(4)
     val state = RegInit(s_idle)
     val nextState = Wire(UInt(3.W))
     val burstCounter = RegInit(0.U(3.W))
-    val casLantency = RegInit(0.U(3.W))
-    burstCounter := Mux(state === s_idle || state =/= nextState, mode(2, 0), Mux(cmd === BURSTTERMINATE, 0.U, burstCounter - 1.U)) 
-    casLantency := Mux(state === s_readWaitCas || state === s_writeWaitCas, casLantency - 1.U, mode(6, 4))
+    val casLatCounter = RegInit(0.U(3.W))
+    val burstLenth = Wire(UInt(8.W))
+    val casLat = Wire(UInt(3.W))
+    burstLenth := (1.U << mode(2, 0))
+    burstCounter := Mux((nextState === s_read && state === s_readWaitCas) || cmd === WRITE, burstLenth - 1.U, Mux(burstCounter =/= burstLenth && burstCounter =/= 0.U, burstCounter - 1.U, burstLenth))
+    casLat := mode(6, 4)
+    casLatCounter := Mux(cmd === READ && state === s_idle, casLat - 1.U, Mux(casLatCounter =/= casLat && casLatCounter =/= 0.U, casLatCounter - 1.U, casLat))
     state := nextState
     nextState := MuxLookup(state, s_idle)(Seq(
-      s_idle -> Mux(cmd === READ, s_readWaitCas, s_idle),
-      s_readWaitCas -> Mux(casLantency === 0.U, s_read, s_readWaitCas),
-      s_read -> Mux(burstCounter === 0.U, Mux(cmd === WRITE, s_writeWaitCas, s_idle), s_read),
-      s_writeWaitCas -> Mux(casLantency === 0.U, s_write, s_writeWaitCas),
+      s_idle -> Mux(cmd === READ, s_readWaitCas, Mux(cmd === WRITE, s_write, s_idle)),
+      s_readWaitCas -> Mux(casLatCounter === 1.U, s_read, s_readWaitCas),
+      s_read -> Mux(burstCounter === 0.U, Mux(cmd === WRITE, s_write, s_idle), s_read),
       s_write -> Mux(burstCounter === 0.U, Mux(cmd === READ, s_readWaitCas, s_idle), s_write)
     ))
     
+    //dq logic
+    val outEn = Wire(Bool())
+    outEn := (nextState === s_read)
+    dataI := TriStateInBuf(io.dq, dataO, outEn)
     
-    active(bankAddr) := Mux(cmd === ACTIVE, 1.U, Mux(cmd === PRECHARGE, 0.U, active(bankAddr)))
-    rowAddr(bankAddr) := Mux(cmd === ACTIVE, io.a, rowAddr(bankAddr))
-    colAddr(bankAddr) := io.a(8, 0)
-    mode := Mux(cmd === LOADMODE, io.a, mode)
+    when(cmd === ACTIVE) {
+      active := active | (1.U << bankAddr)
+    }.elsewhen(cmd === PRECHARGE) {
+      active := active & ~(1.U << bankAddr)
+    }
+    rowAddr(io.ba) := Mux(cmdw === ACTIVE, io.a, rowAddr(io.ba))
+    colAddr(io.ba) := Mux(cmdw === READ || cmdw === WRITE, io.a(8, 0), colAddr(io.ba))
+    mode := Mux(cmdw === LOADMODE, io.a, mode)
 
-    sdramArray.io.clock := io.clk
+    sdramArray.io.clock := io.clk.asClock
     sdramArray.io.active := active
     sdramArray.io.ba := bankAddr
     sdramArray.io.ra := rowAddr(bankAddr)
-    sdramArray.io.ca := colAddr(bankAddr)
-    sdramArray.io.ren := (state === s_read)
-    sdramArray.io.wen := (state === s_write)
+    sdramArray.io.ca := Mux(burstCounter =/= burstLenth, colAddr(bankAddr) + (burstLenth - burstCounter), colAddr(bankAddr))
+    sdramArray.io.ren := (nextState === s_read)
+    sdramArray.io.wen := (nextState === s_write)
     sdramArray.io.dqwrite := dataI
     dataO := sdramArray.io.dqread
-    sdramArray.io.dqm := io.dqm
+    sdramArray.io.dqm := dqmask
   }
 }
 
@@ -132,26 +147,29 @@ class sdramChisel_array extends BlackBox with HasBlackBoxInline{
  |    input ren,
  |    input [15:0] dqwrite,
  |    input [1:0] dqm,
- |    output [15:0] dqread
+ |    output reg [15:0] dqread
  |);
  |    import "DPI-C" function void sdram_read(input int ba, input int ra, input int ca, output int rdata);
  |    import "DPI-C" function void sdram_write(input int ba, input int ra, input int ca, input int wdata, input int wstrb);
  |    wire [31:0] baddr = {30'b0, ba};
  |    wire [31:0] raddr = {19'b0, ra};
  |    wire [31:0] caddr = {23'b0, ca};
- |    wire [31:0] rdata = {16'b0, dqread};
+ |    reg [31:0] rdata;
  |    wire [31:0] wdata = {16'b0, dqwrite};
- |    wire [31:0] wstrb = {16'b0, 8{dqm[1]}, 8{dqm[0]}};
+ |    wire [31:0] wstrb = {30'b0, ~dqm[1], ~dqm[0]};
  |    always @(*)begin
+ |      rdata = 32'h0;
  |      if(active[ba])begin
  |        if(ren) sdram_read(baddr, raddr, caddr, rdata);
  |      end
+ |      dqread = rdata[15:0];
  |    end
  |    always @(posedge clock)begin
  |      if(active[ba])begin
  |        if(wen) sdram_write(baddr, raddr, caddr, wdata, wstrb);
  |      end
  |    end
+ |endmodule
   """.stripMargin)
 }
 

@@ -39,7 +39,6 @@ void init_difftest(char *ref_so_file, long img_size) {
   assert(ref_difftest_init);
 
   ref_difftest_skip = (bool(*)())dlsym(handle, "difftest_skip");
-  #ifdef CONFIG_TRACE
   #ifdef CONFIG_DIFFTEST
   Log("Differential testing: %s", ANSI_FMT("ON", ANSI_FG_GREEN));
   Log("The result of every instruction will be compared with %s. "
@@ -47,7 +46,6 @@ void init_difftest(char *ref_so_file, long img_size) {
       "If it is not necessary, you can turn it off in menuconfig.", ref_so_file);
   #else
   Log("Differential testing: %s", ANSI_FMT("OFF", ANSI_FG_RED));
-  #endif
   #endif
   ref_difftest_init();
   ref_difftest_memcpy(0x30000000, (void *)guest_to_host(0x30000000), img_size, DIFFTEST_TO_REF);

@@ -10,6 +10,7 @@ import freechips.rocketchip.util._
 import freechips.rocketchip.amba.axi4._
 import freechips.rocketchip.amba.apb._
 import freechips.rocketchip.system.SimAXIMem
+import chisel3.experimental.{Analog, attach}
 
 object AXI4SlaveNodeGenerator {
   def apply(params: Option[MasterPortParams], address: Seq[AddressSet])(implicit valName: ValName) =

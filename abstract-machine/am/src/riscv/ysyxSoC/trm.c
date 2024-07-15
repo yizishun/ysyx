@@ -12,6 +12,7 @@ extern char _psram_size;
 
 Area heap = RANGE(&_heap_start, PMEM_END);
 #ifndef MAINARGS
+//_Static_assert(0 ,"no main");
 #define MAINARGS ""
 #endif
 static const char mainargs[] = MAINARGS;

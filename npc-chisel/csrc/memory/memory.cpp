@@ -144,26 +144,34 @@ extern "C" void psram_write(int addr, int wdata, int wstrb) {
 }
 
 extern "C" void sdram_read(int ba, int ra, int ca, int *data) {
-	int align_addr = ba * ra * ca + SDRAM_BASE;
-	*data = *(int *)guest_to_host(align_addr);
-	//printf("READ  addr = %#x , data = %#x \n",align_addr, *data);
+	int align_addr = (ba * 512 * 2) + (ra * 512 * 2 * 4) + (ca * 2) + SDRAM_BASE;
+	*data = *(uint16_t *)guest_to_host(align_addr);
+	//printf("READ  addr = %#x , data = %#x ",align_addr, *data);
+	//printf("ba = %d, ra = %d, ca = %d\n", ba, ra, ca);
 	record_mem_trace(READ, align_addr , sizeof(uint32_t));	
 	return;
 }
 
 
 extern "C" void sdram_write(int ba, int ra, int ca, int wdata, int wstrb) {
-	int align_addr = ba * ra * ca + SDRAM_BASE;
+	int align_addr = (ba * 512 * 2) + (ra * 512 * 2 * 4) + (ca * 2) + SDRAM_BASE;
 	fflush(stdout);
 	switch (wstrb)
 	{
 	case 0b0001:
 		*(uint8_t *)guest_to_host(align_addr) = wdata;
-		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d\n",align_addr, wdata, wstrb);
+		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d",align_addr, wdata, wstrb);
+		//printf("ba = %d, ra = %d, ca = %d\n", ba, ra, ca);
+		break;
+	case 0b0010:
+		*(uint8_t *)(guest_to_host(align_addr) + 1) = (wdata >> 8);
+		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d",align_addr, wdata >> 8, wstrb);
+		//printf("ba = %d, ra = %d, ca = %d\n", ba, ra, ca);
 		break;
 	case 0b0011:
 		*(uint16_t *)guest_to_host(align_addr) = wdata;
-		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d\n",align_addr, wdata, wstrb);
+		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d",align_addr, wdata, wstrb);
+		//printf("ba = %d, ra = %d, ca = %d\n", ba, ra, ca);
 		break;
 	case 0b1111:
 		assert(0);
@@ -171,6 +179,7 @@ extern "C" void sdram_write(int ba, int ra, int ca, int wdata, int wstrb) {
 		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d\n",align_addr, wdata, wstrb);
 		break;
 	default:
+		//printf("wstrb is %d\n", wstrb);
 		break;
 	}
 	return;

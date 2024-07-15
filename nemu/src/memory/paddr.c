@@ -47,6 +47,7 @@ uint8_t* guest_to_host(paddr_t paddr) {
     ptr = psram + paddr - PSRAM_BASE;
   else if(in_sdram(paddr))
     ptr = sdram + paddr - SDRAM_BASE;
+  else
     out_of_bound(paddr);
   return ptr;
 }
