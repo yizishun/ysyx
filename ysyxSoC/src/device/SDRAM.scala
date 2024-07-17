@@ -2,7 +2,7 @@ package ysyx
 
 import chisel3._
 import chisel3.util._
-import chisel3.experimental.Analog
+import chisel3.experimental.{attach, Analog}
 
 import freechips.rocketchip.amba.axi4._
 import freechips.rocketchip.amba.apb._
@@ -30,8 +30,23 @@ class SDRAMIO extends Bundle {
   val we  = Output(Bool())
   val a   = Output(UInt(13.W))
   val ba  = Output(UInt(2.W))
+  val dqm = Output(UInt(4.W))
+  val dq  = Analog(32.W)
+}
+
+class SDRAMCHIPIO extends Bundle {
+  val clk = Output(Bool())
+  val cke = Output(Bool())
+  val cs  = Output(Bool())
+  val ras = Output(Bool())
+  val cas = Output(Bool())
+  val we  = Output(Bool())
+  val a   = Output(UInt(13.W))
+  val ba  = Output(UInt(2.W))
   val dqm = Output(UInt(2.W))
-  val dq  = Analog(16.W)
+  val dqr = Input(UInt(16.W))
+  val dqw = Output(UInt(16.W))
+  val outEn = Input(Bool())
 }
 
 class sdram_top_axi extends BlackBox {
@@ -58,6 +73,40 @@ class sdram extends BlackBox {
 
 class sdramChisel extends RawModule {
   val io = IO(Flipped(new SDRAMIO))
+  val chip0 = Module(new sdramChip(0))
+  val chip1 = Module(new sdramChip(1))
+
+  val dataI = Wire(UInt(32.W))
+  val dataO = Wire(UInt(32.W))
+  dataO := Cat(chip1.io.dqr, chip0.io.dqr)
+  //dq logic
+  dataI := TriStateInBuf(io.dq, dataO, chip0.io.outEn & chip1.io.outEn)
+
+  chip0.io.clk := io.clk
+  chip0.io.cke := io.cke
+  chip0.io.cs := io.cs
+  chip0.io.ras := io.ras
+  chip0.io.cas := io.cas
+  chip0.io.we := io.we
+  chip0.io.a := io.a
+  chip0.io.ba := io.ba
+  chip0.io.dqm := io.dqm(1, 0)
+  chip0.io.dqw := dataI(15, 0)
+
+  chip1.io.clk := io.clk
+  chip1.io.cke := io.cke
+  chip1.io.cs := io.cs
+  chip1.io.ras := io.ras
+  chip1.io.cas := io.cas
+  chip1.io.we := io.we
+  chip1.io.a := io.a
+  chip1.io.ba := io.ba
+  chip1.io.dqm := io.dqm(3, 2)
+  chip1.io.dqw := dataI(31, 16)
+}
+
+class sdramChip(id : Int) extends RawModule{
+  val io = IO(Flipped(new SDRAMCHIPIO))
   withClockAndReset(io.clk.asClock, (~io.cke).asAsyncReset){
     import sdramCmd._
     val sdramArray = Module(new sdramChisel_array)
@@ -85,7 +134,7 @@ class sdramChisel extends RawModule {
     val burstLenth = Wire(UInt(8.W))
     val casLat = Wire(UInt(3.W))
     burstLenth := (1.U << mode(2, 0))
-    burstCounter := Mux((nextState === s_read && state === s_readWaitCas) || cmd === WRITE, burstLenth - 1.U, Mux(burstCounter =/= burstLenth && burstCounter =/= 0.U, burstCounter - 1.U, burstLenth))
+    burstCounter := Mux(((nextState === s_read && state === s_readWaitCas) || cmd === WRITE) && burstLenth =/= 0.U, burstLenth - 1.U, Mux(burstCounter =/= burstLenth && burstCounter =/= 0.U, burstCounter - 1.U, burstLenth))
     casLat := mode(6, 4)
     casLatCounter := Mux(cmd === READ && state === s_idle, casLat - 1.U, Mux(casLatCounter =/= casLat && casLatCounter =/= 0.U, casLatCounter - 1.U, casLat))
     state := nextState
@@ -97,9 +146,9 @@ class sdramChisel extends RawModule {
     ))
     
     //dq logic
-    val outEn = Wire(Bool())
-    outEn := (nextState === s_read)
-    dataI := TriStateInBuf(io.dq, dataO, outEn)
+    io.outEn := (nextState === s_read)
+    dataI := io.dqw
+    io.dqr := dataO
     
     when(cmd === ACTIVE) {
       active := active | (1.U << bankAddr)
@@ -120,6 +169,7 @@ class sdramChisel extends RawModule {
     sdramArray.io.dqwrite := dataI
     dataO := sdramArray.io.dqread
     sdramArray.io.dqm := dqmask
+    sdramArray.io.id := id.asUInt
   }
 }
 
@@ -135,6 +185,7 @@ class sdramChisel_array extends BlackBox with HasBlackBoxInline{
     val dqwrite = Input(UInt(16.W))
     val dqread = Output(UInt(16.W))
     val dqm = Input(UInt(2.W))
+    val id = Input(UInt(1.W))
   })
   setInline("sdramChisel_array.v", 
   """module sdramChisel_array(
@@ -147,26 +198,28 @@ class sdramChisel_array extends BlackBox with HasBlackBoxInline{
  |    input ren,
  |    input [15:0] dqwrite,
  |    input [1:0] dqm,
+ |    input id,
  |    output reg [15:0] dqread
  |);
- |    import "DPI-C" function void sdram_read(input int ba, input int ra, input int ca, output int rdata);
- |    import "DPI-C" function void sdram_write(input int ba, input int ra, input int ca, input int wdata, input int wstrb);
+ |    import "DPI-C" function void sdram_read(input int id, input int ba, input int ra, input int ca, output int rdata);
+ |    import "DPI-C" function void sdram_write(input int id, input int ba, input int ra, input int ca, input int wdata, input int wstrb);
  |    wire [31:0] baddr = {30'b0, ba};
  |    wire [31:0] raddr = {19'b0, ra};
  |    wire [31:0] caddr = {23'b0, ca};
  |    reg [31:0] rdata;
  |    wire [31:0] wdata = {16'b0, dqwrite};
  |    wire [31:0] wstrb = {30'b0, ~dqm[1], ~dqm[0]};
+ |    wire [31:0] chipid = {31'b0, id};
  |    always @(*)begin
  |      rdata = 32'h0;
  |      if(active[ba])begin
- |        if(ren) sdram_read(baddr, raddr, caddr, rdata);
+ |        if(ren) sdram_read(chipid, baddr, raddr, caddr, rdata);
  |      end
  |      dqread = rdata[15:0];
  |    end
  |    always @(posedge clock)begin
  |      if(active[ba])begin
- |        if(wen) sdram_write(baddr, raddr, caddr, wdata, wstrb);
+ |        if(wen) sdram_write(chipid, baddr, raddr, caddr, wdata, wstrb);
  |      end
  |    end
  |endmodule
