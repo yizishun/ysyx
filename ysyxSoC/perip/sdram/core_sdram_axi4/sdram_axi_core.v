@@ -56,7 +56,7 @@ module sdram_axi_core
     ,output          sdram_cas_o
     ,output          sdram_we_o
     ,output [  3:0]  sdram_dqm_o
-    ,output [ 12:0]  sdram_addr_o
+    ,output [ 13:0]  sdram_addr_o
     ,output [  1:0]  sdram_ba_o
     ,output [ 31:0]  sdram_data_output_o //WRITE
     ,output          sdram_data_out_en_o //WRITE_EN
@@ -68,7 +68,7 @@ module sdram_axi_core
 // Key Params
 //-----------------------------------------------------------------
 parameter SDRAM_MHZ              = 50;
-parameter SDRAM_ADDR_W           = 24;
+parameter SDRAM_ADDR_W           = 25;
 parameter SDRAM_COL_W            = 9;
 parameter SDRAM_READ_LATENCY     = 2;
 
@@ -544,7 +544,7 @@ begin
         else if (refresh_timer_q == 10)
         begin
             command_q <= CMD_LOAD_MODE;
-            addr_q    <= MODE_REG;
+            addr_q    <= {1'b0, MODE_REG};
         end
         // Other cycles during init - just NOP
         else

@@ -28,6 +28,19 @@ class SDRAMIO extends Bundle {
   val ras = Output(Bool())
   val cas = Output(Bool())
   val we  = Output(Bool())
+  val a   = Output(UInt(14.W))
+  val ba  = Output(UInt(2.W))
+  val dqm = Output(UInt(4.W))
+  val dq  = Analog(32.W)
+}
+
+class SDRAMRANKIO extends Bundle {
+  val clk = Output(Bool())
+  val cke = Output(Bool())
+  val cs  = Output(Bool())
+  val ras = Output(Bool())
+  val cas = Output(Bool())
+  val we  = Output(Bool())
   val a   = Output(UInt(13.W))
   val ba  = Output(UInt(2.W))
   val dqm = Output(UInt(4.W))
@@ -71,10 +84,48 @@ class sdram extends BlackBox {
   val io = IO(Flipped(new SDRAMIO))
 }
 
-class sdramChisel extends RawModule {
+class sdramChisel extends RawModule{
   val io = IO(Flipped(new SDRAMIO))
-  val chip0 = Module(new sdramChip(0))
-  val chip1 = Module(new sdramChip(1))
+  val rank0 = Module(new sdramRank(0))
+  val rank1 = Module(new sdramRank(2))
+
+  withClockAndReset(io.clk.asClock, (~io.cke).asAsyncReset){
+    import sdramCmd._
+    val cmdw = Wire(UInt(4.W))
+    cmdw := Cat(Cat(io.cs, io.ras), Cat(io.cas, io.we))
+    val csR = Reg(Bool())
+    val csw = Wire(Bool())
+    csw := Mux(io.a(13), true.B, io.cs)
+    csR := Mux(cmdw === ACTIVE, csw, csR)
+
+    rank0.io.clk := io.clk
+    rank0.io.cke := io.cke
+    rank0.io.cs := Mux(cmdw === ACTIVE, csw, csR)
+    rank0.io.ras := io.ras
+    rank0.io.cas := io.cas
+    rank0.io.we := io.we
+    rank0.io.a := io.a(12, 0)
+    rank0.io.ba := io.ba
+    rank0.io.dqm := io.dqm
+    attach(rank0.io.dq, io.dq)
+  
+    rank1.io.clk := io.clk
+    rank1.io.cke := io.cke
+    rank1.io.cs := Mux(cmdw === LOADMODE, rank0.io.cs, ~rank0.io.cs)
+    rank1.io.ras := io.ras
+    rank1.io.cas := io.cas
+    rank1.io.we := io.we
+    rank1.io.a := io.a(12, 0)
+    rank1.io.ba := io.ba
+    rank1.io.dqm := io.dqm
+    attach(rank1.io.dq, io.dq)
+  }
+}
+
+class sdramRank(id : Int) extends RawModule {
+  val io = IO(Flipped(new SDRAMRANKIO))
+  val chip0 = Module(new sdramChip(0 + id))
+  val chip1 = Module(new sdramChip(1 + id))
 
   val dataI = Wire(UInt(32.W))
   val dataO = Wire(UInt(32.W))
@@ -185,7 +236,7 @@ class sdramChisel_array extends BlackBox with HasBlackBoxInline{
     val dqwrite = Input(UInt(16.W))
     val dqread = Output(UInt(16.W))
     val dqm = Input(UInt(2.W))
-    val id = Input(UInt(1.W))
+    val id = Input(UInt(2.W))
   })
   setInline("sdramChisel_array.v", 
   """module sdramChisel_array(
@@ -198,7 +249,7 @@ class sdramChisel_array extends BlackBox with HasBlackBoxInline{
  |    input ren,
  |    input [15:0] dqwrite,
  |    input [1:0] dqm,
- |    input id,
+ |    input [1:0]id,
  |    output reg [15:0] dqread
  |);
  |    import "DPI-C" function void sdram_read(input int id, input int ba, input int ra, input int ca, output int rdata);
@@ -209,7 +260,7 @@ class sdramChisel_array extends BlackBox with HasBlackBoxInline{
  |    reg [31:0] rdata;
  |    wire [31:0] wdata = {16'b0, dqwrite};
  |    wire [31:0] wstrb = {30'b0, ~dqm[1], ~dqm[0]};
- |    wire [31:0] chipid = {31'b0, id};
+ |    wire [31:0] chipid = {30'b0, id};
  |    always @(*)begin
  |      rdata = 32'h0;
  |      if(active[ba])begin
