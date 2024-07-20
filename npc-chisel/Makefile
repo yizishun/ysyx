@@ -1,5 +1,6 @@
 TOPNAME = ysyxSoCFull
 
+NXDC_FILES = constr/top.nxdc #nvboard pin file
 BUILD_DIR = ./builds
 OBJ_DIR = $(BUILD_DIR)/obj_dir #generated c++ and mk files
 SV_GEN_DIR = $(BUILD_DIR)/sv-gen #generated systemVerilog files
@@ -18,11 +19,21 @@ VERILATOR_FLAGS += -MMD -cc -O3 --x-assign fast --x-initial fast --noassert -j 5
 VERILATOR_FLAGS += --trace
 VERILATOR_FLAGS += --timescale "1ns/1ns" --no-timing
 VERILATOR_FLAGS += $(VERILATOR_INC)
+
+# constraint file
+SRC_AUTO_BIND = $(abspath $(BUILD_DIR)/auto_bind.cpp)
+$(SRC_AUTO_BIND): $(NXDC_FILES)
+	python3 $(NVBOARD_HOME)/scripts/auto_pin_bind.py $^ $@
+
 #source code
 VSRCS = $(shell find $(abspath $(SV_GEN_DIR)) -name "*.v" -or -name "*.sv")
 VSRCS += $(shell find $(abspath $(YSYXSoC)/perip) -name "*.v")
 VSRCS += $(shell find $(abspath $(YSYXSoC)/build) -name "*.v")
 CSRCS = $(shell find $(abspath ./csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
+CSRCS += $(SRC_AUTO_BIND)
+
+# rules for NVBoard
+include $(NVBOARD_HOME)/scripts/nvboard.mk
 
 #mill
 test:
@@ -50,7 +61,7 @@ clean:
 .PHONY: test verilog help reformat checkformat clean
 
 #verilator
-$(BIN): $(VSRCS) $(CSRCS)
+$(BIN): $(VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE)
 	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
 	@echo "$(COLOR_YELLOW)[VERILATE]$(COLOR_NONE) $(notdir $(BUILD_DIR))/$(notdir $(BIN))"
 	@rm -rf $(OBJ_DIR)

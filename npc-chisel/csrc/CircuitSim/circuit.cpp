@@ -34,8 +34,9 @@ void reset(int n) {
 }
 
 void assert_fail_msg() {
-  isa_reg_display();
-  statistic();
+	nvboard_quit();
+	isa_reg_display();
+	statistic();
 }
 
 void record_inst_trace(char *p, uint8_t *inst){
@@ -95,6 +96,7 @@ static void trace_and_difftest(){
 
 /* cpu single cycle in exec */
 static void exec_once(){
+	nvboard_update();
 	single_cycle();
 }
 
@@ -133,6 +135,7 @@ static void statistic() {
 }
 
 extern "C" void npc_trap(){
+	nvboard_quit();
 	dump_wave_inc();
 	close_wave();
 	bool success;

@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <common.h>
+#include <circuit.h>
 static char * img_file = NULL;
 static char *log_file = NULL;
 static char *diff_so_file = NULL;
@@ -107,6 +108,9 @@ void init_monitor(int argc, char *argv[]){
   #ifdef CONFIG_DIFFTEST
   init_difftest(diff_so_file , img_size);
   #endif
+
+  nvboard_bind_all_pins(&cpu);
+  nvboard_init();
 
   welcome();
 }

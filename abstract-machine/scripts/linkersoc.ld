@@ -32,14 +32,14 @@ SECTIONS
     _ssbl = .;
     *(.text.ssbl)
     _essbl = .;
-  } > psram AT >flash : ssbl
+  } > sdram AT >flash : ssbl
 
   .text : 
   {
     _text = .;
     *(.text*)
     _etext = .;
-  } > psram AT >flash : text
+  } > sdram AT >flash : text
 
   .rodata : 
   {
@@ -47,7 +47,7 @@ SECTIONS
     *(.rodata*)
     *(.srodata*)
     _erodata = .;
-  } > psram AT >flash
+  } > sdram AT >flash
 
   .rela ALIGN(1) :
   {
@@ -62,7 +62,7 @@ SECTIONS
     *(.data*)
     *(.sdata*)
     _edata = .;
-  } > psram AT >flash : data
+  } > sdram AT >flash : data
 
   .bss ALIGN(1) : 
   {
@@ -71,7 +71,7 @@ SECTIONS
     *(.sbss*)
     *(.scommon)
     _bend = .;
-  } > psram AT >flash
+  } > sdram AT >flash
 
   end = .;
   _end = .;

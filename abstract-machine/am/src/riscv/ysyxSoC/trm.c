@@ -17,6 +17,10 @@ Area heap = RANGE(&_heap_start, PMEM_END);
 #endif
 static const char mainargs[] = MAINARGS;
 
+volatile uint16_t *led = (uint16_t *)(uintptr_t)0x10002000;
+volatile uint16_t *sw = (uint16_t *)(uintptr_t)0x10002004;
+volatile uint32_t *seg = (uint32_t *)(uintptr_t)0x10002008;
+
 void init_uart(uint16_t div) {
   outb(UART_REG_LC, 0b10000011);
   outb(UART_REG_DL2, (uint8_t)(div >> 8));
@@ -37,6 +41,7 @@ void brandShow(){
       putch((char)((mvendorid >> i*8) & 0xFF));
   }
   number = marchid;
+  *seg = 0x23060171;
   index = 0;
   while (number > 0)
   {
