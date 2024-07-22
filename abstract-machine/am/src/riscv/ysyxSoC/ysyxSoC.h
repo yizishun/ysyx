@@ -20,3 +20,5 @@
 
 #define MROM_ADDR   0x20000000
 #define RTC_ADDR    0x02000000
+
+#define PS2 0x10011000

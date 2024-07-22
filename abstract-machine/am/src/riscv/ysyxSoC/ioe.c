@@ -3,6 +3,7 @@
 #include "ysyxSoC.h"
 
 void __am_timer_init();
+void __am_keymap_init();
 
 void __am_timer_rtc(AM_TIMER_RTC_T *);
 void __am_timer_uptime(AM_TIMER_UPTIME_T *);
@@ -41,6 +42,7 @@ bool ioe_init() {
   for (int i = 0; i < LENGTH(lut); i++)
     if (!lut[i]) lut[i] = fail;
   __am_timer_init();
+  __am_keymap_init();
   return true;
 }
 

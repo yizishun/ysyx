@@ -16,3 +16,6 @@ externalPins_gpio_seg_7 (SEG7A, SEG7B, SEG7C, SEG7D, SEG7E, SEG7F, SEG7G, DEC7P)
 # Uart
 externalPins_uart_tx UART_TX
 externalPins_uart_rx UART_RX
+# ps/2
+externalPins_ps2_clk PS2_CLK
+externalPins_ps2_data PS2_DAT
