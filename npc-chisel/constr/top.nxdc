@@ -13,3 +13,6 @@ externalPins_gpio_seg_4 (SEG4A, SEG4B, SEG4C, SEG4D, SEG4E, SEG4F, SEG4G, DEC4P)
 externalPins_gpio_seg_5 (SEG5A, SEG5B, SEG5C, SEG5D, SEG5E, SEG5F, SEG5G, DEC5P)
 externalPins_gpio_seg_6 (SEG6A, SEG6B, SEG6C, SEG6D, SEG6E, SEG6F, SEG6G, DEC6P)
 externalPins_gpio_seg_7 (SEG7A, SEG7B, SEG7C, SEG7D, SEG7E, SEG7F, SEG7G, DEC7P)
+# Uart
+externalPins_uart_tx UART_TX
+externalPins_uart_rx UART_RX

@@ -2,6 +2,7 @@
 #include <klib-macros.h>
 #include "ysyxSoC.h"
 extern char _heap_start;
+extern char _heap_end;
 int main(const char *args);
 
 extern char _psram_start;
@@ -10,7 +11,7 @@ extern char _psram_size;
 #define PMEM_END  ((uintptr_t)&_psram_start + (0x400000))
 #define npc_trap(code) asm volatile("mv a0, %0; ebreak" : :"r"(code))
 
-Area heap = RANGE(&_heap_start, PMEM_END);
+Area heap = RANGE(&_heap_start, &_heap_end);
 #ifndef MAINARGS
 //_Static_assert(0 ,"no main");
 #define MAINARGS ""
@@ -72,7 +73,7 @@ void halt(int code) {
 }
 
 void _trm_init() {
-  init_uart(30);
+  init_uart(1);
   brandShow();
   int ret = main(mainargs);
   halt(ret);
