@@ -28,14 +28,15 @@ class ps2Chisel extends Module {
   val io = IO(new PS2CtrlIO)
   //with ps2
   val ps2Receiver = Module(new ps2Receive)
-  val fifo = RegInit(0.U(128.W))
-  val ptr = RegInit(0.U(8.W))
-  for(i <- 0 until 7){
-    fifo := fifo.bitSet(ptr+i.U, ps2Receiver.io.data(i).asBool)
+  val fifo = RegInit(VecInit(Seq.fill(16)(0.U(8.W))))
+  val ptr = RegInit(0.U(4.W))
+  val data = RegInit(0.U(8.W))
+  when(ps2Receiver.io.ready){
+    ptr := Mux(ptr <= 14.U, ptr + 1.U, ptr)
+    fifo(ptr) := ps2Receiver.io.data
   }
-  ptr := Mux(ptr <= 120.U, ptr + 8.U, ptr)
-  val data = fifo(7, 0)
-  dontTouch(data)
+  dontTouch(fifo)
+  dontTouch(ptr)
   ps2Receiver.io.clk := clock
   ps2Receiver.io.resetn := reset
   ps2Receiver.io.ps2_clk := io.ps2.clk
@@ -46,10 +47,13 @@ class ps2Chisel extends Module {
   }
   io.in.pready := io.in.penable
   io.in.pslverr := 0.U
-  io.in.prdata := Mux(io.in.psel && io.in.paddr(0) === 0.U && ~io.in.pwrite, data, 0.U)
+  io.in.prdata := Mux(io.in.psel && io.in.paddr(0) === 0.U && ~io.in.pwrite, fifo(0), 0.U)
   when(io.in.pready && io.in.psel){
-    fifo := fifo >> 8
-    ptr := Mux(ptr >= 8.U, ptr - 8.U, ptr)
+    for(i <- 0 until 15){
+      fifo(i) := fifo(i+1)
+    }
+    fifo(15) := 0.U
+    ptr := Mux(ptr >= 1.U, ptr - 1.U, ptr)
   }
 }
 

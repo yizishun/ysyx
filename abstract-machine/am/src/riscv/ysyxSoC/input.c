@@ -21,6 +21,9 @@ void __am_keymap_init() {
 uint16_t getScan(uint16_t scanMid);
 void __am_input_keybrd(AM_INPUT_KEYBRD_T *kbd) {
   uint16_t scanMid = getScan(0);
+  if(scanMid == 0){
+    kbd->keycode = AM_KEY_NONE;
+  }
   if((scanMid >> 9) == 1)
     kbd->keydown = 0;
   scanMid = scanMid & 0x1FF;
@@ -29,7 +32,6 @@ void __am_input_keybrd(AM_INPUT_KEYBRD_T *kbd) {
 
 uint16_t getScan(uint16_t scanMid) {
   uint8_t code = inb(PS2);
-  putch(code);
   switch (code)
   {
   case 0xE0:

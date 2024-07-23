@@ -10,7 +10,7 @@ void __am_timer_uptime(AM_TIMER_UPTIME_T *);
 void __am_input_keybrd(AM_INPUT_KEYBRD_T *);
 
 static void __am_timer_config(AM_TIMER_CONFIG_T *cfg) { cfg->present = true; cfg->has_rtc = true; }
-static void __am_input_config(AM_INPUT_CONFIG_T *cfg) { cfg->present = false;  }
+static void __am_input_config(AM_INPUT_CONFIG_T *cfg) { cfg->present = true;  }
 static void __am_uart_config(AM_UART_CONFIG_T *cfg) { cfg->present = true; }
 static void __am_uart_rx(AM_UART_RX_T *rx) { 
   int lsr, dr;
