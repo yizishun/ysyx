@@ -1,6 +1,6 @@
 #include <am.h>
 #include <klib-macros.h>
-#include "ysyxSoC.h"
+#include "../ysyxSoC.h"
 static int keymap[512] = {};
 
 #define SCANCODE_KEYS(_) \

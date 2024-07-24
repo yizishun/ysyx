@@ -1,5 +1,5 @@
 #include <am.h>
-#include "ysyxSoC.h"
+#include "../ysyxSoC.h"
 
 void __am_timer_init() {
 }

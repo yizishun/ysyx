@@ -36,7 +36,8 @@ module Clint(
     output [3:0]axi_bid,
     input axi_bready
 );
-    import "DPI-C" function void skip();
+    //import "DPI-C" function void skip();
+    parameter ADDR = 32'h02000000;
     assign axi_rlast = 1'b1;
     assign axi_rid = 4'b0000;
     assign axi_bid = 4'b0000;
@@ -109,13 +110,13 @@ module Clint(
                 axi_arready_r <= 1'b0;
                 delayR <= delayR - 1;
                 if(delayR == 0)begin
-                    skip();
-                    if(axi_araddr == 32'ha0000048)begin
+                    //skip();
+                    if(axi_araddr == ADDR)begin
                         axi_rdata <= {{32'b0} , mtime[31:0]};
                         axi_rresp_r <= 2'b00;
                         axi_rvalid_r <= 1'b1;
                     end
-                    else if(axi_araddr == 32'ha000004c)begin
+                    else if(axi_araddr == ADDR+4)begin
                         axi_rdata <= {{32'b0}, mtime[63:32]};
                         axi_rresp_r <= 2'b00;
                         axi_rvalid_r <= 1'b1;
@@ -190,7 +191,7 @@ module Clint(
                 delayW <= delayW - 1;
                 if(delayW == 0)begin
                     axi_bvalid_r <= 1'b1;
-                    skip();
+                    //skip();
                     $error("You cannot write to mtime");
                 end
                 else begin

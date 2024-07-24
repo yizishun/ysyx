@@ -22,3 +22,5 @@
 #define RTC_ADDR    0x02000000
 
 #define PS2 0x10011000
+#define VGA 0x21000000
+#define VGA_SIZE 0x00200000

@@ -19,3 +19,10 @@ externalPins_uart_rx UART_RX
 # ps/2
 externalPins_ps2_clk PS2_CLK
 externalPins_ps2_data PS2_DAT
+# VGA
+externalPins_vga_vsync VGA_VSYNC
+externalPins_vga_hsync VGA_HSYNC
+externalPins_vga_valid VGA_BLANK_N
+externalPins_vga_r (VGA_R7, VGA_R6, VGA_R5, VGA_R4, VGA_R3, VGA_R2, VGA_R1, VGA_R0)
+externalPins_vga_g (VGA_G7, VGA_G6, VGA_G5, VGA_G4, VGA_G3, VGA_G2, VGA_G1, VGA_G0)
+externalPins_vga_b (VGA_B7, VGA_B6, VGA_B5, VGA_B4, VGA_B3, VGA_B2, VGA_B1, VGA_B0)
