@@ -73,7 +73,7 @@ class csr(conf: CoreConfig) extends Module{
   when(io.write.wen & ~(io.read.irq)){
     rf(waddr_in) := io.write.wdata
   }
-  when(io.write.wen & io.read.irq){
+  when(io.read.irq){
     rf(mcauseIn) := io.read.irq_no.asUInt
     rf(mepcIn) := io.write.wdata
   }

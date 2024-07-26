@@ -13,13 +13,14 @@ class WbuIO(xlen: Int) extends Bundle{
   //connect to the external "state" elements(i.e.gpr,csr)
   val gpr = Flipped(new gprWriteIO(xlen))
   val csr = Flipped(new csrWriteIO(xlen))
-  val irq = new IrqIO
+  val statw = Output(new Stat)
+  val statEn = Output(Bool())
+  //read the stat reg
+  val statr = Input(new Stat)
 }
 
 class WBU(val conf: npc.CoreConfig) extends Module{
   val io = IO(new WbuIO(conf.xlen))
-  val irq = Wire(Bool())
-  irq := io.irq.irqIn.reduce(_ | _) | io.irq.irqOut
 
   val in_ready = RegInit(io.in.ready)
   val out_valid = RegInit(io.out.valid)
@@ -33,12 +34,10 @@ class WBU(val conf: npc.CoreConfig) extends Module{
       s_BeforeFire1   -> Mux(io.in.fire, s_BetweenFire12, s_BeforeFire1),
       s_BetweenFire12 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12)
   ))
-  when(irq){
-    nextState := s_BeforeFire1
-  }
   state := nextState
 
   SetupWBU()
+  SetupIRQ()
 
   //default,it will error if no do this
   in_ready := false.B
@@ -62,11 +61,9 @@ class WBU(val conf: npc.CoreConfig) extends Module{
 
   //------------------------------------------------------------------------------------------------------
   def SetupWBU():Unit = {
-    val irq = Wire(Bool())
-    irq := io.irq.irqIn.reduce(_ | _) | io.irq.irqOut
   //place mux
     import idu.Control._
-    val CSRWriteD_irq = Wire(UInt(2.W))
+    val CSRWriteD = Wire(UInt(2.W))
     io.gpr.wdata := MuxLookup(io.in.bits.signals.wbu.RegwriteD, io.in.bits.aluresult)(Seq(
       RAluresult -> io.in.bits.aluresult,
       RImm -> io.in.bits.immext,
@@ -75,12 +72,9 @@ class WBU(val conf: npc.CoreConfig) extends Module{
       RCSR -> io.in.bits.crd1
     ))
   
-    CSRWriteD_irq := MuxLookup(irq, CPC)(Seq(
-      false.B -> io.in.bits.signals.wbu.CSRWriteD,
-      true.B -> CPC
-    ))
+    CSRWriteD := io.in.bits.signals.wbu.CSRWriteD
   
-    io.csr.wdata := MuxLookup(CSRWriteD_irq, io.in.bits.rd1)(Seq(
+    io.csr.wdata := MuxLookup(CSRWriteD, io.in.bits.rd1)(Seq(
       CRD1 -> io.in.bits.rd1,
       CRD1OR -> (io.in.bits.rd1 | io.in.bits.crd1),
       CPC -> io.in.bits.pc
@@ -94,7 +88,13 @@ class WBU(val conf: npc.CoreConfig) extends Module{
     io.csr.waddr := io.in.bits.crw
     io.csr.wen := io.in.bits.signals.wbu.CSRWriteE
     //WBU(wrapper)
-    io.irq.irqOut := false.B
-    io.irq.irqOutNo := DontCare
+  }
+  def SetupIRQ():Unit = {
+    io.statw := io.in.bits.stat
+    io.statEn := (nextState === s_BetweenFire12) || io.statr.stat
+    //mech
+    when(io.statr.stat){
+      io.csr.wdata := io.in.bits.pc
+    }
   }
 }

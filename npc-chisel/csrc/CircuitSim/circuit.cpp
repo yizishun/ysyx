@@ -8,6 +8,7 @@ static void statistic();
 void difftest_step();
 #define MAX_INST_TO_PRINT 10
 uint64_t g_nr_guest_inst = 0;
+uint32_t waveCounter = 0;
 static uint64_t g_timer = 0;
 static bool g_print_step = false;
 word_t pc, snpc, dnpc,inst , prev_pc;
@@ -74,14 +75,14 @@ static void trace_and_difftest(){
   	}
 
 	/* trace(1):instruction trace */
-	char disasm_buf[128] = {0};
-	if(cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__nextStateC == 3){
-		record_inst_trace(disasm_buf,(uint8_t *)&inst);
+	//char disasm_buf[128] = {0};
+	//if(cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__nextStateC == 3){
+		//record_inst_trace(disasm_buf,(uint8_t *)&inst);
 		//print to stdout
-		if(g_print_step) puts(disasm_buf);
+		//if(g_print_step) puts(disasm_buf);
 		//print to log file
-		log_write("%s\n", disasm_buf);
-	}
+		//log_write("%s\n", disasm_buf);
+	//}
 
 	#ifdef CONFIG_FTRACE
 	/* trace(2):function trace*/
@@ -112,15 +113,20 @@ void cpu_exec(uint32_t n){
   		uint64_t timer_end = get_time();
   		g_timer += timer_end - timer_start;
 
-		if(cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__nextStateC == 3)
-			inst = cpu.rootp -> ysyxSoCFull__DOT__flash__DOT__rdata;
+		//if(cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__nextStateC == 3)
+			//inst = cpu.rootp -> ysyxSoCFull__DOT__flash__DOT__rdata;
 		pc = cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
 		dnpc = cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
 		get_reg();
 		g_nr_guest_inst ++;
-		#ifdef CONFIG_TRACE
+		waveCounter ++;
+		if(waveCounter >= 1000000){
+			close_wave();
+			if(remove("builds/waveform.vcd") != 0) assert(0);
+			init_wave();
+			waveCounter = 0;
+		}
 		trace_and_difftest();
-		#endif
 		if(cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__lmrom__DOT___mrom_rdata != 0)
 			n--;
 	}

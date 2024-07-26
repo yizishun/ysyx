@@ -14,6 +14,7 @@ class IfuOutIO extends Bundle{
   val inst = Output(UInt(32.W))
   val PcPlus4 = Output(UInt(32.W))
   val pc = Output(UInt(32.W))
+  val stat = Output(new Stat)
 }
 
 class IfuIO(xlen: Int) extends Bundle{
@@ -23,18 +24,12 @@ class IfuIO(xlen: Int) extends Bundle{
   val pc = new pcIO
   //Connext to the external imem
   val imem = Flipped(new AXI4)
-  val irq = new IrqIO
+  val statr = Input(new Stat)
 }
 
 
 class IFU(val conf: npc.CoreConfig) extends Module{
   val io = IO(new IfuIO(conf.xlen))
-  val irq = Wire(Bool())
-  val irqR = RegInit(false.B)
-  val irqNoR = RegInit(0.U)
-  io.irq.irqOut := irqR
-  io.irq.irqOutNo := irqNoR
-  irq := io.irq.irqIn.reduce(_ | _) | io.irq.irqOut
   //disable AW W B channel
   io.imem.arid := 0.U
   io.imem.arlen := 0.U
@@ -87,20 +82,20 @@ class IFU(val conf: npc.CoreConfig) extends Module{
       sc_BetweenFire12_1_2 -> Mux(io.imem.rvalid & imem_rready, sc_BetweenFire12_2, sc_BetweenFire12_1_2),
       sc_BetweenFire12_2 -> Mux(io.out.fire, sc_BeforeFire1, sc_BetweenFire12_2)
   ))
-  when(irq){
-    nextStateC := sc_BetweenFire12_1_1
-  }
   stateC := nextStateC
+  dontTouch(nextStateC)
 
   SetupIFU()
+  SetupIRQ()
 
+  //handshake
   //output logic
   switch(nextStateC){
     is(sc_BeforeFire1){
       //between modules
       out_valid := false.B
       in_ready := true.B
-      //AXI4-Lite
+      //AXI4
       delay := lfsr
       imem_arvalid := false.B
       imem_rready := false.B
@@ -111,7 +106,7 @@ class IFU(val conf: npc.CoreConfig) extends Module{
       //between modules
       in_ready := false.B
       out_valid := io.imem.rvalid & (io.imem.rresp === 0.U)
-      //AXI4-Lite
+      //AXI4
       when(delay === 0.U){
         imem_arvalid := true.B
         imem_rready := false.B
@@ -128,11 +123,7 @@ class IFU(val conf: npc.CoreConfig) extends Module{
       //between modules
       in_ready := false.B
       out_valid := io.imem.rvalid & (io.imem.rresp === 0.U)
-      when(io.imem.rvalid & (io.imem.rresp =/= 0.U)){
-        irqR := true.B
-        irqNoR := IRQ_IAF
-      }
-      //AXI4-Lite
+      //AXI4
       imem_arvalid := false.B
       imem_rready := true.B
       imem_arsize := 2.U
@@ -142,7 +133,7 @@ class IFU(val conf: npc.CoreConfig) extends Module{
       //between modules
       in_ready := false.B
       out_valid := io.imem.rvalid & (io.imem.rresp === 0.U)
-      //AXI4-Lite
+      //AXI4
       imem_arvalid := false.B
       imem_rready := false.B
       imem_arsize := 2.U
@@ -150,17 +141,14 @@ class IFU(val conf: npc.CoreConfig) extends Module{
     }
   }
 
-  
+  //data path
 //-----------------------------------------------------------------------------------
   def SetupIFU():Unit = {
 
   //place mux
     val PCSrc = Wire(UInt(3.W))
     val nextpc = Wire(UInt(32.W))
-    PCSrc := MuxLookup(irq, PcXXXXXXX)(Seq(
-      false.B -> io.pc.exu.PCSrc,
-      true.B -> Mtvec
-    ))
+    PCSrc := io.pc.exu.PCSrc
   
     nextpc := MuxLookup(PCSrc, addpc.io.nextpc)(Seq(
       PcPlus4 -> addpc.io.nextpc,
@@ -176,14 +164,12 @@ class IFU(val conf: npc.CoreConfig) extends Module{
   
     //PC module
     pc.io.nextpc := nextpc
+    pc.io.wen := io.in.valid
   
     //Imem module(external)
     imem_araddr := pc.io.pc
-    pc.io.wen := Mux(irq, true.B, io.in.valid)
   
     //IFU module(wrapper)
-    io.irq.irqOut := false.B
-    io.irq.irqOutNo := DontCare
     io.out.bits.PcPlus4 := addpc.io.nextpc
     io.out.bits.pc := pc.io.pc
     //fit to 64-bit bus
@@ -191,7 +177,20 @@ class IFU(val conf: npc.CoreConfig) extends Module{
     val dataplace = Wire(UInt(32.W))
     tempmaddr := imem_araddr & (~7.U(32.W))
     dataplace := imem_araddr - tempmaddr
-    io.out.bits.inst := io.imem.rdata >> (dataplace(2, 0) << 3)
+    val inst = Reg(UInt(32.W))
+    inst := Mux(io.in.valid, 0.U, Mux(io.imem.rvalid, io.imem.rdata >> (dataplace(2, 0) << 3), inst)) //correct save and cancel
+    io.out.bits.inst := inst
 
+  }
+  //stat logic
+//-----------------------------------------------------------------------------------
+  def SetupIRQ():Unit = {
+    val hasIrq = (nextStateC === sc_BetweenFire12_1_2) && io.imem.rvalid && (io.imem.rresp =/= 0.U)
+    io.out.bits.stat.stat := Mux(hasIrq, true.B, false.B)
+    io.out.bits.stat.statNum := Mux(hasIrq, IRQ_IAF, 0.U)
+    when(io.statr.stat){
+      pc.io.nextpc := io.pc.idu.mtvec
+      io.out.bits.stat.stat := false.B
+    }
   }
 }

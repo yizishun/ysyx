@@ -18,6 +18,7 @@ class LsuOutIO extends Bundle{
   val MemR = Output(UInt(32.W))
   val rw = Output(UInt(5.W))
 	val crw = Output(UInt(12.W))
+  val stat = Output(new Stat)
 }
 
 class LsuIO(xlen: Int) extends Bundle{
@@ -25,17 +26,10 @@ class LsuIO(xlen: Int) extends Bundle{
   val out = Decoupled(new LsuOutIO)
   //connect to the external "state" elements(i.e.dmem)
   val dmem = Flipped(new AXI4)
-  val irq = new IrqIO
 }
 
 class LSU(val conf: npc.CoreConfig) extends Module{
   val io = IO(new LsuIO(conf.xlen))
-  val irq = Wire(Bool())
-  val irqR = RegInit(false.B)
-  val irqNoR = RegInit(0.U)
-  io.irq.irqOut := irqR
-  io.irq.irqOutNo := irqNoR
-  irq := io.irq.irqIn.reduce(_ | _) | io.irq.irqOut
   io.dmem.arid := 0.U
   io.dmem.arlen := 0.U
   io.dmem.arburst := 0.U
@@ -92,12 +86,10 @@ class LSU(val conf: npc.CoreConfig) extends Module{
       s_BetweenFire12_1_2 -> Mux((io.dmem.rvalid & dmem_rready)|(io.dmem.bvalid & dmem_bready), s_BetweenFire12_2, s_BetweenFire12_1_2),
       s_BetweenFire12_2 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12_2)
   ))
-  when(irq){
-    nextState := s_BeforeFire1
-  }
   state := nextState
 
   SetupLSU()
+  SetupIRQ()
   
   import npc.core.idu.Control._
   //output logic
@@ -175,14 +167,6 @@ class LSU(val conf: npc.CoreConfig) extends Module{
       //between modules
       in_ready := false.B
       out_valid := Mux(isLoad, io.dmem.rvalid & (io.dmem.rresp === 0.U), io.dmem.bvalid & (io.dmem.bresp === 0.U))
-      when(io.dmem.rvalid & (io.dmem.rresp =/= 0.U)){
-        irqR := true.B
-        irqNoR := IRQ_LAF
-      }
-      when(io.dmem.bvalid & (io.dmem.bresp =/= 0.U)){
-        irqR := true.B
-        irqNoR := IRQ_SAF
-      }
       //AXI4-Lite
         //AR
       dmem_arvalid := Mux(isLoad, false.B, false.B)
@@ -249,8 +233,6 @@ class LSU(val conf: npc.CoreConfig) extends Module{
     //some operation to read data
     rdplace := io.dmem.rdata >> (dataplace(2, 0) << 3)
     //LSU module(wrapper)
-    io.irq.irqOut := false.B
-    io.irq.irqOutNo := DontCare
     io.out.bits.signals := io.in.bits.signals
     io.out.bits.rd1 := io.in.bits.rd1
     io.out.bits.aluresult := io.in.bits.aluresult
@@ -276,5 +258,12 @@ class LSU(val conf: npc.CoreConfig) extends Module{
       RHALFWU -> rhalfwu
     )).asUInt
   
+  }
+  def SetupIRQ() :Unit = {
+    import npc.core.idu.Control._
+    val hasLAF = RegEnable(nextState === s_BetweenFire12_1_2 || nextState === s_BetweenFire12, io.dmem.rvalid && (io.dmem.rresp =/= 0.U)) 
+    val hasSAF = RegEnable(nextState === s_BetweenFire12_1_2 || nextState === s_BetweenFire12, io.dmem.bvalid & (io.dmem.bresp =/= 0.U))
+    io.out.bits.stat.stat := Mux(hasSAF || hasLAF, true.B, io.in.bits.stat.stat)
+    io.out.bits.stat.statNum := Mux(hasSAF, IRQ_SAF, Mux(hasLAF, IRQ_LAF, io.in.bits.stat.statNum))
   }
 }

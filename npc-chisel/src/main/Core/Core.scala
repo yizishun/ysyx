@@ -6,11 +6,9 @@ import npc.dev._
 import npc._
 import npc.bus.AXI4
 
-class IrqIO extends Bundle{
-  val irqOut = Output(Bool())
-  val irqOutNo = Output(UInt(8.W))
-  val irqIn = Input(Vec(4, Bool()))
-  val irqInNo = Input(Vec(4, UInt(8.W)))
+class Stat extends Bundle{
+  val stat = Bool()
+  val statNum = UInt(8.W)
 }
 
 class CoreIO(xlen : Int) extends Bundle{
@@ -27,6 +25,7 @@ class Core(val conf : CoreConfig) extends Module {
   val wbu = Module(new WBU(conf))
 
   //"state" elements in npc core
+  val stat = RegEnable(wbu.io.statw, 0.U.asTypeOf(new Stat), wbu.io.statEn)
   val gpr = Module(new gpr(conf))
   val csr = Module(new csr(conf))
 
@@ -47,47 +46,10 @@ class Core(val conf : CoreConfig) extends Module {
   lsu.io.dmem :<>= io.dmem
   wbu.io.gpr :<>= gpr.io.write
   wbu.io.csr :<>= csr.io.write
-  //irq directly connect
-  ifu.io.irq.irqIn(0) := idu.io.irq.irqOut
-  ifu.io.irq.irqIn(1) := exu.io.irq.irqOut
-  ifu.io.irq.irqIn(2) := lsu.io.irq.irqOut
-  ifu.io.irq.irqIn(3) := wbu.io.irq.irqOut
-  ifu.io.irq.irqInNo(0) := idu.io.irq.irqOutNo
-  ifu.io.irq.irqInNo(1) := exu.io.irq.irqOutNo
-  ifu.io.irq.irqInNo(2) := lsu.io.irq.irqOutNo
-  ifu.io.irq.irqInNo(3) := wbu.io.irq.irqOutNo
-  idu.io.irq.irqIn(0) := ifu.io.irq.irqOut
-  idu.io.irq.irqIn(1) := exu.io.irq.irqOut
-  idu.io.irq.irqIn(2) := lsu.io.irq.irqOut
-  idu.io.irq.irqIn(3) := wbu.io.irq.irqOut
-  idu.io.irq.irqInNo(0) := ifu.io.irq.irqOutNo
-  idu.io.irq.irqInNo(1) := exu.io.irq.irqOutNo
-  idu.io.irq.irqInNo(2) := lsu.io.irq.irqOutNo
-  idu.io.irq.irqInNo(3) := wbu.io.irq.irqOutNo
-  exu.io.irq.irqIn(0) := ifu.io.irq.irqOut
-  exu.io.irq.irqIn(1) := idu.io.irq.irqOut
-  exu.io.irq.irqIn(2) := lsu.io.irq.irqOut
-  exu.io.irq.irqIn(3) := wbu.io.irq.irqOut
-  exu.io.irq.irqInNo(0) := ifu.io.irq.irqOutNo
-  exu.io.irq.irqInNo(1) := idu.io.irq.irqOutNo
-  exu.io.irq.irqInNo(2) := lsu.io.irq.irqOutNo
-  exu.io.irq.irqInNo(3) := wbu.io.irq.irqOutNo
-  lsu.io.irq.irqIn(0) := ifu.io.irq.irqOut
-  lsu.io.irq.irqIn(1) := idu.io.irq.irqOut
-  lsu.io.irq.irqIn(2) := exu.io.irq.irqOut
-  lsu.io.irq.irqIn(3) := wbu.io.irq.irqOut
-  lsu.io.irq.irqInNo(0) := ifu.io.irq.irqOutNo
-  lsu.io.irq.irqInNo(1) := idu.io.irq.irqOutNo
-  lsu.io.irq.irqInNo(2) := exu.io.irq.irqOutNo
-  lsu.io.irq.irqInNo(3) := wbu.io.irq.irqOutNo
-  wbu.io.irq.irqIn(0) := ifu.io.irq.irqOut
-  wbu.io.irq.irqIn(1) := idu.io.irq.irqOut
-  wbu.io.irq.irqIn(2) := exu.io.irq.irqOut
-  wbu.io.irq.irqIn(3) := lsu.io.irq.irqOut
-  wbu.io.irq.irqInNo(0) := ifu.io.irq.irqOutNo
-  wbu.io.irq.irqInNo(1) := idu.io.irq.irqOutNo
-  wbu.io.irq.irqInNo(2) := exu.io.irq.irqOutNo
-  wbu.io.irq.irqInNo(3) := lsu.io.irq.irqOutNo
+
+  wbu.io.statr := stat
+  ifu.io.statr := stat
+  idu.io.statr := stat
 }
 
 object StageConnect {

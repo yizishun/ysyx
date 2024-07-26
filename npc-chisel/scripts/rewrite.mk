@@ -8,6 +8,7 @@ CPPFLAGS += $(shell sdl2-config --cflags)
 #CPPFLAGS += -DCONFIG_DIFFTEST
 CPPFLAGS += -DCONFIG_MTRACE
 #CPPFLAGS += -DCONFIG_WAVE
+CPPFLAGS += -DCONFIG_WAVESIZE=200
 LDFLAGS += $(shell llvm-config --ldflags)
 LDFLAGS += $(shell sdl2-config --libs) -lSDL2_image -lSDL2_ttf
 LIBS += $(shell llvm-config --libs) #please make sure you already have llvm-config or in your PATH

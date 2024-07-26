@@ -13,7 +13,7 @@ extern char _psram_size;
 
 Area heap = RANGE(&_heap_start, &_heap_end);
 #ifndef MAINARGS
-//_Static_assert(0 ,"no main");
+_Static_assert(0 ,"no main");
 #define MAINARGS ""
 #endif
 static const char mainargs[] = MAINARGS;
@@ -28,7 +28,7 @@ void init_uart(uint16_t div) {
   outb(UART_REG_DL1, (uint8_t)div);
   outb(UART_REG_LC, 0b00000011);
 }
-
+ 
 void brandShow(){
   int i;
   int index;

@@ -18,6 +18,7 @@ class IduOutIO extends Bundle{
   val immext = Output(UInt(32.W))
 	val rw = Output(UInt(5.W))
 	val crw = Output(UInt(12.W))
+  val stat = Output(new Stat)
 }
 
 class IduIO(xlen: Int) extends Bundle{
@@ -28,13 +29,11 @@ class IduIO(xlen: Int) extends Bundle{
   //connect to the external "state" elements(i.e.gpr,csr,imem)
   val gpr = Flipped(new gprReadIO(xlen))
   val csr = Flipped(new csrReadIO(xlen))
-  val irq = new IrqIO
+  val statr = Input(new Stat)
 }
 
 class IDU(val conf: npc.CoreConfig) extends Module{
   val io = IO(new IduIO(conf.xlen))
-  val irq = Wire(Bool())
-  irq := io.irq.irqIn.reduce(_ | _) | io.irq.irqOut
 //place modules
   val controller = Module(new idu.Controller)
   val imm = Module(new idu.Imm)
@@ -51,12 +50,10 @@ class IDU(val conf: npc.CoreConfig) extends Module{
       s_BeforeFire1   -> Mux(io.in.fire, s_BetweenFire12, s_BeforeFire1),
       s_BetweenFire12 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12)
   ))
-  when(irq){
-    nextState := s_BeforeFire1
-  }
   state := nextState
 
   SetupIDU()
+  SetupIRQ()
 
   //default,it will error if no do this
   in_ready := false.B
@@ -90,14 +87,7 @@ class IDU(val conf: npc.CoreConfig) extends Module{
     io.gpr.raddr2 := io.in.bits.inst(24, 20)
   
     //CSR module(external)
-    io.csr.irq := irq
-    io.csr.irq_no := Mux1H(Seq(
-      io.irq.irqIn(0) -> io.irq.irqInNo(0),
-      io.irq.irqIn(1) -> io.irq.irqInNo(1),
-      io.irq.irqIn(2) -> io.irq.irqInNo(2),
-      io.irq.irqIn(3) -> io.irq.irqInNo(3),
-      io.irq.irqOut -> io.irq.irqOutNo,
-    ))
+    
     io.csr.raddr1 := io.in.bits.inst(31, 20)
   
     //IFU module(wrapper)
@@ -105,8 +95,6 @@ class IDU(val conf: npc.CoreConfig) extends Module{
     io.pc.mepc := io.csr.mepc
     io.pc.mtvec := io.csr.mtvec
       //out to EXU
-    io.irq.irqOut := controller.io.irq
-    io.irq.irqOutNo := controller.io.irq_no
     io.out.bits.signals := controller.io.signals
     io.out.bits.rd1 := io.gpr.rdata1
     io.out.bits.rd2 := io.gpr.rdata2
@@ -116,5 +104,17 @@ class IDU(val conf: npc.CoreConfig) extends Module{
     io.out.bits.immext := imm.io.immext
     io.out.bits.rw := io.in.bits.inst(11, 7)
     io.out.bits.crw := io.in.bits.inst(31, 20)
+  }
+  //irq logic
+  def SetupIRQ(): Unit = {
+    io.out.bits.stat.stat := controller.io.irq
+    io.out.bits.stat.statNum := controller.io.irq_no
+    //mech
+    when(io.statr.stat){
+      state := s_BeforeFire1
+      io.out.bits.stat.stat := false.B
+    }
+    io.csr.irq := io.statr.stat
+    io.csr.irq_no := io.statr.statNum
   }
 }
