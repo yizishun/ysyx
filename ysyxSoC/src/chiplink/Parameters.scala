@@ -31,9 +31,9 @@ case class ChipLinkParams(TLUH: Seq[AddressSet], TLC: Seq[AddressSet], sourceBit
 
   // Protocol supported operations:
   val noXfer = TransferSizes.none
-  val fullXfer = TransferSizes(1, 64) // !!! 4096)
-  val acqXfer = TransferSizes(64, 64)
-  val atomicXfer = TransferSizes(1, 8)
+  val fullXfer = TransferSizes(1, 32) // !!! 4096)
+  val acqXfer = TransferSizes(32, 32)
+  val atomicXfer = TransferSizes(1, 4)
 
 }
 

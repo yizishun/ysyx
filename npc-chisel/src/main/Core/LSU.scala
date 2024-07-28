@@ -219,10 +219,10 @@ class LSU(val conf: npc.CoreConfig) extends Module{
   //place wires
     val tempmaddr = Wire(UInt(32.W))
     val dataplace = Wire(UInt(32.W))
-    val RealMemWmask = Wire(UInt(8.W))
+    val RealMemWmask = Wire(UInt(4.W))
     val rdplace = Wire(UInt(32.W))
     //some operation before connect to dmem
-    tempmaddr := io.in.bits.aluresult & (~7.U(32.W))
+    tempmaddr := io.in.bits.aluresult & (~3.U(32.W))
     dataplace := io.in.bits.aluresult - tempmaddr
   	RealMemWmask := io.in.bits.signals.lsu.MemWmask << dataplace(2, 0)
     //Dmem module(external)

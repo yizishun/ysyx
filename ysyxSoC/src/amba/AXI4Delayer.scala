@@ -12,8 +12,8 @@ import freechips.rocketchip.util._
 class AXI4DelayerIO extends Bundle {
   val clock = Input(Clock())
   val reset = Input(Reset())
-  val in = Flipped(new AXI4Bundle(AXI4BundleParameters(addrBits = 32, dataBits = 64, idBits = 4)))
-  val out = new AXI4Bundle(AXI4BundleParameters(addrBits = 32, dataBits = 64, idBits = 4))
+  val in = Flipped(new AXI4Bundle(AXI4BundleParameters(addrBits = 32, dataBits = 32, idBits = 4)))
+  val out = new AXI4Bundle(AXI4BundleParameters(addrBits = 32, dataBits = 32, idBits = 4))
 }
 
 class axi4_delayer extends BlackBox {

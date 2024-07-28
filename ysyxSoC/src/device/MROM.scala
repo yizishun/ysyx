@@ -30,7 +30,7 @@ class MROMHelper extends BlackBox with HasBlackBoxInline {
 }
 
 class AXI4MROM(address: Seq[AddressSet])(implicit p: Parameters) extends LazyModule {
-  val beatBytes = 8
+  val beatBytes = 4
   val node = AXI4SlaveNode(Seq(AXI4SlavePortParameters(
     Seq(AXI4SlaveParameters(
         address       = address,
@@ -56,9 +56,9 @@ class AXI4MROM(address: Seq[AddressSet])(implicit p: Parameters) extends LazyMod
     mrom.io.raddr := in.ar.bits.addr
     mrom.io.ren := in.ar.fire
     in.ar.ready := (state === stateIdle)
-    assert(!(in.ar.fire && in.ar.bits.size === 3.U), "do not support 8 byte transfter")
+    //assert(!(in.ar.fire && in.ar.bits.size === 3.U), "do not support 8 byte transfter")
 
-    in.r.bits.data := RegEnable(Fill(2, mrom.io.rdata), in.ar.fire)
+    in.r.bits.data := RegEnable(mrom.io.rdata, in.ar.fire)
     in.r.bits.id := RegEnable(in.ar.bits.id, in.ar.fire)
     in.r.bits.resp := 0.U
     in.r.bits.last := true.B

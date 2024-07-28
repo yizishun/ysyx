@@ -10,7 +10,7 @@ import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.util._
 
 object CPUAXI4BundleParameters {
-  def apply() = AXI4BundleParameters(addrBits = 32, dataBits = 64, idBits = ChipLinkParam.idBits)
+  def apply() = AXI4BundleParameters(addrBits = 32, dataBits = 32, idBits = ChipLinkParam.idBits)
 }
 
 class NPC extends BlackBox {

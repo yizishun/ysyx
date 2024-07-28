@@ -1,8 +1,8 @@
 package ysyx
 
 import chisel3._
-import org.chipsalliance.cde.config.Parameters
-import freechips.rocketchip.system.DefaultConfig
+import org.chipsalliance.cde.config.{Parameters, Config}
+import freechips.rocketchip.system._
 import freechips.rocketchip.diplomacy.LazyModule
 
 object Config {
@@ -11,7 +11,7 @@ object Config {
 }
 
 class ysyxSoCTop extends Module {
-  implicit val config: Parameters = new DefaultConfig
+  implicit val config: Parameters = new Config(new Edge32BitConfig ++ new DefaultRV32Config)
 
   val io = IO(new Bundle { })
   val dut = LazyModule(new ysyxSoCFull)

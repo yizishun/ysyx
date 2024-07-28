@@ -14,7 +14,7 @@ class AXI4 extends Bundle{
   val arburst = Input(UInt(2.W))
   val arready = Output(Bool())
   //R
-  val rdata = Output(UInt(64.W))
+  val rdata = Output(UInt(32.W))
   val rresp = Output(UInt(2.W))
   val rvalid = Output(Bool())
   val rlast = Output(Bool())
@@ -29,8 +29,8 @@ class AXI4 extends Bundle{
   val awburst = Input(UInt(2.W))
   val awready = Output(Bool())
   //W
-  val wdata = Input(UInt(64.W))
-  val wstrb = Input(UInt(8.W))
+  val wdata = Input(UInt(32.W))
+  val wstrb = Input(UInt(4.W))
   val wvalid = Input(Bool())
   val wlast = Input(Bool())
   val wready = Output(Bool())

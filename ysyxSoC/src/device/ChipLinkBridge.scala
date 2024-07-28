@@ -27,7 +27,7 @@ object ChipLinkParam {
 class LinkTopBase(implicit p: Parameters) extends LazyModule {
   val mbus = TLXbar()
   val fxbar = TLXbar()
-  val ferr = LazyModule(new TLError(DevNullParams(Seq(AddressSet(0x1000L, 0x1000L - 1)), 64, 64, region = RegionType.TRACKED)))
+  val ferr = LazyModule(new TLError(DevNullParams(Seq(AddressSet(0x1000L, 0x1000L - 1)), 32, 32, region = RegionType.TRACKED)))
 
   val chiplinkParam = ChipLinkParams(
     TLUH = List(ChipLinkParam.mmio),
@@ -56,7 +56,7 @@ class LinkTopBaseImpl[+L <: LinkTopBase](_outer: L) extends LazyModuleImp(_outer
 trait CanHaveAXI4MasterMemPortForLinkTop { this: LinkTopBase =>
   private val portName = "axi4"
   private val device = new MemoryDevice
-  private val cacheBlockBytes = 64
+  private val cacheBlockBytes = 32
   private val idBits = ChipLinkParam.idBits
 
   val axi4MasterMemNode = AXI4SlaveNode(p(ExtMem).map { case MemoryPortParams(memPortParams, nMemoryChannels, _) =>
@@ -134,7 +134,7 @@ trait CanHaveAXI4MasterMMIOPortForLinkTop { this: LinkTopBase =>
   mmioPortParamsOpt.map { params =>
     axi4MasterMMIONode := (AXI4Buffer()
       := AXI4UserYanker()
-      := AXI4Deinterleaver(64 /* blockBytes, literal OK? */)
+      := AXI4Deinterleaver(32 /* blockBytes, literal OK? */)
       := AXI4IdIndexer(ChipLinkParam.idBits)
       := TLToAXI4()) := mbus
   }
@@ -148,11 +148,11 @@ class ChipLinkMaster(implicit p: Parameters) extends LinkTopBase
   with CanHaveAXI4MasterMemPortForLinkTop
 {
   // Dummy manager network
-  val err = LazyModule(new TLError(DevNullParams(Seq(AddressSet(0x1000L, 0x1000L - 1)), 64, 64, region = RegionType.TRACKED)))
+  val err = LazyModule(new TLError(DevNullParams(Seq(AddressSet(0x1000L, 0x1000L - 1)), 32, 32, region = RegionType.TRACKED)))
 
   // Hint & Atomic augment
   mbus := TLAtomicAutomata(passthrough=false) := TLFIFOFixer(TLFIFOFixer.all) := TLHintHandler() := TLWidthWidget(4) := chiplink.node
-  err.node := TLWidthWidget(8) := mbus
+  err.node := TLWidthWidget(4) := mbus
 }
 
 
@@ -165,9 +165,9 @@ class ChipLinkSlave(implicit p: Parameters) extends LinkTopBase
   with CanHaveAXI4SlavePortForLinkTop
 {
   // Dummy manager network
-  val err = LazyModule(new TLError(DevNullParams(Seq(AddressSet(0x1000L, 0x1000L - 1)), 64, 64, region = RegionType.TRACKED)))
+  val err = LazyModule(new TLError(DevNullParams(Seq(AddressSet(0x1000L, 0x1000L - 1)), 32, 32, region = RegionType.TRACKED)))
 
   // Hint & Atomic augment
   mbus := TLAtomicAutomata(passthrough=false) := TLFIFOFixer(TLFIFOFixer.all) := TLHintHandler() := TLWidthWidget(4) := chiplink.node
-  err.node := TLWidthWidget(8) := mbus
+  err.node := TLWidthWidget(4) := mbus
 }

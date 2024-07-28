@@ -175,7 +175,7 @@ class IFU(val conf: npc.CoreConfig) extends Module{
     //fit to 64-bit bus
     val tempmaddr = Wire(UInt(32.W))
     val dataplace = Wire(UInt(32.W))
-    tempmaddr := imem_araddr & (~7.U(32.W))
+    tempmaddr := imem_araddr & (~3.U(32.W))
     dataplace := imem_araddr - tempmaddr
     val inst = Reg(UInt(32.W))
     inst := Mux(io.in.valid, 0.U, Mux(io.imem.rvalid, io.imem.rdata >> (dataplace(2, 0) << 3), inst)) //correct save and cancel

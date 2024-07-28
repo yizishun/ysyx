@@ -19,11 +19,11 @@ case class AXI4ToAPBNode()(implicit valName: ValName) extends MixedAdapterNode(A
     )
   },
   uFn = { sp =>
-    val beatBytes = 8
+    val beatBytes = 4
     AXI4SlavePortParameters(
     slaves = sp.slaves.map { s =>
       val maxXfer = TransferSizes(1, beatBytes)
-      require(beatBytes == 8) // only support 8-byte data AXI
+      require(beatBytes == 4) // only support 8-byte data AXI
       AXI4SlaveParameters(
         address       = s.address,
         resources     = s.resources,
@@ -76,8 +76,8 @@ class AXI4ToAPB(val aFlow: Boolean = true)(implicit p: Parameters) extends LazyM
       out.pwrite  := is_write
       out.paddr   := Mux(is_write, awaddr_reg, araddr_reg)
       out.pprot   := APBParameters.PROT_DEFAULT
-      out.pwdata  := Mux(awaddr_reg(2), wdata_reg(63,32), wdata_reg(31,0))
-      out.pstrb   := Mux(is_write, Mux(awaddr_reg(2), wstrb_reg(7,4), wstrb_reg(3,0)), 0.U)
+      out.pwdata  := wdata_reg
+      out.pstrb   := Mux(is_write, wstrb_reg, 0.U)
 
       ar.ready := accept_read
       w.ready  := accept_write

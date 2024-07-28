@@ -10,7 +10,7 @@ module Clint(
     input [1:0]axi_arburst,
     output axi_arready,
     //R
-    output reg [63:0] axi_rdata,
+    output reg [31:0] axi_rdata,
     output [1:0] axi_rresp,
     output axi_rvalid,
     output axi_rlast,
@@ -25,8 +25,8 @@ module Clint(
     input [1:0]axi_awburst,
     output axi_awready,
     //W
-    input [63:0] axi_wdata,
-    input [7:0] axi_wstrb,
+    input [31:0] axi_wdata,
+    input [3:0] axi_wstrb,
     input axi_wvalid,
     input axi_wlast,
     output axi_wready,
@@ -112,12 +112,12 @@ module Clint(
                 if(delayR == 0)begin
                     //skip();
                     if(axi_araddr == ADDR)begin
-                        axi_rdata <= {{32'b0} , mtime[31:0]};
+                        axi_rdata <= mtime[31:0];
                         axi_rresp_r <= 2'b00;
                         axi_rvalid_r <= 1'b1;
                     end
                     else if(axi_araddr == ADDR+4)begin
-                        axi_rdata <= {{32'b0}, mtime[63:32]};
+                        axi_rdata <= mtime[63:32];
                         axi_rresp_r <= 2'b00;
                         axi_rvalid_r <= 1'b1;
                     end
