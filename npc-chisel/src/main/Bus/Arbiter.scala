@@ -25,7 +25,7 @@ class Arbiter(val coreConfig: CoreConfig) extends Module{
   io.mem.awid := 0.U
   io.mem.awlen := 0.U
   io.mem.awburst := 0.U
-  io.mem.wlast := false.B
+  io.mem.wlast := true.B
 
   //imem reg
   val imem_arready = RegInit(io.imem.arready)
@@ -93,7 +93,7 @@ class Arbiter(val coreConfig: CoreConfig) extends Module{
   nextState := MuxLookup(state, s_select)(Seq(
     s_select -> MuxCase(s_select, Seq(
       (io.imem.arvalid & imem_arready) -> s_worki,
-      ((io.dmem.arvalid & dmem_arready) || (io.dmem.awvalid & dmem_awready & io.dmem.wvalid & dmem_wready)).asBool -> s_workd
+      ((io.dmem.arvalid & dmem_arready) || (io.dmem.awvalid & io.dmem.wvalid & dmem_wready)).asBool -> s_workd
     )),
     s_worki -> Mux(io.mem.rready & io.mem.rvalid, s_worki_1, s_worki),
     s_worki_1 -> Mux(io.imem.rready & io.imem.rvalid, s_select, s_worki_1),
@@ -101,6 +101,7 @@ class Arbiter(val coreConfig: CoreConfig) extends Module{
     s_workd_1 -> Mux((io.dmem.rready & io.dmem.rvalid)|(io.dmem.bready & io.dmem.bvalid), s_select, s_workd_1)
   ))
   state := nextState
+  dontTouch(nextState)
 
   switch(nextState){
     is(s_select){
@@ -220,7 +221,7 @@ def DefaultDmem(): Unit = {
   dmem_rdata := DontCare
   dmem_rresp := 0.U
   dmem_rvalid := false.B
-  dmem_awready := true.B
+  dmem_awready := io.mem.awready
   dmem_wready := true.B
   dmem_bresp := false.B
   dmem_bvalid := false.B

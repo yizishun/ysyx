@@ -109,7 +109,7 @@ void init_monitor(int argc, char *argv[]){
   init_difftest(diff_so_file , img_size);
   #endif
 
-  nvboard_bind_all_pins(&cpu);
+  nvboard_bind_all_pins(cpu);
   nvboard_init();
 
   welcome();

@@ -122,8 +122,8 @@ class Xbar extends Module{
   val state = RegInit(s_select)
   val nextState = WireDefault(s_select)
   nextState := MuxLookup(state, s_select)(Seq(
-    s_select -> Mux((io.arb.awvalid & io.arb.awready)|(io.arb.arvalid & io.arb.arready), Mux(
-      io.arb.awvalid & io.arb.awready, aw, ar
+    s_select -> Mux((io.arb.awvalid)|(io.arb.arvalid & io.arb.arready), Mux(
+      io.arb.awvalid, aw, ar
     ), s_select),
     s_soc -> Mux((io.soc.rready & io.soc.rvalid)|(io.soc.bready & io.soc.bvalid), s_soc_1, s_soc),
     s_soc_1 -> Mux((io.arb.rready & io.arb.rvalid)|(io.arb.bready & io.arb.bvalid), s_select, s_soc_1),
@@ -248,7 +248,7 @@ def DefaultSoc(): Unit = {
   soc_wdata := 0.U
   soc_wstrb := 0.U
   soc_wvalid := false.B
-  soc_wlast := DontCare
+  soc_wlast := true.B
   soc_bready := false.B
 }
 def DefaultClint(): Unit = {
@@ -272,17 +272,17 @@ def DefaultClint(): Unit = {
   clint_bready := false.B
 }
 def DefaultArb(): Unit = {
-  arb_arready := true.B
-  arb_rdata := 0.U
-  arb_rresp := 0.U
-  arb_rvalid := false.B
-  arb_rlast := DontCare
-  arb_rid := 0.U
-  arb_awready := true.B
-  arb_wready := true.B
-  arb_bresp := 0.U
-  arb_bvalid := false.B
-  arb_bid := 0.U
+  arb_arready := io.soc.arready
+  arb_rdata := io.soc.rdata
+  arb_rresp := io.soc.rresp
+  arb_rvalid := io.soc.rvalid
+  arb_rlast := io.soc.rlast
+  arb_rid := io.soc.rid
+  arb_awready := io.soc.awready
+  arb_wready := io.soc.wready
+  arb_bresp := io.soc.bresp
+  arb_bvalid := io.soc.bvalid
+  arb_bid := io.soc.bid
 }
 }
 

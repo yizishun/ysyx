@@ -14,7 +14,7 @@
 #define SDRAM_BASE   0xa0000000
 #define SDRAM_SIZE   0x20000000
 #define REGNUM 32
-extern VysyxSoCFull cpu;
+extern VysyxSoCFull *cpu;
 extern uint32_t gpr[REGNUM];
 extern uint32_t csr[4];
 extern const char *regs[];

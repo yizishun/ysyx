@@ -114,7 +114,7 @@ extern "C" void mrom_read(int addr, int *data) {
 extern "C" void flash_read(int addr, int *data) {
 	int align_addr = addr + FLASH_BASE;
 	*data = *(int *)guest_to_host(align_addr);
-	//printf("addr = %#x , data = %#x \n",align_addr, *data);
+	printf("addr = %#x , data = %#x \n",align_addr, *data);
 	record_mem_trace(READ, addr , sizeof(uint32_t));	
 	return;
 }

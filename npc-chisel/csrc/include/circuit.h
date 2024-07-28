@@ -7,7 +7,7 @@
 #include <VysyxSoCFull__Dpi.h>
 #include <VysyxSoCFull___024root.h>
 #include <common.h>
-extern VysyxSoCFull cpu;
+extern VysyxSoCFull *cpu;
 extern word_t inst,pc;
 extern uint64_t g_nr_guest_inst;
 //circuit

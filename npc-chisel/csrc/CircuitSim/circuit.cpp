@@ -2,7 +2,7 @@
 #include <memory.h>
 #include <common.h>
 #include <ftrace.h>
-VysyxSoCFull cpu;
+VysyxSoCFull *cpu;
 extern "C" void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
 static void statistic();
 void difftest_step();
@@ -15,22 +15,22 @@ word_t pc, snpc, dnpc,inst , prev_pc;
 static uint8_t opcode;
 
 void single_cycle(){  //  0 --> 0 > 1 --> 1 > 0 this is a cycle in cpu  _|-|_|-
-	cpu.clock=1;   //posedge 0->1 refresh sequential logic
-    cpu.eval();  //process 1->1 refresh sequential logic(sim)
+	cpu->clock=1;   //posedge 0->1 refresh sequential logic
+    cpu->eval();  //process 1->1 refresh sequential logic(sim)
 	#ifdef CONFIG_WAVE
 	dump_wave_inc();
 	#endif
-	cpu.clock=0;   //negedge 1->0 no
-    cpu.eval();  //process 0->0 refresh combination logic and make them stable
+	cpu->clock=0;   //negedge 1->0 no
+    cpu->eval();  //process 0->0 refresh combination logic and make them stable
 	#ifdef CONFIG_WAVE
 	dump_wave_inc();
 	#endif
 }
 
 void reset(int n) {
-	cpu.reset = 1;
+	cpu->reset = 1;
  	while (n -- > 0) single_cycle();
-	cpu.reset = 0;
+	cpu->reset = 0;
 	dump_wave_inc();
 }
 
@@ -105,7 +105,7 @@ void cpu_exec(uint32_t n){
 	//max inst to print to stdout
 	g_print_step = (n < MAX_INST_TO_PRINT);
 	while(n > 0){
-		prev_pc = cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
+		prev_pc = cpu->rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
 		snpc = pc + 4;
 
   		uint64_t timer_start = get_time();
@@ -115,8 +115,8 @@ void cpu_exec(uint32_t n){
 
 		//if(cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__nextStateC == 3)
 			//inst = cpu.rootp -> ysyxSoCFull__DOT__flash__DOT__rdata;
-		pc = cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
-		dnpc = cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
+		pc = cpu->rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
+		dnpc = cpu->rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
 		get_reg();
 		g_nr_guest_inst ++;
 		waveCounter ++;
@@ -127,7 +127,7 @@ void cpu_exec(uint32_t n){
 			waveCounter = 0;
 		}
 		trace_and_difftest();
-		if(cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__lmrom__DOT___mrom_rdata != 0)
+		if(cpu->rootp -> ysyxSoCFull__DOT__asic__DOT__lmrom__DOT___mrom_rdata != 0)
 			n--;
 	}
 }

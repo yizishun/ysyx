@@ -36,7 +36,7 @@ class LSU(val conf: npc.CoreConfig) extends Module{
   io.dmem.awid := 0.U
   io.dmem.awlen := 0.U
   io.dmem.awburst := 0.U
-  io.dmem.wlast := false.B
+  io.dmem.wlast := true.B
 
   //Between Modules handshake reg
   val in_ready = RegInit(io.in.ready)
@@ -82,7 +82,7 @@ class LSU(val conf: npc.CoreConfig) extends Module{
   nextState := MuxLookup(state, s_BeforeFire1)(Seq(
       s_BeforeFire1   -> Mux(io.in.fire, Mux(notLS, s_BetweenFire12, s_BetweenFire12_1_1), s_BeforeFire1),
       s_BetweenFire12 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12),
-      s_BetweenFire12_1_1 -> Mux((io.dmem.arvalid & io.dmem.arready)|(io.dmem.awvalid & io.dmem.arready & io.dmem.wvalid & io.dmem.wready),s_BetweenFire12_1_2, s_BetweenFire12_1_1),
+      s_BetweenFire12_1_1 -> Mux((io.dmem.arvalid & io.dmem.arready)|(io.dmem.awvalid & io.dmem.awready & io.dmem.wvalid & io.dmem.wready),s_BetweenFire12_1_2, s_BetweenFire12_1_1),
       s_BetweenFire12_1_2 -> Mux((io.dmem.rvalid & dmem_rready)|(io.dmem.bvalid & dmem_bready), s_BetweenFire12_2, s_BetweenFire12_1_2),
       s_BetweenFire12_2 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12_2)
   ))
