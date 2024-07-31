@@ -9,7 +9,7 @@
 #include <common.h>
 extern VysyxSoCFull *cpu;
 extern word_t inst,pc;
-extern uint64_t g_nr_guest_inst;
+extern uint64_t cycle;
 //circuit
 void single_cycle();
 void cpu_exec(uint32_t n);

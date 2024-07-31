@@ -2,12 +2,14 @@
 #include <memory.h>
 #include <common.h>
 #include <ftrace.h>
+#include <pevent.h>
 VysyxSoCFull *cpu;
 extern "C" void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
 static void statistic();
 void difftest_step();
 #define MAX_INST_TO_PRINT 10
-uint64_t g_nr_guest_inst = 0;
+uint64_t cycle = 0;
+uint64_t instCnt = 0;
 uint32_t waveCounter = 0;
 static uint64_t g_timer = 0;
 static bool g_print_step = false;
@@ -75,14 +77,14 @@ static void trace_and_difftest(){
   	}
 
 	/* trace(1):instruction trace */
-	//char disasm_buf[128] = {0};
-	//if(cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__nextStateC == 3){
-		//record_inst_trace(disasm_buf,(uint8_t *)&inst);
+	char disasm_buf[128] = {0};
+	if(cpu->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__idu__DOT__nextState == 1){
+		record_inst_trace(disasm_buf,(uint8_t *)&inst);
 		//print to stdout
-		//if(g_print_step) puts(disasm_buf);
+		if(g_print_step) puts(disasm_buf);
 		//print to log file
-		//log_write("%s\n", disasm_buf);
-	//}
+		log_write("%s\n", disasm_buf);
+	}
 
 	#ifdef CONFIG_FTRACE
 	/* trace(2):function trace*/
@@ -107,18 +109,21 @@ void cpu_exec(uint32_t n){
 	while(n > 0){
 		prev_pc = cpu->rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
 		snpc = pc + 4;
+		if(cpu->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__idu__DOT__nextState == 1)
+			instCnt ++;
+		cycle ++;
 
   		uint64_t timer_start = get_time();
 		exec_once();
   		uint64_t timer_end = get_time();
   		g_timer += timer_end - timer_start;
 
-		//if(cpu.rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__nextStateC == 3)
-			//inst = cpu.rootp -> ysyxSoCFull__DOT__flash__DOT__rdata;
+		if(cpu->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__inst != 0){
+			inst = cpu->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__inst;
+		}
 		pc = cpu->rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
 		dnpc = cpu->rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
 		get_reg();
-		g_nr_guest_inst ++;
 		waveCounter ++;
 		if(waveCounter >= 1000000){
 			close_wave();
@@ -127,16 +132,26 @@ void cpu_exec(uint32_t n){
 			waveCounter = 0;
 		}
 		trace_and_difftest();
-		if(cpu->rootp -> ysyxSoCFull__DOT__asic__DOT__lmrom__DOT___mrom_rdata != 0)
+		if(cpu->rootp ->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__inst != 0)
 			n--;
 	}
 }
 
 static void statistic() {
-  Log("total cycle = %llu", g_nr_guest_inst);
-  Log("host time spent = %llu us", g_timer);
-  Log("1 clock = %lf us",(double)g_timer/ (double)g_nr_guest_inst);
-  if (g_timer > 0) Log("simulation frequency = %llu inst/s", g_nr_guest_inst * 1000000 / g_timer);
+  Log("total cycle      = %llu", cycle);
+  Log("total inst       = %llu", instCnt);
+  Log("IPC              = %lf", (double)instCnt / (double)cycle);
+  Log("CPI              = %lf", (double)cycle / (double)instCnt);
+  Log("IFUGetInst Event = %llu", cnt_IFUGetInst);
+  Log("LSUGetData Event = %llu", cnt_LSUGetData);
+  Log("EXUFinCal  Event = %llu", cnt_EXUFinCal);
+  Log("Jump             = %llu", cnt_DECisJump);
+  Log("Store            = %llu", cnt_DECisStore);
+  Log("Load             = %llu", cnt_DECisLoad);
+  Log("Cal              = %llu", cnt_DECisCal);
+  Log("Csr              = %llu", cnt_DECisCsr);
+  Log("host time spent  = %llu us", g_timer);
+  if (g_timer > 0) Log("simulation frequency = %llu inst/s", cycle * 1000000 / g_timer);
   else Log("Finish running in less than 1 us and can not calculate the simulation frequency");
 }
 

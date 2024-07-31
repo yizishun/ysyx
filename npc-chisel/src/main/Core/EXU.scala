@@ -2,6 +2,7 @@ package npc.core
 
 import chisel3._
 import chisel3.util._
+import npc._
 
 class ExuPcIO extends Bundle{
   val PcPlusImm = Output(UInt(32.W))
@@ -46,12 +47,15 @@ class EXU(val conf: npc.CoreConfig) extends Module{
 
   val s_BeforeFire1 :: s_BetweenFire12 :: Nil = Enum(2)
   val state = RegInit(s_BeforeFire1)
-  val nextState = WireDefault(state)
+  val nextState = Wire(UInt(1.W))
   nextState := MuxLookup(state, s_BeforeFire1)(Seq(
       s_BeforeFire1   -> Mux(io.in.fire, s_BetweenFire12, s_BeforeFire1),
       s_BetweenFire12 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12)
   ))
   state := nextState
+  dontTouch(nextState)
+  import npc.EVENT._
+  PerformanceProbe(clock, EXUFinCal, nextState, 0.U)
 
   SetupEXU()
   SetupIRQ()

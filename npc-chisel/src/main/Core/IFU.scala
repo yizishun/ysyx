@@ -2,6 +2,7 @@ package npc.core
 
 import chisel3._
 import chisel3.util._
+import npc._
 import npc.bus.AXI4
 import npc.core.idu.Control._
 
@@ -87,6 +88,9 @@ class IFU(val conf: npc.CoreConfig) extends Module{
 
   SetupIFU()
   SetupIRQ()
+
+  import npc.EVENT._
+  PerformanceProbe(clock, IFUGetInst, (io.imem.rvalid & imem_rready).asUInt, 0.U)
 
   //handshake
   //output logic

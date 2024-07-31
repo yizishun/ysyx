@@ -2,6 +2,7 @@ package npc.core
 
 import chisel3._
 import chisel3.util._
+import npc._
 
 class IduPcIO extends Bundle{
   val mepc = Output(UInt(32.W))
@@ -54,7 +55,7 @@ class IDU(val conf: npc.CoreConfig) extends Module{
 
   SetupIDU()
   SetupIRQ()
-
+  Strob()
   //default,it will error if no do this
   in_ready := false.B
   out_valid := false.B
@@ -116,5 +117,22 @@ class IDU(val conf: npc.CoreConfig) extends Module{
     }
     io.csr.irq := io.statr.stat
     io.csr.irq_no := io.statr.statNum
+  }
+  def Strob(): Unit = {
+    import idu.Control._
+    import npc.core.exu.AluOp._
+    import npc.EVENT._
+    val isJump = (controller.io.signals.exu.Jump =/= NJump)
+    val isStore = (controller.io.signals.lsu.MemWriteE)
+    val isLoad = (controller.io.signals.lsu.MemValid & ~controller.io.signals.lsu.MemWriteE)
+    val isCal = (controller.io.signals.exu.alucontrol =/= ALU_XXX)
+    val isCsr = (controller.io.signals.wbu.CSRWriteE === CSRWRITE && controller.io.irq === NIRQ)
+    val subType = WireInit(VecInit(Seq.fill(8)(0.U(1.W))))
+    subType(0) := isJump.asUInt
+    subType(1) := isStore.asUInt
+    subType(2) := isLoad.asUInt
+    subType(3) := isCal.asUInt
+    subType(4) := isCsr.asUInt
+    PerformanceProbe(clock, IDUFinDec, nextState === s_BetweenFire12, subType.asUInt)
   }
 }

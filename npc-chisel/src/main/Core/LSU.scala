@@ -3,6 +3,7 @@ package npc.core
 import chisel3._
 import chisel3.util._
 import npc.bus.AXI4
+import npc._
 
 class LsuOutIO extends Bundle{
   val signals = new Bundle{
@@ -90,6 +91,8 @@ class LSU(val conf: npc.CoreConfig) extends Module{
 
   SetupLSU()
   SetupIRQ()
+  import npc.EVENT._
+  PerformanceProbe(clock, LSUGetData, (io.dmem.rvalid & io.dmem.rready).asUInt, 0.U)
   
   import npc.core.idu.Control._
   //output logic

@@ -115,7 +115,7 @@ void difftest_step() {
 
   if(!checkregs(&ref_r)){
     isa_reg_display();
-    printf("total cycle : %llu\n",g_nr_guest_inst);
+    printf("total cycle : %llu\n",cycle);
     dump_wave_inc();
     close_wave();
     assert(0);

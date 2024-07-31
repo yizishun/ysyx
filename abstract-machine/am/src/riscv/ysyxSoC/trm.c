@@ -71,7 +71,7 @@ void halt(int code) {
   npc_trap(code);
   while (1);
 }
-
+ 
 void _trm_init() {
   init_uart(1);
   brandShow();
