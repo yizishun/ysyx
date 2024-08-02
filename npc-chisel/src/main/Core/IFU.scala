@@ -90,7 +90,7 @@ class IFU(val conf: npc.CoreConfig) extends Module{
   SetupIRQ()
 
   import npc.EVENT._
-  PerformanceProbe(clock, IFUGetInst, (io.imem.rvalid & imem_rready).asUInt, 0.U)
+  PerformanceProbe(clock, IFUGetInst, (io.imem.rvalid & imem_rready).asUInt, 0.U, io.imem.arvalid & io.imem.arready, io.imem.rvalid & imem_rready)
 
   //handshake
   //output logic

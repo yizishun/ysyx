@@ -20,6 +20,8 @@ class IduOutIO extends Bundle{
 	val rw = Output(UInt(5.W))
 	val crw = Output(UInt(12.W))
   val stat = Output(new Stat)
+  //for performance analysis
+  val perfSubType = Output(UInt(8.W))
 }
 
 class IduIO(xlen: Int) extends Bundle{
@@ -125,14 +127,15 @@ class IDU(val conf: npc.CoreConfig) extends Module{
     val isJump = (controller.io.signals.exu.Jump =/= NJump)
     val isStore = (controller.io.signals.lsu.MemWriteE)
     val isLoad = (controller.io.signals.lsu.MemValid & ~controller.io.signals.lsu.MemWriteE)
-    val isCal = (controller.io.signals.exu.alucontrol =/= ALU_XXX)
+    val isCal = (controller.io.signals.exu.alucontrol =/= ALU_XXX && ~isLoad && ~isJump && ~isStore)
     val isCsr = (controller.io.signals.wbu.CSRWriteE === CSRWRITE && controller.io.irq === NIRQ)
     val subType = WireInit(VecInit(Seq.fill(8)(0.U(1.W))))
+    io.out.bits.perfSubType := subType.asUInt
     subType(0) := isJump.asUInt
     subType(1) := isStore.asUInt
     subType(2) := isLoad.asUInt
     subType(3) := isCal.asUInt
     subType(4) := isCsr.asUInt
-    PerformanceProbe(clock, IDUFinDec, nextState === s_BetweenFire12, subType.asUInt)
+    PerformanceProbe(clock, IDUFinDec, nextState === s_BetweenFire12, subType.asUInt, nextState === s_BetweenFire12, false.B)
   }
 }

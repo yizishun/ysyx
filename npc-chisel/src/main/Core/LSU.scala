@@ -20,6 +20,8 @@ class LsuOutIO extends Bundle{
   val rw = Output(UInt(5.W))
 	val crw = Output(UInt(12.W))
   val stat = Output(new Stat)
+  //for performance analysis
+  val perfSubType = Output(UInt(8.W))
 }
 
 class LsuIO(xlen: Int) extends Bundle{
@@ -92,7 +94,7 @@ class LSU(val conf: npc.CoreConfig) extends Module{
   SetupLSU()
   SetupIRQ()
   import npc.EVENT._
-  PerformanceProbe(clock, LSUGetData, (io.dmem.rvalid & io.dmem.rready).asUInt, 0.U)
+  PerformanceProbe(clock, LSUGetData, (io.dmem.rvalid & io.dmem.rready).asUInt, 0.U, io.dmem.arvalid & io.dmem.arready, io.dmem.rvalid & io.dmem.rready)
   
   import npc.core.idu.Control._
   //output logic
@@ -260,6 +262,8 @@ class LSU(val conf: npc.CoreConfig) extends Module{
       RBYTEU -> rbyteu,
       RHALFWU -> rhalfwu
     )).asUInt
+
+    io.out.bits.perfSubType := io.in.bits.perfSubType
   
   }
   def SetupIRQ() :Unit = {

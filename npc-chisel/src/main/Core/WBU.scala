@@ -2,6 +2,7 @@ package npc.core
 
 import chisel3._
 import chisel3.util._
+import npc._
 
 class WbuOutIO extends Bundle{
 
@@ -38,6 +39,8 @@ class WBU(val conf: npc.CoreConfig) extends Module{
 
   SetupWBU()
   SetupIRQ()
+  import npc.EVENT._
+  PerformanceProbe(clock, IDUFinDec, 0.U, io.in.bits.perfSubType, false.B, nextState === s_BetweenFire12, false.B)
 
   //default,it will error if no do this
   in_ready := false.B
@@ -88,6 +91,7 @@ class WBU(val conf: npc.CoreConfig) extends Module{
     io.csr.waddr := io.in.bits.crw
     io.csr.wen := io.in.bits.signals.wbu.CSRWriteE
     //WBU(wrapper)
+
   }
   def SetupIRQ():Unit = {
     io.statw := io.in.bits.stat

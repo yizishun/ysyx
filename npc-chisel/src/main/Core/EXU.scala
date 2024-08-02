@@ -25,6 +25,8 @@ class ExuOutIO extends Bundle{
   val rw = Output(UInt(5.W))
 	val crw = Output(UInt(12.W))
   val stat = Output(new Stat)
+  //for performance analysis
+  val perfSubType = Output(UInt(8.W))
 }
 
 class ExuIO extends Bundle{
@@ -55,7 +57,7 @@ class EXU(val conf: npc.CoreConfig) extends Module{
   state := nextState
   dontTouch(nextState)
   import npc.EVENT._
-  PerformanceProbe(clock, EXUFinCal, nextState, 0.U)
+  PerformanceProbe(clock, EXUFinCal, nextState, 0.U, io.in.fire, io.out.fire)
 
   SetupEXU()
   SetupIRQ()
@@ -127,6 +129,7 @@ class EXU(val conf: npc.CoreConfig) extends Module{
     io.out.bits.rw := io.in.bits.rw
   	io.out.bits.crw := io.in.bits.crw
   
+    io.out.bits.perfSubType := io.in.bits.perfSubType
   }
   def SetupIRQ():Unit = {
     io.out.bits.stat := io.in.bits.stat
