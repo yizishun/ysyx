@@ -39,9 +39,11 @@ class WBU(val conf: npc.CoreConfig) extends Module{
 
   SetupWBU()
   SetupIRQ()
-  import npc.EVENT._
-  PerformanceProbe(clock, IDUFinDec, 0.U, io.in.bits.perfSubType, false.B, nextState === s_BetweenFire12, false.B)
 
+  if(conf.useDPIC){
+    import npc.EVENT._
+    PerformanceProbe(clock, IDUFinDec, 0.U, io.in.bits.perfSubType, false.B, nextState === s_BetweenFire12, false.B)
+  }
   //default,it will error if no do this
   in_ready := false.B
   out_valid := false.B

@@ -28,4 +28,8 @@ enum {
     isCal,
     isCsr
 };
+void record_perf_trace(uint64_t cycle, uint64_t instCnt);
+extern char *trace_csv;
+extern FILE *perf_time_fp;
+extern FILE *perf_fp;
 #endif

@@ -1,4 +1,8 @@
 #include <pevent.h>
+char *trace_csv = "builds/trace.csv";
+char *trace_csv2 = "builds/trace2.csv";
+FILE *perf_fp = NULL;
+FILE *perf_time_fp = NULL;
 Perf IFUGetInst;
 Perf LSUGetData;
 Perf EXUFinCal ;
@@ -125,4 +129,21 @@ void d_Other(int inc, int start, int end, int timeEn)
     if(start) DECisOther.switchTime = true;
     if(end) {if(!DECisOther.switchTime)assert(0); DECisOther.switchTime = false;}
     if(DECisOther.switchTime && timeEn) DECisOther.time ++;
+}
+
+void record_perf_trace(uint64_t cycle, uint64_t instCnt){
+    if(cycle == 1 && perf_fp == NULL){
+        //init
+        perf_fp = fopen(trace_csv, "w");
+        perf_time_fp = fopen(trace_csv2, "w");
+        Assert(perf_time_fp, "Can not open '%s'", trace_csv2);
+        Assert(perf_fp, "Can not open '%s'", trace_csv);
+        fprintf(perf_fp, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", "cpuCycle", "指令数", "IFU获得指令", "EXU结束计算", "LSU获得数据", "跳转指令", "加载指令", "存储指令", "计算指令", "csr指令","其他指令");
+        fprintf(perf_time_fp, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", "总时间", "IFU占用时间", "EXU占用时间", "LSU占用时间", "跳转指令占用时间", "加载指令占用时间", "存储指令占用时间", "计算指令占用时间", "csr指令占用时间","其他指令占用时间");
+    }
+    else{
+        uint64_t IDUFinDec = DECisJump.cnt + DECisStore.cnt + DECisLoad.cnt + DECisCal.cnt + DECisCsr.cnt + DECisOther.cnt;
+        fprintf(perf_fp, "%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu\n",cycle, instCnt, IFUGetInst.cnt, EXUFinCal.cnt, LSUGetData.cnt,
+        DECisJump.cnt, DECisLoad.cnt, DECisStore.cnt, DECisCal.cnt, DECisCsr.cnt, DECisOther.cnt);
+    }
 }

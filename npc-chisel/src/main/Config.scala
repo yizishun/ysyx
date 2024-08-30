@@ -1,24 +1,17 @@
 package npc
 
-case class Config(
-  core : CoreConfig,
-)
-
-case class CoreConfig(
-  xlen : Int
-)
+class CoreConfig(val xlen : Int){ 
+  def useDPIC : Boolean = true
+}
 
 /*case class MemConfig(
   xlen : Int
 )*/
 
 object MiniConfig{
-  def apply(): Config = {
+  def apply(): CoreConfig = {
     val xlen = 32
-    Config(
-      core = CoreConfig(
-        xlen = xlen
-      )
-    )
+    val config = new CoreConfig(xlen)
+    config
   }
 }

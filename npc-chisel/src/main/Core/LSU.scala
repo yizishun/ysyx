@@ -93,9 +93,11 @@ class LSU(val conf: npc.CoreConfig) extends Module{
 
   SetupLSU()
   SetupIRQ()
-  import npc.EVENT._
-  PerformanceProbe(clock, LSUGetData, (io.dmem.rvalid & io.dmem.rready).asUInt, 0.U, io.dmem.arvalid & io.dmem.arready, io.dmem.rvalid & io.dmem.rready)
-  
+
+  if(conf.useDPIC){
+    import npc.EVENT._
+    PerformanceProbe(clock, LSUGetData, (io.dmem.rvalid & io.dmem.rready).asUInt, 0.U, io.dmem.arvalid & io.dmem.arready, io.dmem.rvalid & io.dmem.rready)
+  }
   import npc.core.idu.Control._
   //output logic
   switch(nextState){

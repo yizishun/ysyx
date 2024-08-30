@@ -6,7 +6,7 @@ import npc.core._
 import chisel3.SpecifiedDirection.Flip
 
 object NPC{
-  def apply(config : Config) : NPC = {new NPC(config.core)}
+  def apply(config : CoreConfig) : NPC = {new NPC(config)}
 }
 
 class npcIO extends Bundle{

@@ -38,7 +38,7 @@ class IduIO(xlen: Int) extends Bundle{
 class IDU(val conf: npc.CoreConfig) extends Module{
   val io = IO(new IduIO(conf.xlen))
 //place modules
-  val controller = Module(new idu.Controller)
+  val controller = Module(new idu.Controller(conf))
   val imm = Module(new idu.Imm)
 
   val in_ready = RegInit(io.in.ready)
@@ -57,7 +57,8 @@ class IDU(val conf: npc.CoreConfig) extends Module{
 
   SetupIDU()
   SetupIRQ()
-  Strob()
+  io.out.bits.perfSubType := 0.U
+  if(conf.useDPIC) Strob()
   //default,it will error if no do this
   in_ready := false.B
   out_valid := false.B

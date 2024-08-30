@@ -3,6 +3,7 @@ package npc.core.idu
 import chisel3.util.BitPat
 import chisel3._
 import chisel3.util._
+import npc._
 
 object Instructions {
   // Loads
@@ -211,11 +212,12 @@ object Control {
   // format: on
 }
 
-class Ebreak extends BlackBox with HasBlackBoxPath{
+class Ebreak(conf : npc.CoreConfig) extends BlackBox with HasBlackBoxPath{
   val io = IO(new Bundle{
     val inst = Input(UInt(32.W))
   })
-  addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/core/idu/Ebreak.sv")
+  if(conf.useDPIC)
+    addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/core/idu/Ebreak.sv")
 }
 
 class IDUSignals extends Bundle{
@@ -257,7 +259,7 @@ class ControlIO extends Bundle{
   val signals = new Signals
 }
 
-class Controller extends Module{
+class Controller(conf : npc.CoreConfig) extends Module{
   val io = IO(new ControlIO)
   val controlsignals = ListLookup(io.inst, Control.default, Control.map)
 
@@ -281,6 +283,6 @@ class Controller extends Module{
   io.irq := controlsignals(13)
   io.irq_no := controlsignals(14)
 
-  val ebreak = Module(new Ebreak)
-  ebreak.io.inst := io.inst
+  val ebreak = if(conf.useDPIC) Some(Module(new Ebreak(conf))) else None
+  if(conf.useDPIC) ebreak.get.io.inst := io.inst
 }

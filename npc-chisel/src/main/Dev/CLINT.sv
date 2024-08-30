@@ -124,7 +124,7 @@ module Clint(
                     else begin
                         axi_rvalid_r <= 1'b1;
                         axi_rresp_r <= 2'b01;
-                        $error("invalid addr:%h",axi_araddr);
+                        //$error("invalid addr:%h",axi_araddr);
                     end
                 end
                 else begin
@@ -192,7 +192,7 @@ module Clint(
                 if(delayW == 0)begin
                     axi_bvalid_r <= 1'b1;
                     //skip();
-                    $error("You cannot write to mtime");
+                    //$error("You cannot write to mtime");
                 end
                 else begin
                     axi_bvalid_r <= 1'b0;

@@ -56,9 +56,10 @@ class EXU(val conf: npc.CoreConfig) extends Module{
   ))
   state := nextState
   dontTouch(nextState)
-  import npc.EVENT._
-  PerformanceProbe(clock, EXUFinCal, nextState, 0.U, io.in.fire, io.out.fire)
-
+  if(conf.useDPIC){
+    import npc.EVENT._
+    PerformanceProbe(clock, EXUFinCal, nextState, 0.U, io.in.fire, io.out.fire)
+  }
   SetupEXU()
   SetupIRQ()
 

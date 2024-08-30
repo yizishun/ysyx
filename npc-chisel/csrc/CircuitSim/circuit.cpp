@@ -95,6 +95,11 @@ static void trace_and_difftest(){
 	}
 	#endif
 
+	#ifdef CONFIG_CSV
+	/* trace: performance event trace */
+	record_perf_trace(cycle, instCnt);
+	#endif
+
 }
 
 /* cpu single cycle in exec */
@@ -175,6 +180,9 @@ static void statistic() {
 	Log("proportion IFUGetInst | LSUGetData | EXUFinCal");
 	Log("   	  %2.2lf%%       %2.2lf%%       %2.2lf%%", IFUGetInst_pro, LSUGetData_pro, EXUFinCal_pro);
   Log("host time spent  = %llu us", g_timer);
+	fprintf(perf_time_fp, "%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu\n", cycle, IFUGetInst.time, EXUFinCal.time, LSUGetData.time, DECisJump.time, DECisStore.time, DECisLoad.time, DECisCal.time, DECisCsr.time, DECisOther.time);
+	fprintf(perf_time_fp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n",(double)cycle/(double)instCnt, (double)IFUGetInst.time / (double)IFUGetInst.cnt, (double)EXUFinCal.time / (double)EXUFinCal.cnt, (double)LSUGetData.time / (double)LSUGetData.cnt, 
+	(double)DECisJump.time / (double)DECisJump.cnt, (double)DECisLoad.time / (double)DECisLoad.cnt,(double)DECisStore.time / (double)DECisStore.cnt, (double)DECisCal.time / (double)DECisCal.cnt, (double)DECisCsr.time / (double)DECisCsr.cnt, (double)DECisOther.time/(double)DECisOther.cnt);
   if (g_timer > 0) Log("simulation frequency = %llu inst/s", cycle * 1000000 / g_timer);
   else Log("Finish running in less than 1 us and can not calculate the simulation frequency");
 }
