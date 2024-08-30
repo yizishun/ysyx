@@ -8,6 +8,7 @@
 !/npc/*
 !/npc-chisel/*
 !/ysyxSoC/*
+!/docs/*
 !Makefile
 !README.md
 !.gitignore
