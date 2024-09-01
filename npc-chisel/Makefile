@@ -1,10 +1,15 @@
 TOPNAME = ysyxSoCFull
 
 NXDC_FILES = constr/top.nxdc #nvboard pin file
-BUILD_DIR = ./builds
+BUILD_DIR = $(NPC_HOME)/builds
 OBJ_DIR = $(BUILD_DIR)/obj_dir #generated c++ and mk files
 SV_GEN_DIR = $(BUILD_DIR)/sv-gen #generated systemVerilog files
 BIN = $(BUILD_DIR)/$(TOPNAME)
+
+PF_TRACE_TOOL = $(NPC_HOME)/tools/pf-trace/pft.py
+PF_TRACE_TOOL2 = $(NPC_HOME)/tools/pf-trace/pft2.py
+PF_TRACE1 = $(BUILD_DIR)/trace.csv
+PF_TRACE2 = $(BUILD_DIR)/trace2.csv
 REWRITE = $(NPC_HOME)/scripts/rewrite.mk
 
 #ysyxSoC
@@ -73,12 +78,24 @@ $(BIN): $(VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE)
 
 override ARGS ?= --log=$(BUILD_DIR)/npc-log.txt --diff=$(NPC_HOME)/tools/nemu-diff/riscv32-nemu-interpreter-so
 NPC_EXEC := $(BIN) $(ARGS) $(IMG)
+export RUN_PYTHON_SCRIPT = 0
 run: $(BIN)	
 	@echo "$(COLOR_YELLOW)[Run CPU]$(COLOR_NONE)"
+	@rm -f $(PF_TRACE1)
+	@rm -f $(PF_TRACE2)
+	@if [ "$(RUN_PYTHON_SCRIPT)" -eq "1" ]; then \
+		echo "Running Python script..."; \
+		python3 $(PF_TRACE_TOOL2) $(PF_TRACE1) $(PF_TRACE2) & \
+	else \
+		echo "Skipping Python script."; \
+	fi
 	$(NPC_EXEC)
 #wave
 wave:
 	gtkwave $(BUILD_DIR)/waveform.vcd $(BUILD_DIR)/save.gtkw &
+#pf_trace
+pft:
+	python3 $(PF_TRACE_TOOL) $(PF_TRACE1) $(PF_TRACE2)
 
 COLOR_RED   		= \033[1;31m
 COLOR_GREEN 		= \033[1;32m
