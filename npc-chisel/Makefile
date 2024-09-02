@@ -78,7 +78,7 @@ $(BIN): $(VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE)
 
 override ARGS ?= --log=$(BUILD_DIR)/npc-log.txt --diff=$(NPC_HOME)/tools/nemu-diff/riscv32-nemu-interpreter-so
 NPC_EXEC := $(BIN) $(ARGS) $(IMG)
-export RUN_PYTHON_SCRIPT = 0
+RUN_PYTHON_SCRIPT = 0
 run: $(BIN)	
 	@echo "$(COLOR_YELLOW)[Run CPU]$(COLOR_NONE)"
 	@rm -f $(PF_TRACE1)
@@ -96,6 +96,10 @@ wave:
 #pf_trace
 pft:
 	python3 $(PF_TRACE_TOOL) $(PF_TRACE1) $(PF_TRACE2)
+#perf
+MICROBENCH_DIR = $(AM_KERNEL_HOME)/benchmarks/microbench
+perf:
+	make -C $(MICROBENCH_DIR) ARCH=riscv32e-ysyxsoc run mainargs=train
 
 COLOR_RED   		= \033[1;31m
 COLOR_GREEN 		= \033[1;32m

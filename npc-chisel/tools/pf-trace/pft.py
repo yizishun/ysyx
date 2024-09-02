@@ -1,6 +1,6 @@
 import sys
-import pandas as pd
-import matplotlib.pyplot as plt
+import pandas as pd # type: ignore
+import matplotlib.pyplot as plt # type: ignore
 
 trace1 = sys.argv[1]
 trace2 = sys.argv[2]

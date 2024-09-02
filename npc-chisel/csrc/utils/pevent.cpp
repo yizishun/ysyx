@@ -139,14 +139,14 @@ void record_perf_trace(uint64_t cycle, uint64_t instCnt){
         Assert(perf_time_fp, "Can not open '%s'", trace_csv2);
         Assert(perf_fp, "Can not open '%s'", trace_csv);
         fprintf(perf_fp, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", "cpuCycle", "指令数", "IFU获得指令", "EXU结束计算", "LSU获得数据", "跳转指令", "加载指令", "存储指令", "计算指令", "csr指令","其他指令");
-        fflush(perf_fp);
+        //fflush(perf_fp);
         fprintf(perf_time_fp, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", "总时间", "IFU占用时间", "EXU占用时间", "LSU占用时间", "跳转指令占用时间", "加载指令占用时间", "存储指令占用时间", "计算指令占用时间", "csr指令占用时间","其他指令占用时间");
-        fflush(perf_time_fp);
+        //fflush(perf_time_fp);
     }
     else{
         uint64_t IDUFinDec = DECisJump.cnt + DECisStore.cnt + DECisLoad.cnt + DECisCal.cnt + DECisCsr.cnt + DECisOther.cnt;
         fprintf(perf_fp, "%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu\n",cycle, instCnt, IFUGetInst.cnt, EXUFinCal.cnt, LSUGetData.cnt,
         DECisJump.cnt, DECisLoad.cnt, DECisStore.cnt, DECisCal.cnt, DECisCsr.cnt, DECisOther.cnt);
-        fflush(perf_fp);
+        //fflush(perf_fp);
     }
 }
