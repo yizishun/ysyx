@@ -53,10 +53,13 @@ static long load(char *img_file, uint32_t addr) {
 uint8_t *guest_to_host(uint32_t paddr){
 	if(in_flash(paddr))
 		return flash + (paddr - FLASH_BASE);
+	#if defined(NPC)
 	else if(in_pmem(paddr))
-		return pmem + (paddr - RESET_VECTOR);
+		return pmem + (paddr - PMEM_BASE);
+	#elif defined(ysyxSoCFull)
 	else if(in_psram(paddr))
 		return psram + (paddr - PSRAM_BASE);
+	#endif
 	else{
 		panic("%#x is out of bound in npc", paddr);
 	}
@@ -213,75 +216,77 @@ extern "C" void sdram_write(int chipid, int ba, int ra, int ca, int wdata, int w
 	return;
 }
 
-//static int32_t device_read = 0;
-//static uint64_t timer = 0;
-//extern bool is_skip_diff;
-//void init_flag(){ //bug fix
-//	if(device_read < 0)
-//		device_read = 0;
-//}
-//
-//extern "C" uint32_t pmem_read(uint32_t paddr){
-//	if(!((paddr >= 0x80000000 && paddr <= 0x87ffffff) || (paddr == RTC_ADDR) || (paddr == RTC_ADDR + 4))) 
-//		return 0;
-//	if(paddr == RTC_ADDR || paddr == RTC_ADDR + 4)
-//		assert(0);
-//	init_flag();
-//	//printf("\ndev_r = %d\n",device_read);
-//	#ifdef CONFIG_TRACE
-//	#ifdef CONFIG_MTRACE
-//	record_mem_trace(READ, paddr , sizeof(uint32_t));	
-//	log_write("%s\n", mtrace);
-//	#endif
-//	#endif
-//	if(device_read == 3) device_read = 0;
-//	if(paddr == RTC_ADDR+4 && device_read == 0) {
-//		device_read++; 
-//		timer = get_time(); 
-//		return (uint32_t)(timer >> 32);
-//	}
-//	else if(paddr == RTC_ADDR) {
-//		device_read++;
-//		return (uint32_t)timer;
-//	}
-//	else if(paddr == RTC_ADDR + 4 && device_read != 0){
-//		device_read++;
-//		return (uint32_t)(timer >> 32);
-//	}
-//	else if(paddr == SERIAL_PORT) return 0;
-//	uint32_t *inst_paddr = (uint32_t *)guest_to_host(paddr);
-//	record_mem_trace(READ, paddr , sizeof(uint32_t));	
-//	//log_write("content : %#x\n",*inst_paddr);
-//	return *inst_paddr;
-//}
-//
-//extern "C" void pmem_write(int waddr, int wdata, char wmask){
-//	if(!((waddr >= 0x80000000 && waddr <= 0x87ffffff) || (waddr == SERIAL_PORT))) 
-//		return;
-//	if(waddr == SERIAL_PORT){
-//		assert(0);
-//	}
-//
-//#ifdef CONFIG_TRACE
-//#ifdef CONFIG_MTRACE
-//	record_mem_trace(WRITE,waddr,wmask);	
-//	log_write("%s\n", mtrace);
-//#endif
-//#endif
-//	uint8_t *vaddr = guest_to_host(waddr);
-//	uint8_t *iaddr;
-//	int i;
-//	int j;
-//	for(i = 0,j = 0;i < 4;i++){
-//		if(wmask & (1 << i)){
-//			iaddr = vaddr + i;
-//			*iaddr = (wdata >> (j * 8)) & 0xFF;
-//			j++;
-//		}
-//	}
-//}
-//
-//extern "C" void skip(){
-//	is_skip_diff = true;
-//	return;
-//}
+static int32_t device_read = 0;
+static uint64_t timer = 0;
+extern bool is_skip_diff;
+void init_flag(){ //bug fix
+	if(device_read < 0)
+		device_read = 0;
+}
+
+extern "C" int pmem_read(int paddr){
+	if(!((paddr >= 0x80000000 && paddr <= 0x87ffffff) || (paddr == RTC_ADDR) || (paddr == RTC_ADDR + 4))) 
+		return 0;
+	if(paddr == RTC_ADDR || paddr == RTC_ADDR + 4)
+		assert(0);
+	init_flag();
+	//printf("\ndev_r = %d\n",device_read);
+	#ifdef CONFIG_TRACE
+	#ifdef CONFIG_MTRACE
+	record_mem_trace(READ, paddr , sizeof(uint32_t));	
+	log_write("%s\n", mtrace);
+	#endif
+	#endif
+	if(device_read == 3) device_read = 0;
+	if(paddr == RTC_ADDR+4 && device_read == 0) {
+		device_read++; 
+		timer = get_time(); 
+		return (uint32_t)(timer >> 32);
+	}
+	else if(paddr == RTC_ADDR) {
+		device_read++;
+		return (uint32_t)timer;
+	}
+	else if(paddr == RTC_ADDR + 4 && device_read != 0){
+		device_read++;
+		return (uint32_t)(timer >> 32);
+	}
+	else if(paddr == SERIAL_PORT) return 0;
+	uint32_t *inst_paddr = (uint32_t *)guest_to_host(paddr);
+	record_mem_trace(READ, paddr , sizeof(uint32_t));	
+	//log_write("content : %#x\n",*inst_paddr);
+	//printf("READ %#x in %#x\n",*inst_paddr,paddr);
+	return *inst_paddr;
+}
+
+extern "C" void pmem_write(int waddr, int wdata, char wmask){
+	//printf("WRITE %#x to %#x,wmask = %#x\n",wdata,waddr,wmask);
+	if(!((waddr >= 0x80000000 && waddr <= 0x87ffffff) || (waddr == SERIAL_PORT))) 
+		return;
+	if(waddr == SERIAL_PORT){
+		assert(0);
+	}
+
+#ifdef CONFIG_TRACE
+#ifdef CONFIG_MTRACE
+	record_mem_trace(WRITE,waddr,wmask);	
+	log_write("%s\n", mtrace);
+#endif
+#endif
+	uint8_t *vaddr = guest_to_host(waddr);
+	uint8_t *iaddr;
+	int i;
+	int j;
+	for(i = 0,j = 0;i < 4;i++){
+		if(wmask & (1 << i)){
+			iaddr = vaddr + i;
+			*iaddr = (wdata >> (j * 8)) & 0xFF;
+			j++;
+		}
+	}
+}
+
+extern "C" void skip(){
+	is_skip_diff = true;
+	return;
+}

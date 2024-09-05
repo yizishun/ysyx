@@ -3,7 +3,7 @@
 #include <common.h>
 #include <ftrace.h>
 #include <pevent.h>
-VysyxSoCFull *cpu;
+CPU *cpu;
 extern "C" void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
 static void statistic();
 void difftest_step();
@@ -79,7 +79,7 @@ static void trace_and_difftest(){
 	#ifdef CONFIG_TRACE
 	/* trace(1):instruction trace */
 	char disasm_buf[128] = {0};
-	if(cpu->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__idu__DOT__nextState == 1){
+	if(cpu->rootp->V_E_GETINST == 1){
 		record_inst_trace(disasm_buf,(uint8_t *)&inst);
 		//print to stdout
 		if(g_print_step) puts(disasm_buf);
@@ -114,9 +114,9 @@ void cpu_exec(uint32_t n){
 	//max inst to print to stdout
 	g_print_step = (n < MAX_INST_TO_PRINT);
 	while(n > 0){
-		prev_pc = cpu->rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
+		prev_pc = cpu->rootp -> V_PC;
 		snpc = pc + 4;
-		if(cpu->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__idu__DOT__nextState == 1)
+		if(cpu->rootp->V_E_GETINST == 1)
 			instCnt ++;
 		cycle ++;
 
@@ -125,11 +125,11 @@ void cpu_exec(uint32_t n){
   		uint64_t timer_end = get_time();
   		g_timer += timer_end - timer_start;
 
-		if(cpu->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__inst != 0){
-			inst = cpu->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__inst;
+		if(cpu->rootp->V_INST != 0){
+			inst = cpu->rootp->V_INST;
 		}
-		pc = cpu->rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
-		dnpc = cpu->rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__pc__DOT__pcReg;
+		pc = cpu->rootp->V_PC;
+		dnpc = cpu->rootp->V_PC;
 		get_reg();
 		waveCounter ++;
 		if(waveCounter >= 1000000){
@@ -139,7 +139,7 @@ void cpu_exec(uint32_t n){
 			waveCounter = 0;
 		}
 		trace_and_difftest();
-		if(cpu->rootp ->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__ifu__DOT__inst != 0)
+		if(cpu->rootp->V_INST != 0)
 			n--;
 	}
 }
@@ -155,42 +155,42 @@ static void statistic() {
 	double IFUGetInst_pro = (double)IFUGetInst.time * 100 / (double)cycle;
 	double LSUGetData_pro = (double)LSUGetData.time * 100 / (double)cycle;
 	double EXUFinCal_pro = (double)EXUFinCal.time * 100 / (double)cycle;
-  Log("total cycle      = %llu", cycle);
-  Log("total inst       = %llu", instCnt);
-  Log("IPC              = %lf", (double)instCnt / (double)cycle);
-  Log("CPI              = %lf", (double)cycle / (double)instCnt);
-  Log("IFUGetInst Event = %llu", IFUGetInst.cnt);
-  Log("IFUGetInst/cycle = %lf", (double)IFUGetInst.time / (double)IFUGetInst.cnt);
-  Log("IFUGetInst total time = %llu", IFUGetInst.time);
-  Log("LSUGetData Event = %llu", LSUGetData.cnt);
-  Log("LSUGetData/cycle = %lf", (double)LSUGetData.time / (double)LSUGetData.cnt);
-  Log("LSUGetData total time = %llu", LSUGetData.time);
-  Log("EXUFinCal  Event = %llu", EXUFinCal.cnt);
-  Log("EXUFinCal/cycle = %lf", (double)EXUFinCal.time / (double)EXUFinCal.cnt);
-  Log("EXUFinCal total time = %llu", EXUFinCal.time);
-  Log("Jump             = %llu", DECisJump.cnt);
-  Log("Jump per cycle   = %lf",  (double)DECisJump.time / (double)DECisJump.cnt);
-  Log("Jump total time  = %llu", DECisJump.time);
-  Log("Store            = %llu", DECisStore.cnt);
-  Log("Store per cycle  = %lf",  (double)DECisStore.time / (double)DECisStore.cnt);
-  Log("Store total time = %llu", DECisStore.time);
-  Log("Load             = %llu", DECisLoad.cnt);
-  Log("Load per cycle   = %lf",  (double)DECisLoad.time / (double)DECisLoad.cnt);
-  Log("Load tatal time  = %llu", DECisLoad.time);
-  Log("Cal              = %llu", DECisCal.cnt);
-  Log("Cal per cycle    = %lf",  (double)DECisCal.time / (double)DECisCal.cnt);
-  Log("Cal total time   = %llu", DECisCal.time);
-  Log("Csr              = %llu", DECisCsr.cnt);
-  Log("Csr per cycle    = %lf",  (double)DECisCsr.time / (double)DECisCsr.cnt);
-  Log("Csr total time   = %llu", DECisCsr.time);
-  Log("Other            = %llu", DECisOther.cnt);
-  Log("Other per cycle  = %lf",  (double)DECisOther.time / (double)DECisOther.cnt);
-  Log("Other total time = %llu", DECisOther.time);
+	Log("total cycle      = %llu", cycle);
+	Log("total inst       = %llu", instCnt);
+	Log("IPC              = %lf", (double)instCnt / (double)cycle);
+	Log("CPI              = %lf", (double)cycle / (double)instCnt);
+	Log("IFUGetInst Event = %llu", IFUGetInst.cnt);
+	Log("IFUGetInst/cycle = %lf", (double)IFUGetInst.time / (double)IFUGetInst.cnt);
+	Log("IFUGetInst total time = %llu", IFUGetInst.time);
+	Log("LSUGetData Event = %llu", LSUGetData.cnt);
+	Log("LSUGetData/cycle = %lf", (double)LSUGetData.time / (double)LSUGetData.cnt);
+	Log("LSUGetData total time = %llu", LSUGetData.time);
+	Log("EXUFinCal  Event = %llu", EXUFinCal.cnt);
+	Log("EXUFinCal/cycle = %lf", (double)EXUFinCal.time / (double)EXUFinCal.cnt);
+	Log("EXUFinCal total time = %llu", EXUFinCal.time);
+	Log("Jump             = %llu", DECisJump.cnt);
+	Log("Jump per cycle   = %lf",  (double)DECisJump.time / (double)DECisJump.cnt);
+	Log("Jump total time  = %llu", DECisJump.time);
+	Log("Store            = %llu", DECisStore.cnt);
+	Log("Store per cycle  = %lf",  (double)DECisStore.time / (double)DECisStore.cnt);
+	Log("Store total time = %llu", DECisStore.time);
+	Log("Load             = %llu", DECisLoad.cnt);
+	Log("Load per cycle   = %lf",  (double)DECisLoad.time / (double)DECisLoad.cnt);
+	Log("Load tatal time  = %llu", DECisLoad.time);
+	Log("Cal              = %llu", DECisCal.cnt);
+	Log("Cal per cycle    = %lf",  (double)DECisCal.time / (double)DECisCal.cnt);
+	Log("Cal total time   = %llu", DECisCal.time);
+	Log("Csr              = %llu", DECisCsr.cnt);
+	Log("Csr per cycle    = %lf",  (double)DECisCsr.time / (double)DECisCsr.cnt);
+	Log("Csr total time   = %llu", DECisCsr.time);
+	Log("Other            = %llu", DECisOther.cnt);
+	Log("Other per cycle  = %lf",  (double)DECisOther.time / (double)DECisOther.cnt);
+	Log("Other total time = %llu", DECisOther.time);
 	Log("proportion Jump | Store | Load | Cal | Csr | Other");
 	Log("   	 %2.2lf%% %2.2lf%% %2.2lf%% %2.2lf%% %2.2lf%%  %2.2lf%%", Jump_pro, Store_pro, Load_pro, Cal_pro, Csr_pro, Other_pro);
 	Log("proportion IFUGetInst | LSUGetData | EXUFinCal");
 	Log("   	  %2.2lf%%       %2.2lf%%       %2.2lf%%", IFUGetInst_pro, LSUGetData_pro, EXUFinCal_pro);
-  Log("host time spent  = %llu us", g_timer);
+	Log("host time spent  = %llu us", g_timer);
   #ifdef CONFIG_CSV
 	fprintf(perf_time_fp, "%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu\n", cycle, IFUGetInst.time, EXUFinCal.time, LSUGetData.time, DECisJump.time, DECisStore.time, DECisLoad.time, DECisCal.time, DECisCsr.time, DECisOther.time);
 	fprintf(perf_time_fp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n",(double)cycle/(double)instCnt, (double)IFUGetInst.time / (double)IFUGetInst.cnt, (double)EXUFinCal.time / (double)EXUFinCal.cnt, (double)LSUGetData.time / (double)LSUGetData.cnt, 

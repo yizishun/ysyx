@@ -14,9 +14,9 @@ const char *regs[] = {
 void get_reg(){
   int i;
   for(i = 0;i < REGNUM; i++)
-    gpr[i] = cpu->rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__gpr__DOT__rf_ext__DOT__Memory[i];
+    gpr[i] = cpu->rootp -> V_GPR[i];
   for(i = 0;i < 4;i++)
-    csr[i] = cpu->rootp -> ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__csr__DOT__rf_ext__DOT__Memory[i];
+    csr[i] = cpu->rootp -> V_CSR[i];
     //0:mstatus 1:mtvec 2:mepc 3:mcause
 }
 

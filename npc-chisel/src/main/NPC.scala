@@ -48,22 +48,38 @@ class NPC(val coreConfig : CoreConfig) extends Module {
   io.master.wlast := false.B
   io.master.bready := false.B
 
-  val core = Module(new Core(coreConfig))
+  if(coreConfig.ysyxsoc){
+    val core = Module(new Core(coreConfig))
+    val arb = Module(new npc.bus.Arbiter(coreConfig))
+    val xbar = Module(new npc.bus.Xbar)
+    val clint = Module(new npc.dev.Clint(coreConfig))
 
-  val arb = Module(new npc.bus.Arbiter(coreConfig))
-  val xbar = Module(new npc.bus.Xbar)
+    core.io.imem :<>= arb.io.imem
+    core.io.dmem :<>= arb.io.dmem
+    arb.io.mem <> xbar.io.arb
+    clint.io.axi <> xbar.io.clint
+    xbar.io.soc <> io.master
+  //  arb.io.mem <> io.master
+    clint.io.clk := clock
+    clint.io.rst := reset
+  }
+  else if(coreConfig.npc){
+    val core = Module(new Core(coreConfig))
+    val xbar = Module(new npc.bus.Xbar2(coreConfig))
+    val arb = Module(new npc.bus.Arbiter(coreConfig))
+    val clint = Module(new npc.dev.Clint(coreConfig))
+    val mem = Module(new npc.dev.Mem(coreConfig))
+    val uart = Module(new npc.dev.Uart(coreConfig))
 
-  val clint = Module(new npc.dev.Clint(coreConfig))
-
-  core.io.imem :<>= arb.io.imem
-  core.io.dmem :<>= arb.io.dmem
-  arb.io.mem <> xbar.io.arb
-  clint.io.axi <> xbar.io.clint
-  xbar.io.soc <> io.master
-//  arb.io.mem <> io.master
-  clint.io.clk := clock
-  clint.io.rst := reset
-  
+    core.io.imem :<>= arb.io.imem
+    core.io.dmem :<>= arb.io.dmem
+    arb.io.mem <> xbar.io.arb
+    xbar.io.clint <> clint.io.axi
+    xbar.io.sram <> mem.io
+    xbar.io.uart <> uart.io
+    clint.io.clk := clock
+    clint.io.rst := reset
+  }
 
 }
 

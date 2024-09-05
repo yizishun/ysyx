@@ -135,7 +135,13 @@ module Uart(
             end
         endcase
     end
-
+    
+    /* verilator lint_off WIDTHTRUNC */
+    wire [31:0]tempWdata;
+    wire [31:0]dataplace;
+    assign dataplace = awaddr - (awaddr & (~32'd3));
+    assign tempWdata = wdata >> (dataplace << 3);
+    /* verilator lint_off WIDTHTRUNC */
     always @(posedge clk)begin
         case(nextStateW)
             sw_beforeFire1:begin
@@ -153,7 +159,7 @@ module Uart(
                 if(delayW == 0)begin
                     bvalid_r <= 1'b1;
                     skip();
-                    $write("%c", wdata[7:0]);
+                    $write("%c", tempWdata[7:0]);
                 end
                 else begin
                     bvalid_r <= 1'b0;

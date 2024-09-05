@@ -5,7 +5,7 @@ void init_monitor(int, char *[]);
 void sdb_mainloop();
 
 int main(int argc, char** argv, char** env){
-	cpu = new VysyxSoCFull;
+	cpu = new CPU;
 	get_time();
 	init_monitor(argc,argv);
 	init_wave();

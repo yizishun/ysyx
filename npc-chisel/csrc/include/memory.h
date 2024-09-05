@@ -5,8 +5,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include <VysyxSoCFull.h>
-#define RESET_VECTOR 0x20000000
+#include <circuit.h>
+#if defined(ysyxSoCFull)
+#define RESET_VECTOR 0x30000000
+#elif defined(NPC)
+#define RESET_VECTOR 0x80000000
+#endif
+#define PMEM_BASE    0x80000000
 #define FLASH_BASE   0x30000000
 #define FLASH_SIZE   0x0fffffff
 #define PSRAM_BASE   0x80000000
@@ -14,7 +19,6 @@
 #define SDRAM_BASE   0xa0000000
 #define SDRAM_SIZE   0x20000000
 #define REGNUM 32
-extern VysyxSoCFull *cpu;
 extern uint32_t gpr[REGNUM];
 extern uint32_t csr[4];
 extern const char *regs[];
@@ -32,7 +36,7 @@ static inline bool in_flash(uint32_t addr) {
   return addr - FLASH_BASE < FLASH_SIZE;
 }
 static inline bool in_pmem(uint32_t addr) {
-    return addr - RESET_VECTOR < 0xfffffff;
+    return addr - PMEM_BASE < 0xfffffff;
 }
 static inline bool in_psram(uint32_t addr) {
   return addr - PSRAM_BASE < PSRAM_SIZE;

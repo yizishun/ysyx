@@ -9,8 +9,9 @@ class pcIO extends Bundle{
   val pc = Output(UInt(32.W))
 }
 
-class PC extends Module{
+class PC(val conf: npc.CoreConfig) extends Module{
   val io = IO(new pcIO)
-  val pcReg = RegEnable(io.nextpc, "h3000_0000".U(32.W), io.wen)
+  val pcInit = if(conf.ysyxsoc){ "h3000_0000".U(32.W) }else if(conf.npc){ "h8000_0000".U(32.W)} else { "h0000_0000".U(32.W) }
+  val pcReg = RegEnable(io.nextpc, pcInit, io.wen)
   io.pc := pcReg
 }

@@ -48,7 +48,7 @@ class IFU(val conf: npc.CoreConfig) extends Module{
   io.imem.bready := false.B
   //place modules
   val addpc = Module(new ifu.Addpc)
-  val pc = Module(new ifu.PC)
+  val pc = Module(new ifu.PC(conf))
 
   //Beteen Modules handshake reg
   val in_ready = RegInit(io.in.ready)

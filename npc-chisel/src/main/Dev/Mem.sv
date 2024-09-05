@@ -73,6 +73,8 @@ module Mem(
             end
         endcase
     end
+    wire [31:0]tempAraddr;
+    assign tempAraddr = araddr & (~32'd3);
 
     always @(posedge clk) begin
         case(nextStateR)
@@ -88,7 +90,7 @@ module Mem(
                 delayR <= delayR - 1;
                 if(delayR == 0)begin
                     rvalid_r <= 1'b1;
-                    rdata = pmem_read(araddr);
+                    rdata = pmem_read(tempAraddr);
                 end
                 else begin
                     rvalid_r <= 1'b0;
@@ -138,6 +140,14 @@ module Mem(
         endcase
     end
 
+/* verilator lint_off WIDTHTRUNC */
+    wire [31:0]dataplace;
+    wire [31:0]tempAwaddr;
+    wire [31:0]tempWdata;
+    assign dataplace = awaddr - (awaddr & (~32'd3));
+    assign tempAwaddr = awaddr & (~32'd3);
+    assign tempWdata = wdata >> (dataplace << 3);
+/* verilator lint_off WIDTHTRUNC */
     always @(posedge clk)begin
         case(nextStateW)
             sw_beforeFire1:begin
@@ -154,7 +164,7 @@ module Mem(
                 delayW <= delayW - 1;
                 if(delayW == 0)begin
                     bvalid_r <= 1'b1;
-                    pmem_write(awaddr, wdata, {{4'b0000}, wstrb});
+                    pmem_write(tempAwaddr, tempWdata, {{4'b0000}, wstrb});
                 end
                 else begin
                     bvalid_r <= 1'b0;

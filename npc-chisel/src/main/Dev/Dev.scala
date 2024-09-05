@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import npc._
 
-class memIO(xlen: Int) extends Bundle{
+class AXI4Lite(xlen: Int) extends Bundle{
   val clk = Input(Clock())
   val rst = Input(Reset())
   //AR
@@ -32,12 +32,12 @@ class memIO(xlen: Int) extends Bundle{
 }
 
 class Mem(coreConfig: CoreConfig) extends BlackBox with HasBlackBoxPath{
-  val io = IO(new memIO(coreConfig.xlen))
+  val io = IO(new AXI4Lite(coreConfig.xlen))
   addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/Dev/Mem.sv")
 } 
 
 class Uart(coreConfig: CoreConfig) extends BlackBox with HasBlackBoxPath{
-  val io = IO(new memIO(coreConfig.xlen))
+  val io = IO(new AXI4Lite(coreConfig.xlen))
   addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/Dev/UART.sv")
 }
 

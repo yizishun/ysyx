@@ -25,7 +25,7 @@ static void welcome() {
         "to record the trace. This may lead to a large log file. "
         "If it is not necessary, you can disable it in menuconfig");
   Log("Build time: %s, %s", __TIME__, __DATE__);
-  printf("Welcome to %s-NPC!\n", ANSI_FMT("riscv32e", ANSI_FG_YELLOW ANSI_BG_RED));
+  printf("Welcome to %s!\n", ANSI_FMT(STR(ARCH), ANSI_FG_YELLOW ANSI_BG_RED));
   printf("For help, type \"help\"\n");
 }
 
@@ -45,7 +45,7 @@ static long load_img() {
   fflush(stdout);
 
   fseek(fp, 0, SEEK_SET);
-  int ret = fread(guest_to_host(FLASH_BASE), size, 1, fp);
+  int ret = fread(guest_to_host(RESET_VECTOR), size, 1, fp);
   assert(ret == 1);
 
   fclose(fp);
