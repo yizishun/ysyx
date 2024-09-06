@@ -15,11 +15,15 @@ extern Perf DECisLoad ;
 extern Perf DECisCal  ;
 extern Perf DECisCsr  ;
 extern Perf DECisOther;
+extern Perf ICacheHit;
+extern Perf ICacheMiss;
 enum {
     t_IFUGetInst,
     t_LSUGetData,
     t_EXUFinCal ,
-    t_IDUFinDec 
+    t_IDUFinDec ,
+    t_ICacheHit ,
+    t_ICacheMiss,
 };
 enum {
     isJump,

@@ -17,7 +17,6 @@ ifeq ($(filter $(ARCHS), $(ARCH)), )
   $(error Expected $$ARCH in {$(ARCHS)}, Got "$(ARCH)")
 endif
 # Print build info message
-$(info # NPC Type is [$(ARCH)])
 -include $(NPC_HOME)/scripts/arch/$(ARCH).mk
 
 # rules for NVBoard

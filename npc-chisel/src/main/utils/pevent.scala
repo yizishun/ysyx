@@ -7,6 +7,8 @@ object EVENT{
   val LSUGetData = 1.U;
   val EXUFinCal  = 2.U;
   val IDUFinDec  = 3.U;
+  val ICacheHit  = 4.U;
+  val ICacheMiss = 5.U;
 }
 
 class PerformanceProbe(bits: Int) extends BlackBox(Map("width" -> bits)) with HasBlackBoxInline{

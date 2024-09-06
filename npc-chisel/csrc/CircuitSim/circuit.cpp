@@ -186,6 +186,14 @@ static void statistic() {
 	Log("Other            = %llu", DECisOther.cnt);
 	Log("Other per cycle  = %lf",  (double)DECisOther.time / (double)DECisOther.cnt);
 	Log("Other total time = %llu", DECisOther.time);
+	Log("iCache Hit        = %llu", ICacheHit.cnt);
+	Log("iCache Hit per cycle  = %lf",  (double)ICacheHit.time / (double)ICacheHit.cnt);
+	Log("iCache Hit total time = %llu", ICacheHit.time);
+	Log("iCache Miss       = %llu", ICacheMiss.cnt);
+	Log("iCache Miss per cycle  = %lf",  (double)ICacheMiss.time / (double)ICacheMiss.cnt);
+	Log("iCache Miss total time = %llu", ICacheMiss.time);
+	Log("iCache HIT ratio  = %lf", (double)ICacheHit.cnt / (double)IFUGetInst.cnt);
+	Log("iCache AMAT = %lf", (double)ICacheHit.time / (double)ICacheHit.cnt + (1-(double)ICacheHit.cnt / (double)IFUGetInst.cnt) * (double)ICacheMiss.time / (double)ICacheMiss.cnt);
 	Log("proportion Jump | Store | Load | Cal | Csr | Other");
 	Log("   	 %2.2lf%% %2.2lf%% %2.2lf%% %2.2lf%% %2.2lf%%  %2.2lf%%", Jump_pro, Store_pro, Load_pro, Cal_pro, Csr_pro, Other_pro);
 	Log("proportion IFUGetInst | LSUGetData | EXUFinCal");

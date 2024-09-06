@@ -37,8 +37,8 @@ module Clint(
     input axi_bready
 );
     //import "DPI-C" function void skip();
-    //parameter ADDR = 32'h02000000;
-    parameter ADDR = 32'ha0000048;
+    parameter ADDR = 32'h02000000;
+    //parameter ADDR = 32'ha0000048;
     assign axi_rlast = 1'b1;
     assign axi_rid = 4'b0000;
     assign axi_bid = 4'b0000;

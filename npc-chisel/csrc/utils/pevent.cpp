@@ -13,6 +13,9 @@ Perf DECisLoad ;
 Perf DECisCal  ;
 Perf DECisCsr  ;
 Perf DECisOther;
+//icache
+Perf ICacheHit;
+Perf ICacheMiss;
 
 void e_IFUGetInst(int inc, int start, int end);
 void e_LSUGetData(int inc, int start, int end);
@@ -24,6 +27,8 @@ void d_Load(int inc, int start, int end, int timeEn);
 void d_Cal(int inc, int start, int end, int timeEn);
 void d_Csr(int inc, int start, int end, int timeEn);
 void d_Other(int inc, int start, int end, int timeEn);
+void e_ICacheHit(int inc, int start, int end);
+void e_ICacheMiss(int inc, int start, int end);
 
 extern "C" void peventWrapper(int type, int inc, int subType, int start, int end, int timeEn){
     switch (type)
@@ -39,6 +44,12 @@ extern "C" void peventWrapper(int type, int inc, int subType, int start, int end
         break;
     case t_IDUFinDec:
         e_IDUFinDec(inc, subType, start, end, timeEn);
+        break;
+    case t_ICacheHit:
+        e_ICacheHit(inc, start, end);
+        break;
+    case t_ICacheMiss:
+        e_ICacheMiss(inc, start, end);
         break;
     
     default:
@@ -66,6 +77,20 @@ void e_EXUFinCal(int inc, int start, int end){
     if(start) EXUFinCal.switchTime = true;
     if(end) {if(!EXUFinCal.switchTime)assert(0); EXUFinCal.switchTime = false;}
     if(EXUFinCal.switchTime) EXUFinCal.time ++;
+}
+
+void e_ICacheHit(int inc, int start, int end){
+    if(inc) ICacheHit.cnt ++;
+    if(start) ICacheHit.switchTime = true;
+    if(end) {if(!ICacheHit.switchTime)assert(0); ICacheHit.switchTime = false;}
+    if(ICacheHit.switchTime) ICacheHit.time ++;
+}
+
+void e_ICacheMiss(int inc, int start, int end){
+    if(inc) ICacheMiss.cnt ++;
+    if(start) ICacheMiss.switchTime = true;
+    if(end) {if(!ICacheMiss.switchTime)assert(0); ICacheMiss.switchTime = false;}
+    if(ICacheMiss.switchTime) ICacheMiss.time ++;       
 }
 
 void e_IDUFinDec(int inc, int subType, int start, int end, int timeEn){

@@ -24,6 +24,8 @@ class Core(val conf : CoreConfig) extends Module {
   val lsu = Module(new LSU(conf))
   val wbu = Module(new WBU(conf))
 
+  val icache = Module(new ICache(4, 16, conf))
+
   //"state" elements in npc core
   val stat = RegEnable(wbu.io.statw, 0.U.asTypeOf(new Stat), wbu.io.statEn)
   val gpr = Module(new gpr(conf))
@@ -39,7 +41,8 @@ class Core(val conf : CoreConfig) extends Module {
   ifu.io.pc.exu := exu.io.pc
 
   //Connect to the "state" elements in npc
-  ifu.io.imem :<>= io.imem
+  ifu.io.imem :<>= icache.io.in
+  icache.io.out :<>= io.imem
   idu.io.gpr :<>= gpr.io.read
   idu.io.csr :<>= csr.io.read
 
