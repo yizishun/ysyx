@@ -9,6 +9,7 @@
 !/npc-chisel/*
 !/ysyxSoC/*
 !/docs/*
+!/cacheSim/*
 !Makefile
 !README.md
 !.gitignore

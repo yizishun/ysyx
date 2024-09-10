@@ -17,6 +17,7 @@
 #include <cpu/cpu.h>
 #include <difftest-def.h>
 #include <memory/paddr.h>
+#include <ysyxsoc.h>
 #define NR_GPR MUXDEF(CONFIG_RVE, 16, 32)
 struct diff_context_t {
   word_t gpr[MUXDEF(CONFIG_RVE, 16, 32)];
@@ -65,16 +66,7 @@ __EXPORT void difftest_raise_intr(word_t NO) {
 }
 
 __EXPORT void difftest_init(int port) {
-  void init_mem();
-  void init_mrom();
-  void init_sram();
-  void init_flash();
-  void init_sdram();
-  init_mem();
-  init_mrom();
-  init_sram();
-  init_flash();
-  init_sdram();
+  init_soc();
   /* Perform ISA dependent initialization. */
   init_isa();
 }

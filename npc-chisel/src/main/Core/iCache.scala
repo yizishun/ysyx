@@ -20,16 +20,16 @@ class ICache(val b : Int, val k : Int, val conf: CoreConfig) extends Module{
     //"All output signal changes can only occur after the rising edge of ACLK."
     //"On Manager and Subordinate interfaces, there must be no combinatorial paths between input and output signals."
     //in reg
-    val in_arready = RegInit(io.in.arready)
+    val in_arready = RegInit(false.B)
     val in_rdata = RegInit(io.in.rdata)
     val in_rresp = RegInit(io.in.rresp)
-    val in_rvalid = RegInit(io.in.rvalid)
+    val in_rvalid = RegInit(false.B)
     val in_rlast = RegInit(io.in.rlast)
     val in_rid = RegInit(io.in.rid)
-    val in_awready = RegInit(io.in.awready)
-    val in_wready = RegInit(io.in.wready)
-    val in_bresp = RegInit(io.in.bresp)
-    val in_bvalid = RegInit(io.in.bvalid)
+    val in_awready = RegInit(false.B)
+    val in_wready = RegInit(false.B)
+    val in_bresp = RegInit(false.B)
+    val in_bvalid = RegInit(false.B)
     val in_bid = RegInit(io.in.bid)
     io.in.arready := in_arready
     io.in.rdata := in_rdata
@@ -44,12 +44,12 @@ class ICache(val b : Int, val k : Int, val conf: CoreConfig) extends Module{
     io.in.bid := in_bid
     //out reg
     val out_araddr = RegInit(io.out.araddr)
-    val out_arvalid = RegInit(io.out.arvalid)
+    val out_arvalid = RegInit(false.B)
     val out_arid = RegInit(io.out.arid)
     val out_arlen = RegInit(io.out.arlen)
     val out_arsize = RegInit(io.out.arsize)
     val out_arburst = RegInit(io.out.arburst)
-    val out_rready = RegInit(io.out.rready)
+    val out_rready = RegInit(false.B)
     val out_awaddr = RegInit(io.out.awaddr)
     val out_awvalid = RegInit(io.out.awvalid)
     val out_awid = RegInit(io.out.awid)
@@ -85,6 +85,13 @@ class ICache(val b : Int, val k : Int, val conf: CoreConfig) extends Module{
     val tagSize = 32 - m - n
     //icache (use dff default)
     val icache = Mem(k, UInt((1 + tagSize + b*8).W))
+    // 初始化所有地址的值为0
+    // 在仿真阶段初始化
+    when (reset.asBool) {
+        for (i <- 0 until k+1) {
+            icache.write(i.U, 0.U)
+        }
+    }
     val tagA = Wire(UInt(tagSize.W))
     val index = Wire(UInt(n.W))
     val offset = Wire(UInt(m.W))
@@ -135,7 +142,10 @@ class ICache(val b : Int, val k : Int, val conf: CoreConfig) extends Module{
     DefaultConnect()
 
     switch(nextState){
-        is(s_bfF1){} //default connect
+        is(s_bfF1){
+            out_arvalid := false.B
+            out_rready := false.B
+        } //default connect
         is(s_btF12){
             in_arready := false.B
             in_rvalid := valid && tagA === tagC
@@ -158,7 +168,7 @@ class ICache(val b : Int, val k : Int, val conf: CoreConfig) extends Module{
     in_rdata := Mux(nextState === s_btF12 && valid && tagA === tagC, data, 
                 Mux(nextState === s_btF12_ar , io.out.rdata, in_rdata))
     //data tag valid
-    icache(index) := Mux(nextState === s_btF12_ar, Cat(Cat(io.out.rdata, tagA), 1.U), icache(index))
+    icache(index) := Mux(nextState === s_btF12_ar, Cat(Cat(io.out.rdata, tagA), 1.U(1.W)), icache(index))
     
 
 //-----------------------------------------------------------------------------------------------------------------------------------

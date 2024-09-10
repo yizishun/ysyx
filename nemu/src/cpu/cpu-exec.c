@@ -18,6 +18,7 @@
 #include <cpu/difftest.h>
 #include <cpu/iringbuf.h>
 #include <locale.h>
+#include <ysyxsoc.h>
 
 /* The assembly code of instructions executed is only output to the screen
  * when the number of instructions executed is less than this value.
@@ -35,22 +36,26 @@ void device_update();
 void record_inst_trace(char *p, Decode *s);
 #ifndef CONFIG_TARGET_SHARE
 static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
+  //iTrace
 #ifdef CONFIG_ITRACE_COND
   if (ITRACE_COND) { log_write("%s\n", _this->logbuf); }
 #endif
   if (g_print_step) { IFDEF(CONFIG_ITRACE, puts(_this->logbuf)); }
   IFDEF(CONFIG_DIFFTEST, difftest_step(_this->pc, dnpc));
+  //watchPoint
   extern int check_w();
   int no = check_w();
   if(no != 0){
     nemu_state.state = NEMU_STOP;
     printf("NO.%d watchpoint has been trigger\n",no);
   }
+  //itrace
 #ifndef CONFIG_TARGET_SHARE
 #ifdef CONFIG_ITRACE_COND
   char p2[128] = {0};
 	record_inst_trace(p2 , _this);
   iringbuf_write(p2);
+  write_icacheitrace(_this->pc);
 #endif
 #endif
 }

@@ -17,6 +17,7 @@
 #include <memory/paddr.h>
 #include <device/mmio.h>
 #include <isa.h>
+#include <ysyxsoc.h>
 
 //difftese
 bool skip = false;
@@ -26,29 +27,15 @@ static uint8_t *pmem = NULL;
 #else // CONFIG_PMEM_GARRAY
 static uint8_t pmem[CONFIG_MSIZE] PG_ALIGN = {};
 #endif
-static uint8_t *mrom = NULL;
-static uint8_t *sram = NULL;
-static uint8_t *flash = NULL;
-static uint8_t *psram = NULL;
-static uint8_t *sdram = NULL;
 static void out_of_bound(paddr_t addr);
 
 uint8_t* guest_to_host(paddr_t paddr) {
   uint8_t* ptr = NULL;
   if(in_pmem(paddr)) 
     ptr = pmem + paddr - CONFIG_MBASE;
-  else if(in_mrom(paddr))
-    ptr = mrom + paddr - MROM_BASE;
-  else if(in_sram(paddr))
-    ptr = sram + paddr - SRAM_BASE;
-  else if(in_flash(paddr))
-    ptr = flash + paddr - FLASH_BASE;
-  else if(in_psram(paddr))
-    ptr = psram + paddr - PSRAM_BASE;
-  else if(in_sdram(paddr))
-    ptr = sdram + paddr - SDRAM_BASE;
-  else
-    out_of_bound(paddr);
+  else if(in_flash(paddr)){
+    ptr = flash + paddr - 0x30000000;
+  }
   return ptr;
 }
 paddr_t host_to_guest(uint8_t *haddr) { return haddr - pmem + CONFIG_MBASE; }
@@ -74,36 +61,7 @@ void init_mem() {
 #endif
   IFDEF(CONFIG_MEM_RANDOM, memset(pmem, rand(), CONFIG_MSIZE));
   Log("physical memory area [" FMT_PADDR ", " FMT_PADDR "]", PMEM_LEFT, PMEM_RIGHT);
-}
-
-void init_mrom() {
-  mrom = malloc(0xfff);
-  assert(mrom);
-  Log("mrom area [" FMT_PADDR ", " FMT_PADDR "]", MROM_BASE, MROM_BASE + MROM_SIZE);
-}
-
-void init_flash() {
-  flash = malloc(0xfff);
-  assert(flash);
-  Log("flash area [" FMT_PADDR ", " FMT_PADDR "]", FLASH_BASE, MROM_BASE + FLASH_SIZE);
-}
-
-void init_sram() {
-  sram = malloc(0x1fff);
-  assert(sram);
-  Log("sram area [" FMT_PADDR ", " FMT_PADDR "]", SRAM_BASE, SRAM_BASE + SRAM_SIZE);
-}
-
-void init_psram() {
-  psram = malloc(0x20000000);
-  assert(psram);
-  Log("psram area [" FMT_PADDR ", " FMT_PADDR "]", PSRAM_BASE, PSRAM_BASE + PSRAM_SIZE);
-}
-
-void init_sdram() {
-  sdram = malloc(0x20000000);
-  assert(sdram);
-  Log("sdram area [" FMT_PADDR ", " FMT_PADDR "]", SDRAM_BASE, SDRAM_BASE + SDRAM_SIZE);
+  init_soc();
 }
 
 #ifdef CONFIG_MTRACE
@@ -128,8 +86,9 @@ word_t paddr_read(paddr_t addr, int len) {
   #ifdef CONFIG_MTRACE_COND
     if (MTRACE_COND) { log_write("%s\n", mtrace); }
   #endif
-  if (likely(in_pmem(addr)) || in_mrom(addr) || in_sram(addr) || in_flash(addr) || in_psram(addr) || in_sdram(addr)) return pmem_read(addr, len);
-  if (in_uart(addr)) {skip = true; return 0;}
+  if (in_socMem(addr)) return soc_read(addr, len);
+  if (in_socDevR(addr)) return socDev_read(addr, len);
+  if (likely(in_pmem(addr))) return pmem_read(addr, len);
   IFDEF(CONFIG_DEVICE, return mmio_read(addr, len));
   out_of_bound(addr);
   return 0;
@@ -142,8 +101,9 @@ void paddr_write(paddr_t addr, int len, word_t data) {
   #ifdef CONFIG_MTRACE_COND
     if (MTRACE_COND) { log_write("%s content = %d\n", mtrace,data); }
   #endif
-  if (likely(in_pmem(addr)) || in_sram(addr) || in_psram(addr) || in_sdram(addr)) { pmem_write(addr, len, data); return; }
-  if (in_uart(addr)) return;
+  if (in_socMem(addr)) { soc_write(addr, len, data); return; }
+  if (in_socDevW(addr)) { socDev_write(addr, len, data); return; }
+  if (likely(in_pmem(addr))) { pmem_write(addr, len, data); return; }
   IFDEF(CONFIG_DEVICE, mmio_write(addr, len, data); return);
   out_of_bound(addr);
 }
