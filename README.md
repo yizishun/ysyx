@@ -6,4 +6,6 @@ bash init.sh subproject-name
 ```
 进行初始化, 具体请参考[实验讲义][lecture note].
 
+此项目由多个子项目组成，开发完成后将进行拆分至不同的仓库。
+
 [lecture note]: https://ysyx.oscc.cc/docs/
