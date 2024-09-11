@@ -1,8 +1,8 @@
 #include <common.h>
 #include <cache.h>
 
-extern 
-void ra_FIFO(Cache *, cacheSet_t& s, int tag);
+extern void ra_FIFO(Cache *, cacheSet_t& s, int tag);
+extern void ra_LRU(Cache *, cacheSet_t& s, int tag);
 FILE *fp = NULL;
 FILE *logfp = NULL;
 FILE* parse_args(int argc, char **argv) {
@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
     if (!fp) assert(0);
     paddr_t addr;
 
-    Cache cache(ra_FIFO, 16, 1, 4);
+    Cache cache(ra_FIFO, 16, 3, 16); // ra set way bsz
     while(fscanf(fp, "%u\n", &addr) != EOF){  
         #ifdef CONFIG_TRACE
         fprintf(logfp, "---------------\n");

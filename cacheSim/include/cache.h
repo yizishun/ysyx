@@ -32,4 +32,5 @@ class Cache{
         void replace(cacheSet_t& set, paddr_t addr);
         bool has_empty(cacheSet_t set);
         friend void ra_FIFO(Cache *, cacheSet_t& s, int tag);
+        friend void ra_LRU(Cache *, cacheSet_t& s, int tag);
 };
