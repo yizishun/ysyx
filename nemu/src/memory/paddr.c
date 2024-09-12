@@ -86,6 +86,9 @@ word_t paddr_read(paddr_t addr, int len) {
   #ifdef CONFIG_MTRACE_COND
     if (MTRACE_COND) { log_write("%s\n", mtrace); }
   #endif
+  #ifdef CONFIG_REF_DIFF
+    if(in_socDevR(addr)){skip = true; return 0;}
+  #endif
   if (in_socMem(addr)) return soc_read(addr, len);
   if (in_socDevR(addr)) return socDev_read(addr, len);
   if (likely(in_pmem(addr))) return pmem_read(addr, len);
@@ -100,6 +103,9 @@ void paddr_write(paddr_t addr, int len, word_t data) {
 	#endif
   #ifdef CONFIG_MTRACE_COND
     if (MTRACE_COND) { log_write("%s content = %d\n", mtrace,data); }
+  #endif
+  #ifdef CONFIG_REF_DIFF
+    if(in_socDevW(addr)){skip = true; return;}
   #endif
   if (in_socMem(addr)) { soc_write(addr, len, data); return; }
   if (in_socDevW(addr)) { socDev_write(addr, len, data); return; }

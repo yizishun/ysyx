@@ -18,7 +18,7 @@
 #define PSRAM_SIZE   0x20000000
 #define SDRAM_BASE   0xa0000000
 #define SDRAM_SIZE   0x20000000
-#define REGNUM 32
+#define REGNUM 16
 extern uint32_t gpr[REGNUM];
 extern uint32_t csr[4];
 extern const char *regs[];

@@ -30,5 +30,9 @@ config MEM_RANDOM
   default y
   help
     This may help to find undefined behaviors.
+  
+config REF_DIFF
+  bool "if it is ref difftest"
+  default y
 
 endmenu #MEMORY

@@ -10,9 +10,15 @@ class ICacheIO extends Bundle{
     val in = new AXI4
     val out = Flipped(new AXI4)
 }
+class ICacheBlock(val tagSize: Int, val block_sz: Int) extends Bundle{
+    val valid = Bool()
+    val tag = UInt(tagSize.W)
+    val data = Vec(block_sz/4, UInt(32.W))
+}
 
-class ICache(val b : Int, val k : Int, val conf: CoreConfig) extends Module{
+class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConfig) extends Module{
     val io = IO(new ICacheIO)
+    val bus_w = 4
 
     //axi4 requre reg input and output,but i just reg output
     //"Each AXI interface has a single clock signal, ACLK. "
@@ -80,37 +86,42 @@ class ICache(val b : Int, val k : Int, val conf: CoreConfig) extends Module{
     io.out.wlast := out_wlast
     io.out.bready := out_bready
 
-    val m = sqrt(b).toInt
-    val n = sqrt(k).toInt
+    val m = log2(block_sz).toInt
+    val n = log2(set).toInt
+    val c = block_sz / 4
+    val count = RegInit(c.U(4.W))
     val tagSize = 32 - m - n
-    //icache (use dff default)
-    val icache = Mem(k, UInt((1 + tagSize + b*8).W))
+    //icache (use dff by default)
+    val icache = Mem(set * way, new ICacheBlock(tagSize, block_sz))
     // 初始化所有地址的值为0
     // 在仿真阶段初始化
     when (reset.asBool) {
-        for (i <- 0 until k+1) {
-            icache.write(i.U, 0.U)
+        for (i <- 0 until set * way + 1) {
+            icache.write(i.U, 0.U.asTypeOf(new ICacheBlock(tagSize, block_sz)))
         }
     }
+    val base_addr = Wire(UInt(32.W))
     val tagA = Wire(UInt(tagSize.W))
     val index = Wire(UInt(n.W))
     val offset = Wire(UInt(m.W))
 
-    val cacheData = Wire(UInt((1 + tagSize + b*8).W))
+    val cacheData = Wire(new ICacheBlock(tagSize, block_sz))
     val valid = Wire(Bool())
     val tagC = Wire(UInt(tagSize.W))
-    val data = Wire(UInt((b*8).W))
+    val data_h = Wire(UInt((bus_w*8).W))
+    val data_m = Wire(UInt((bus_w*8).W))
     val hit = Wire(Bool())
 
     //state transition
-    val s_bfF1 :: s_btF12 :: s_btF12_a :: s_btF12_ar :: Nil = Enum(4)
+    val s_bfF1 :: s_btF12 :: s_btF12_noCheckHit :: s_btF12_a :: s_btF12_ar :: Nil = Enum(5)
     val state = RegInit(s_bfF1)
     val nextState = Wire(UInt(4.W))
     nextState := MuxLookup(state, s_bfF1)(Seq(
         s_bfF1 -> Mux(io.in.arready & io.in.arvalid, s_btF12, s_bfF1),
         s_btF12 ->  Mux(valid && tagA === tagC && io.in.rready && io.in.rvalid, s_bfF1, 
                     Mux(io.out.arready & io.out.arvalid, s_btF12_a, s_btF12)),
-        s_btF12_a -> Mux(io.out.rready & io.out.rvalid, s_btF12_ar, s_btF12_a),
+        s_btF12_noCheckHit -> Mux(io.out.arready & io.out.arvalid, s_btF12_a, s_btF12_noCheckHit),
+        s_btF12_a -> Mux(io.out.rready & io.out.rvalid, Mux(count === 0.U, s_btF12_ar, s_btF12_noCheckHit), s_btF12_a),
         s_btF12_ar -> Mux(io.in.rready & io.in.rvalid, s_bfF1, s_btF12_ar)
     ))
     state := nextState
@@ -128,16 +139,23 @@ class ICache(val b : Int, val k : Int, val conf: CoreConfig) extends Module{
     tagA := io.in.araddr(31, m+n)
     index := io.in.araddr(m+n-1, m)
     offset := io.in.araddr(m-1, 0)
+    base_addr := io.in.araddr - offset
+    dontTouch(base_addr)
+    dontTouch(index)
+    dontTouch(offset)
+    dontTouch(tagA)
 
     //get and decode cacheData
     cacheData := icache(index)
-    valid := cacheData(0)
-    tagC := cacheData(tagSize, 1)
-    data := cacheData(b*8+tagSize, tagSize+1)
+    valid := cacheData.valid
+    tagC := cacheData.tag
+    data_h := cacheData.data(offset >> 2)
     hit := valid && (tagA === tagC) && nextState === s_btF12
     dontTouch(hit)
     dontTouch(valid)
-    dontTouch(data)
+    dontTouch(data_h)
+    dontTouch(data_m)
+    dontTouch(cacheData)
 
     DefaultConnect()
 
@@ -151,6 +169,14 @@ class ICache(val b : Int, val k : Int, val conf: CoreConfig) extends Module{
             in_rvalid := valid && tagA === tagC
             out_arvalid := ~(valid && tagA === tagC)
             out_rready := false.B
+            out_araddr := ((c.U-(count)) << 2) + base_addr
+        }
+        is(s_btF12_noCheckHit){
+            in_arready := false.B
+            in_rvalid := false.B
+            out_arvalid := true.B
+            out_rready := false.B
+            out_araddr := ((c.U-(count)) << 2) + base_addr
         }
         is(s_btF12_a){
             in_arready := false.B
@@ -165,13 +191,31 @@ class ICache(val b : Int, val k : Int, val conf: CoreConfig) extends Module{
             out_rready := false.B
         }
     }
-    in_rdata := Mux(nextState === s_btF12 && valid && tagA === tagC, data, 
-                Mux(nextState === s_btF12_ar , io.out.rdata, in_rdata))
+    in_rdata := Mux(nextState === s_btF12 && valid && tagA === tagC, data_h, 
+                Mux(nextState === s_btF12_ar , data_m, in_rdata))
     //data tag valid
-    icache(index) := Mux(nextState === s_btF12_ar, Cat(Cat(io.out.rdata, tagA), 1.U(1.W)), icache(index))
-    
+    data_m := 0.U
+    when(io.out.rready && io.out.rvalid) {
+        val newBlock = Wire(new ICacheBlock(tagSize, block_sz)) // 创建一个临时块来执行写操作
+        newBlock.valid := true.B
+        newBlock.tag := tagA
+        newBlock.data := icache(index).data // 首先复制原来的数据
+        newBlock.data(c.U - (count + 1.U)) := io.out.rdata      // 更新需要修改的部分
+        data_m := Mux(offset === (block_sz - bus_w).U, newBlock.data(offset >> 2).asUInt, cacheData.data(offset >> 2).asUInt).asUInt //forwarding when it will access the last 4B
+
+        icache(index) := newBlock // 将更新后的块写入内存
+}
+    //count logic
+    when(nextState === s_bfF1 ){
+        count := c.U
+    }.elsewhen(count =/= 0.U && io.out.arready && io.out.arvalid){
+        count := count - 1.U
+    }
 
 //-----------------------------------------------------------------------------------------------------------------------------------
+    def log2(x: Int): Double = {
+        math.log(x) / math.log(2)
+    }
     def DefaultConnect(): Unit = {
         in_arready := io.out.arready
         in_rdata := io.out.rdata

@@ -35,11 +35,11 @@ int main(int argc, char **argv) {
     if (!fp) assert(0);
     paddr_t addr;
 
-    Cache cache(ra_FIFO, 16, 3, 16); // ra set way bsz
+    Cache cache(ra_FIFO, 4, 4, 16); // ra set way bsz
     while(fscanf(fp, "%u\n", &addr) != EOF){  
         #ifdef CONFIG_TRACE
         fprintf(logfp, "---------------\n");
-        fprintf(logfp, "req\naddr = %#x, set = %d, tag = %d\n", addr, cache.INDEX(addr), cache.TAG(addr));
+        fprintf(logfp, "req\naddr = %#x, set = %d, tag = %d, offset = %d\n", addr, cache.INDEX(addr), cache.TAG(addr), cache.OFFSET(addr));
         #endif
         cache.replace(cache.decode(addr), addr);
     }

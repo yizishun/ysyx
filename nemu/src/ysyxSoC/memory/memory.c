@@ -41,7 +41,9 @@ void init_soc() {
     init_flash();
     init_sram();
     init_sdram();
+    #ifndef CONFIG_REF_DIFF
     init_icacheitrace();
+    #endif
 }
 
 

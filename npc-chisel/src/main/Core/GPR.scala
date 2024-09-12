@@ -25,7 +25,7 @@ class gprIO(xlen: Int) extends Bundle{
 class gpr(conf: CoreConfig) extends Module{
   val io = IO(new gprIO(conf.xlen))
   //val rf = RegInit(VecInit(Seq.fill(32)(0.U(32.W))))
-  val rf = Mem(32, UInt(conf.xlen.W))
+  val rf = Mem(16, UInt(conf.xlen.W))
   io.read.rdata1 := Mux(io.read.raddr1.orR, rf(io.read.raddr1), 0.U)
   io.read.rdata2 := Mux(io.read.raddr2.orR, rf(io.read.raddr2), 0.U)
   when(io.write.wen & io.write.waddr.orR){
