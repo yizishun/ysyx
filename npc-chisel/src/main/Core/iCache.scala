@@ -16,6 +16,10 @@ class ICacheBlock(val tagSize: Int, val block_sz: Int) extends Bundle{
     val data = Vec(block_sz/4, UInt(32.W))
 }
 
+class ICacheSet(val tagSize : Int, val block_sz : Int, val way : Int) extends Bundle{
+    val set = Vec(way, new ICacheBlock(tagSize, block_sz))
+}
+
 class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConfig) extends Module{
     val io = IO(new ICacheIO)
     val bus_w = 4
@@ -88,16 +92,18 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
 
     val m = log2(block_sz).toInt
     val n = log2(set).toInt
+    val w = log2(way).toInt
     val c = block_sz / 4
     val count = RegInit(c.U(4.W))
     val tagSize = 32 - m - n
+    println(tagSize + (block_sz/4)*32 + 1)
     //icache (use dff by default)
-    val icache = Mem(set * way, new ICacheBlock(tagSize, block_sz))
+    val icache = Mem(set, new ICacheSet(tagSize, block_sz, way))
     // 初始化所有地址的值为0
     // 在仿真阶段初始化
     when (reset.asBool) {
-        for (i <- 0 until set * way + 1) {
-            icache.write(i.U, 0.U.asTypeOf(new ICacheBlock(tagSize, block_sz)))
+        for (i <- 0 until set + 1) {
+            icache.write(i.U, 0.U.asTypeOf(new ICacheSet(tagSize, block_sz, way)))
         }
     }
     val base_addr = Wire(UInt(32.W))
@@ -105,12 +111,17 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     val index = Wire(UInt(n.W))
     val offset = Wire(UInt(m.W))
 
+    val cacheSet = Wire(new ICacheSet(tagSize, block_sz, way))
     val cacheData = Wire(new ICacheBlock(tagSize, block_sz))
+    val wayHit = Wire(UInt(w.W))
     val valid = Wire(Bool())
     val tagC = Wire(UInt(tagSize.W))
     val data_h = Wire(UInt((bus_w*8).W))
     val data_m = Wire(UInt((bus_w*8).W))
     val hit = Wire(Bool())
+    val hit_2 = Wire(Bool())//to avoid nextstate combinational cycle
+    val valid_2 = Wire(Bool())
+    val tagC_2 = Wire(UInt(tagSize.W))
 
     //state transition
     val s_bfF1 :: s_btF12 :: s_btF12_noCheckHit :: s_btF12_a :: s_btF12_ar :: Nil = Enum(5)
@@ -118,7 +129,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     val nextState = Wire(UInt(4.W))
     nextState := MuxLookup(state, s_bfF1)(Seq(
         s_bfF1 -> Mux(io.in.arready & io.in.arvalid, s_btF12, s_bfF1),
-        s_btF12 ->  Mux(valid && tagA === tagC && io.in.rready && io.in.rvalid, s_bfF1, 
+        s_btF12 ->  Mux(hit_2 && io.in.rready && io.in.rvalid, s_bfF1, 
                     Mux(io.out.arready & io.out.arvalid, s_btF12_a, s_btF12)),
         s_btF12_noCheckHit -> Mux(io.out.arready & io.out.arvalid, s_btF12_a, s_btF12_noCheckHit),
         s_btF12_a -> Mux(io.out.rready & io.out.rvalid, Mux(count === 0.U, s_btF12_ar, s_btF12_noCheckHit), s_btF12_a),
@@ -145,12 +156,48 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     dontTouch(offset)
     dontTouch(tagA)
 
-    //get and decode cacheData
-    cacheData := icache(index)
-    valid := cacheData.valid
-    tagC := cacheData.tag
-    data_h := cacheData.data(offset >> 2)
-    hit := valid && (tagA === tagC) && nextState === s_btF12
+    //get and decode cacheData default
+    cacheData := 0.U.asTypeOf(new ICacheBlock(tagSize, block_sz))
+    data_h := 0.U
+    wayHit := 0.U
+    dontTouch(wayHit)
+    //hit logic
+    hit := false.B
+    hit_2 := false.B //to avoid nextstate combinational cycle
+    valid := false.B
+    tagC := 0.U
+    valid_2 := false.B
+    tagC_2 := 0.U
+    dontTouch(hit_2)
+    cacheSet := icache(index)
+    for(i <- 0 until way){
+        val cacheDataTemp = Wire(new ICacheBlock(tagSize, block_sz))
+        val validTemp = Wire(Bool())
+        val tagCTemp = Wire(UInt(tagSize.W))
+        cacheDataTemp := cacheSet.set(i)
+        dontTouch(cacheDataTemp)
+        dontTouch(validTemp)
+        dontTouch(tagCTemp)
+        tagCTemp := cacheDataTemp.tag
+        validTemp := cacheDataTemp.valid
+        hit_2 := valid_2 && (tagA === tagC_2)
+        when(validTemp && (tagA === tagCTemp)){
+            valid_2 := validTemp
+            tagC_2 := tagCTemp
+        }
+        when(validTemp && (tagA === tagCTemp) && nextState === s_btF12){
+            valid := validTemp
+            tagC := tagCTemp
+            hit := true.B
+            data_h := cacheDataTemp.data(offset >> 2)
+            wayHit := i.U
+        }
+    }
+//    cacheData := icache(index)
+//    valid := cacheData.valid
+//    tagC := cacheData.tag
+//    data_h := cacheData.data(offset >> 2)
+//    hit := valid && (tagA === tagC) && nextState === s_btF12
     dontTouch(hit)
     dontTouch(valid)
     dontTouch(data_h)
@@ -166,8 +213,8 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
         } //default connect
         is(s_btF12){
             in_arready := false.B
-            in_rvalid := valid && tagA === tagC
-            out_arvalid := ~(valid && tagA === tagC)
+            in_rvalid := hit
+            out_arvalid := ~hit
             out_rready := false.B
             out_araddr := ((c.U-(count)) << 2) + base_addr
         }
@@ -191,20 +238,32 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
             out_rready := false.B
         }
     }
-    in_rdata := Mux(nextState === s_btF12 && valid && tagA === tagC, data_h, 
+    in_rdata := Mux(nextState === s_btF12 && hit, data_h, 
                 Mux(nextState === s_btF12_ar , data_m, in_rdata))
     //data tag valid
+    //miss logic
     data_m := 0.U
+    val wayMiss = Wire(UInt(w.W))
+    wayMiss := getWay_FIFO()
+    dontTouch(wayMiss)
+    val wayMissWrite = RegEnable(wayMiss, state === s_btF12)
+    dontTouch(wayMissWrite)
+    cacheData := icache(index).set(wayMissWrite)
     when(io.out.rready && io.out.rvalid) {
         val newBlock = Wire(new ICacheBlock(tagSize, block_sz)) // 创建一个临时块来执行写操作
         newBlock.valid := true.B
         newBlock.tag := tagA
-        newBlock.data := icache(index).data // 首先复制原来的数据
+        newBlock.data := icache(index).set(wayMissWrite).data // 首先复制原来的数据
         newBlock.data(c.U - (count + 1.U)) := io.out.rdata      // 更新需要修改的部分
         data_m := Mux(offset === (block_sz - bus_w).U, newBlock.data(offset >> 2).asUInt, cacheData.data(offset >> 2).asUInt).asUInt //forwarding when it will access the last 4B
 
-        icache(index) := newBlock // 将更新后的块写入内存
-}
+        val newCacheSet = Wire(icache(index).set.cloneType) // 创建一个新的 CacheSet
+        newCacheSet := icache(index).set              // 复制原来的 CacheSet
+        // 更新特定的 way
+        newCacheSet(wayMissWrite) := newBlock
+        // 将更新后的 CacheSet 写回
+        icache(index).set := newCacheSet
+    }
     //count logic
     when(nextState === s_bfF1 ){
         count := c.U
@@ -215,6 +274,26 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
 //-----------------------------------------------------------------------------------------------------------------------------------
     def log2(x: Int): Double = {
         math.log(x) / math.log(2)
+    }
+    def getWay_FIFO(): UInt = {
+        val wayIndex = Wire(UInt(w.W))
+        wayIndex := 0.U
+        dontTouch(wayIndex)
+        val empty = Wire(Bool())
+        empty := false.B
+        for(i <- way - 1 to 0 by -1){
+            when(cacheSet.set(i).valid === false.B){
+                wayIndex := i.U
+                empty := true.B
+            }
+        }
+        when(!empty && nextState === s_btF12 && ~hit){
+            for(i <- way - 1 to 1 by -1){
+                icache(index).set(i-1) := icache(index).set(i)
+            }
+            wayIndex := (way-1).U
+        }
+        wayIndex
     }
     def DefaultConnect(): Unit = {
         in_arready := io.out.arready
