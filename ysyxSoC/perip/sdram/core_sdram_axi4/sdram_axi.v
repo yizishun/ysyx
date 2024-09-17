@@ -53,7 +53,7 @@ module sdram_axi
     ,input  [  7:0]  inport_arlen_i
     ,input  [  1:0]  inport_arburst_i
     ,input           inport_rready_i
-    ,input  [ 15:0]  sdram_data_input_i
+    ,input  [ 31:0]  sdram_data_input_i
 
     // Outputs
     ,output          inport_awready_o
@@ -73,10 +73,10 @@ module sdram_axi
     ,output          sdram_ras_o
     ,output          sdram_cas_o
     ,output          sdram_we_o
-    ,output [  1:0]  sdram_dqm_o
-    ,output [ 12:0]  sdram_addr_o
+    ,output [  3:0]  sdram_dqm_o
+    ,output [ 13:0]  sdram_addr_o
     ,output [  1:0]  sdram_ba_o
-    ,output [ 15:0]  sdram_data_output_o
+    ,output [ 31:0]  sdram_data_output_o
     ,output          sdram_data_out_en_o
 );
 
@@ -86,7 +86,7 @@ module sdram_axi
 // Key Params
 //-----------------------------------------------------------------
 parameter SDRAM_MHZ             = 50;
-parameter SDRAM_ADDR_W          = 24;
+parameter SDRAM_ADDR_W          = 25;
 parameter SDRAM_COL_W           = 9;
 parameter SDRAM_READ_LATENCY    = 2;
 

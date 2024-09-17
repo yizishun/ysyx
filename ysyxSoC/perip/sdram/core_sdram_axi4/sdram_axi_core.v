@@ -691,7 +691,7 @@ if (rst_i)
     ack_q   <= 1'b0;
 else
 begin
-    if (state_q == STATE_WRITE0)
+    if (state_q == STATE_WRITE0 && next_state_r == STATE_WRITE0)
         ack_q <= 1'b1;
     else if (rd_q[SDRAM_READ_LATENCY])
         ack_q <= 1'b1;
@@ -702,7 +702,7 @@ end
 assign ram_ack_w = ack_q;
 
 // Accept command in READ or WRITE0 states
-assign ram_accept_w = (state_q == STATE_READ || state_q == STATE_WRITE0);
+assign ram_accept_w = (state_q == STATE_READ || (state_q == STATE_WRITE0 && next_state_r == STATE_WRITE0));
 
 //-----------------------------------------------------------------
 // SDRAM I/O

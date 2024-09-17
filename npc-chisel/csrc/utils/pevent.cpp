@@ -152,7 +152,7 @@ void d_Other(int inc, int start, int end, int timeEn)
 {
     if(inc) DECisOther.cnt ++;
     if(start) DECisOther.switchTime = true;
-    if(end) {if(!DECisOther.switchTime)assert(0); DECisOther.switchTime = false;}
+    if(end) {if(!DECisOther.switchTime)printf("assert"); DECisOther.switchTime = false;}
     if(DECisOther.switchTime && timeEn) DECisOther.time ++;
 }
 

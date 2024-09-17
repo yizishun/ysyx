@@ -89,6 +89,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     io.out.wvalid := out_wvalid
     io.out.wlast := out_wlast
     io.out.bready := out_bready
+    val out_arvalid_prev = RegNext(io.out.arvalid)
 
     val m = log2(block_sz).toInt
     val n = log2(set).toInt
@@ -124,16 +125,15 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     val tagC_2 = Wire(UInt(tagSize.W))
 
     //state transition
-    val s_bfF1 :: s_btF12 :: s_btF12_noCheckHit :: s_btF12_a :: s_btF12_ar :: Nil = Enum(5)
+    val s_bfF1 :: s_btF12 :: s_btF12_bfF1 :: s_btF12_btF12 :: s_btF12_afF12 :: Nil = Enum(5)
     val state = RegInit(s_bfF1)
     val nextState = Wire(UInt(4.W))
     nextState := MuxLookup(state, s_bfF1)(Seq(
         s_bfF1 -> Mux(io.in.arready & io.in.arvalid, s_btF12, s_bfF1),
-        s_btF12 ->  Mux(hit_2 && io.in.rready && io.in.rvalid, s_bfF1, 
-                    Mux(io.out.arready & io.out.arvalid, s_btF12_a, s_btF12)),
-        s_btF12_noCheckHit -> Mux(io.out.arready & io.out.arvalid, s_btF12_a, s_btF12_noCheckHit),
-        s_btF12_a -> Mux(io.out.rready & io.out.rvalid, Mux(count === 0.U, s_btF12_ar, s_btF12_noCheckHit), s_btF12_a),
-        s_btF12_ar -> Mux(io.in.rready & io.in.rvalid, s_bfF1, s_btF12_ar)
+        s_btF12 ->  Mux(hit_2 && io.in.rready && io.in.rvalid, s_bfF1, s_btF12_bfF1),
+        s_btF12_bfF1 -> Mux(io.out.arready & io.out.arvalid, s_btF12_btF12, s_btF12_bfF1),
+        s_btF12_btF12 -> Mux(io.out.rready & io.out.rvalid, Mux(count === 0.U, s_btF12_afF12, s_btF12_bfF1), s_btF12_btF12),
+        s_btF12_afF12 -> Mux(io.in.rready & io.in.rvalid, s_bfF1, s_btF12_afF12)
     ))
     state := nextState
     dontTouch(nextState)
@@ -142,7 +142,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
         import npc.EVENT._
         val hitState = RegEnable(hit, false.B, nextState === s_btF12)
         PerformanceProbe(clock, ICacheHit, hit, 0.U, io.in.arready & io.in.arvalid & hit, io.in.rready & io.in.rvalid & hitState)
-        PerformanceProbe(clock, ICacheMiss, state === s_btF12_ar, 0.U, io.in.arready & io.in.arvalid & ~hit, io.in.rready & io.in.rvalid & ~hitState)
+        PerformanceProbe(clock, ICacheMiss, state === s_btF12_afF12, 0.U, io.in.arready & io.in.arvalid & ~hit, io.in.rready & io.in.rvalid & ~hitState)
     }
 
     //addr decode
@@ -210,36 +210,40 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
         is(s_bfF1){
             out_arvalid := false.B
             out_rready := false.B
+            out_araddr := 0.U
         } //default connect
         is(s_btF12){
+            in_arready := false.B
+            in_rvalid := hit
+            out_arvalid := false.B
+            out_rready := false.B
+            out_araddr := ((c.U-(count)) << 2) + base_addr
+        }
+        is(s_btF12_bfF1){
             in_arready := false.B
             in_rvalid := hit
             out_arvalid := ~hit
             out_rready := false.B
             out_araddr := ((c.U-(count)) << 2) + base_addr
         }
-        is(s_btF12_noCheckHit){
-            in_arready := false.B
-            in_rvalid := false.B
-            out_arvalid := true.B
-            out_rready := false.B
-            out_araddr := ((c.U-(count)) << 2) + base_addr
-        }
-        is(s_btF12_a){
+        is(s_btF12_btF12){
             in_arready := false.B
             in_rvalid := false.B
             out_arvalid := false.B
             out_rready := true.B
+            out_araddr := 0.U
         }
-        is(s_btF12_ar){
+        is(s_btF12_afF12){
             in_arready := false.B
             in_rvalid := true.B
             out_arvalid := false.B
             out_rready := false.B
+            out_araddr := 0.U
         }
+
     }
     in_rdata := Mux(nextState === s_btF12 && hit, data_h, 
-                Mux(nextState === s_btF12_ar , data_m, in_rdata))
+                Mux(nextState === s_btF12_afF12 , data_m, in_rdata))
     //data tag valid
     //miss logic
     data_m := 0.U
@@ -267,7 +271,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     //count logic
     when(nextState === s_bfF1 ){
         count := c.U
-    }.elsewhen(count =/= 0.U && io.out.arready && io.out.arvalid){
+    }.elsewhen(count =/= 0.U && nextState === s_btF12_btF12 && state === s_btF12_bfF1){
         count := count - 1.U
     }
 

@@ -62,6 +62,8 @@ class LSU(val conf: npc.CoreConfig) extends Module{
   io.dmem.awsize := dmem_awsize
   io.dmem.wvalid := dmem_wvalid
   io.dmem.bready := dmem_bready
+  val dmem_arready_prev = RegNext(io.dmem.arready)
+  val dmem_rready_prev = RegNext(io.dmem.rready)
 
   //isLoad?isStore?
   val isLoad = Wire(Bool())
@@ -132,7 +134,7 @@ class LSU(val conf: npc.CoreConfig) extends Module{
     is(s_BetweenFire12_1_1){
       //between modules
       in_ready := false.B
-      out_valid := Mux(isLoad, io.dmem.rvalid & (io.dmem.rresp === 0.U), io.dmem.bvalid & (io.dmem.bresp === 0.U))
+      out_valid := false.B
       //AXI4-Lite
       when(delay === 0.U){
           //AR
@@ -173,7 +175,7 @@ class LSU(val conf: npc.CoreConfig) extends Module{
     is(s_BetweenFire12_1_2){
       //between modules
       in_ready := false.B
-      out_valid := Mux(isLoad, io.dmem.rvalid & (io.dmem.rresp === 0.U), io.dmem.bvalid & (io.dmem.bresp === 0.U))
+      out_valid := false.B
       //AXI4-Lite
         //AR
       dmem_arvalid := Mux(isLoad, false.B, false.B)
@@ -202,7 +204,7 @@ class LSU(val conf: npc.CoreConfig) extends Module{
     is(s_BetweenFire12_2){
       //between modules
       in_ready := false.B
-      out_valid := Mux(isLoad, io.dmem.rvalid & (io.dmem.rresp === 0.U), io.dmem.bvalid & (io.dmem.bresp === 0.U))
+      out_valid := true.B
       //AXI4-Lite
         //AR
       dmem_arvalid := false.B
@@ -238,7 +240,8 @@ class LSU(val conf: npc.CoreConfig) extends Module{
     io.dmem.wdata := io.in.bits.rd2 << (dataplace(2, 0) << 3)
     io.dmem.wstrb := RealMemWmask
     //some operation to read data
-    rdplace := io.dmem.rdata >> (dataplace(2, 0) << 3)
+    val dmem_rdata = RegNext(io.dmem.rdata)
+    rdplace := dmem_rdata >> (dataplace(2, 0) << 3)
     //LSU module(wrapper)
     io.out.bits.signals := io.in.bits.signals
     io.out.bits.rd1 := io.in.bits.rd1

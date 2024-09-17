@@ -50,13 +50,11 @@ class NPC(val coreConfig : CoreConfig) extends Module {
 
   if(coreConfig.ysyxsoc){
     val core = Module(new Core(coreConfig))
-    val arb = Module(new npc.bus.Arbiter(coreConfig))
-    val xbar = Module(new npc.bus.Xbar)
+    val xbar = Module(new npc.bus.Xbar3)
     val clint = Module(new npc.dev.Clint(coreConfig))
 
-    core.io.imem :<>= arb.io.imem
-    core.io.dmem :<>= arb.io.dmem
-    arb.io.mem <> xbar.io.arb
+    core.io.imem :<>= xbar.io.imem
+    core.io.dmem :<>= xbar.io.dmem
     clint.io.axi <> xbar.io.clint
     xbar.io.soc <> io.master
   //  arb.io.mem <> io.master
