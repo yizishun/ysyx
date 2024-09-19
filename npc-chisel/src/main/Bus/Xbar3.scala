@@ -59,6 +59,8 @@ class Xbar3 extends Module{
   val clint_rready_prev = RegNext(io.clint.rready)
   val clint_bvalid_prev = RegNext(io.clint.bvalid)
   val clint_bready_prev = RegNext(io.clint.bready)
+
+  val burstCnt = dontTouch(RegInit(0.U(8.W)))
  
 
 //--------------------------------------------------------------------------------------------------------------------------------------
@@ -76,7 +78,7 @@ class Xbar3 extends Module{
       ((io.dmem.awvalid & !w_clint) || (io.dmem.arvalid & !r_clint)) -> s_d_soc,
       ((io.dmem.arvalid & r_clint) || (io.dmem.awvalid & w_clint)) -> s_d_clint
     )),
-    s_i_soc -> Mux((soc_rready & soc_rvalid_prev === 1.U && io.soc.rvalid === 0.U), Mux(io.imem.arvalid, s_i_soc, s_select), s_i_soc),
+    s_i_soc -> Mux((soc_rready & soc_rvalid_prev === 1.U && io.soc.rvalid === 0.U && burstCnt === 0.U), Mux(io.imem.arvalid, s_i_soc, s_select), s_i_soc),
     s_d_soc -> Mux((soc_rready & soc_rvalid_prev === 1.U && io.soc.rvalid === 0.U)|(soc_bready & soc_bvalid_prev === 1.U), s_select, s_d_soc),
     s_d_clint -> Mux((io.dmem.rready & clint_rvalid_prev === 1.U && io.clint.rvalid === 0.U)|(io.dmem.bready & clint_bvalid_prev === 1.U && io.clint.bvalid === 0.U), s_select, s_d_clint),
   ))
@@ -88,6 +90,9 @@ class Xbar3 extends Module{
   DefaultClint()
 
   val imem_araddr = RegEnable(io.imem.araddr, io.imem.arvalid)
+  val imem_arburst = RegEnable(io.imem.arburst, io.imem.arvalid)
+  val imem_arlen = RegEnable(io.imem.arlen, io.imem.arvalid)
+  val imem_arsize = RegEnable(io.imem.arsize, io.imem.arvalid)
   val dmem_araddr = RegEnable(io.dmem.araddr, io.dmem.arvalid)
   val dmem_awaddr = RegEnable(io.dmem.awaddr, io.dmem.awvalid)
   switch(nextState){
@@ -100,6 +105,9 @@ class Xbar3 extends Module{
       }.elsewhen(~io.soc.arready & io.soc.arvalid){
         soc_arvalid := 1.U
         soc_araddr := imem_araddr
+        soc_arburst := imem_arburst
+        soc_arlen := imem_arlen
+        soc_arsize := imem_arsize
       }
     }
     is(s_d_clint){
@@ -120,6 +128,12 @@ class Xbar3 extends Module{
         soc_awaddr := dmem_awaddr
       }
     }
+  }
+
+  when(io.soc.arready & io.soc.arvalid){
+    burstCnt := io.soc.arlen + 1.U
+  }.elsewhen(burstCnt =/= 0.U & io.soc.rready & io.soc.rvalid){
+    burstCnt := burstCnt - 1.U
   }
 //-----------------------------------------------------------------------------------------------------------------------------------
 def ConnectImem2Soc(): Unit = {

@@ -125,6 +125,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     val tagC_2 = Wire(UInt(tagSize.W))
 
     //state transition
+    val is_sdram = dontTouch(RegEnable(io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), false.B, io.in.arready & io.in.arvalid))
     val s_bfF1 :: s_btF12 :: s_btF12_bfF1 :: s_btF12_btF12 :: s_btF12_afF12 :: Nil = Enum(5)
     val state = RegInit(s_bfF1)
     val nextState = Wire(UInt(4.W))
@@ -132,7 +133,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
         s_bfF1 -> Mux(io.in.arready & io.in.arvalid, s_btF12, s_bfF1),
         s_btF12 ->  Mux(hit_2 && io.in.rready && io.in.rvalid, s_bfF1, s_btF12_bfF1),
         s_btF12_bfF1 -> Mux(io.out.arready & io.out.arvalid, s_btF12_btF12, s_btF12_bfF1),
-        s_btF12_btF12 -> Mux(io.out.rready & io.out.rvalid, Mux(count === 0.U, s_btF12_afF12, s_btF12_bfF1), s_btF12_btF12),
+        s_btF12_btF12 -> Mux(io.out.rready & io.out.rvalid, Mux(count === 0.U, s_btF12_afF12, Mux(is_sdram, s_btF12_btF12, s_btF12_bfF1)), s_btF12_btF12),
         s_btF12_afF12 -> Mux(io.in.rready & io.in.rvalid, s_bfF1, s_btF12_afF12)
     ))
     state := nextState
@@ -224,7 +225,10 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
             in_rvalid := hit
             out_arvalid := ~hit
             out_rready := false.B
-            out_araddr := ((c.U-(count)) << 2) + base_addr
+            out_araddr := Mux(is_sdram, base_addr, ((c.U-(count)) << 2) + base_addr)
+            out_arburst := Mux(is_sdram, "b01".U, out_arburst)
+            out_arlen := Mux(is_sdram, (c - 1).U, out_arlen)
+            out_arsize := Mux(is_sdram, "b10".U, out_arsize)
         }
         is(s_btF12_btF12){
             in_arready := false.B
@@ -269,9 +273,9 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
         icache(index).set := newCacheSet
     }
     //count logic
-    when(nextState === s_bfF1 ){
-        count := c.U
-    }.elsewhen(count =/= 0.U && nextState === s_btF12_btF12 && state === s_btF12_bfF1){
+    when(state === s_btF12 ){
+        count := Mux(is_sdram, (c-1).U,c.U)
+    }.elsewhen(count =/= 0.U && ((nextState === s_btF12_btF12 && state === s_btF12_bfF1 && ~is_sdram) || (is_sdram && io.out.rready & io.out.rvalid))){
         count := count - 1.U
     }
 

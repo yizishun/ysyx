@@ -179,7 +179,7 @@ class sdramChip(id : Int) extends RawModule{
     //state
     val s_idle :: s_read :: s_readWaitCas :: s_write :: Nil = Enum(4)
     val state = RegInit(s_idle)
-    val nextState = Wire(UInt(3.W))
+    val nextState = dontTouch(Wire(UInt(3.W)))
     val burstCounter = RegInit(0.U(3.W))
     val casLatCounter = RegInit(0.U(3.W))
     val burstLenth = Wire(UInt(8.W))
@@ -187,12 +187,14 @@ class sdramChip(id : Int) extends RawModule{
     burstLenth := (1.U << mode(2, 0))
     burstCounter := Mux(((nextState === s_read && state === s_readWaitCas) || cmd === WRITE) && burstLenth =/= 0.U, burstLenth - 1.U, Mux(burstCounter =/= burstLenth && burstCounter =/= 0.U, burstCounter - 1.U, burstLenth))
     casLat := mode(6, 4)
-    casLatCounter := Mux(cmd === READ && state === s_idle, casLat - 1.U, Mux(casLatCounter =/= casLat && casLatCounter =/= 0.U, casLatCounter - 1.U, casLat))
+    casLatCounter := Mux(cmd === READ, casLat - 1.U, Mux(casLatCounter =/= casLat && casLatCounter =/= 0.U, casLatCounter - 1.U, casLat))
     state := nextState
     nextState := MuxLookup(state, s_idle)(Seq(
       s_idle -> Mux(cmd === READ, s_readWaitCas, Mux(cmd === WRITE, s_write, s_idle)),
       s_readWaitCas -> Mux(casLatCounter === 1.U, s_read, s_readWaitCas),
-      s_read -> Mux(burstCounter === 0.U, Mux(cmd === WRITE, s_write, s_idle), s_read),
+      s_read -> Mux(burstCounter === 0.U, 
+                Mux(cmd === WRITE, s_write, 
+                Mux(cmd === READ, s_readWaitCas,s_idle)), s_read),
       s_write -> Mux(burstCounter === 0.U, Mux(cmd === READ, s_readWaitCas, s_idle), s_write)
     ))
     

@@ -117,7 +117,7 @@ extern "C" void mrom_read(int addr, int *data) {
 extern "C" void flash_read(int addr, int *data) {
 	int align_addr = addr + FLASH_BASE;
 	*data = *(int *)guest_to_host(align_addr);
-	printf("addr = %#x , data = %#x \n",align_addr, *data);
+	//printf("addr = %#x , data = %#x \n",align_addr, *data);
 	record_mem_trace(READ, addr , sizeof(uint32_t));	
 	return;
 }
@@ -172,8 +172,8 @@ extern "C" void sdram_read(int chipid, int ba, int ra, int ca, int *data) {
 	int align_addr = (ba * 512 * 2) + (ra * 512 * 2 * 4) + (ca * 2) + SDRAM_BASE;
 	*data = *(uint16_t *)guest_to_host_sdram(align_addr, chipid);
 	align_addr = (chipid == 2 || chipid == 3)? align_addr + 0x2000000 : align_addr;
-	printf("READ  addr = %#x , data = %#x ",align_addr, *data);
-	printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
+	//printf("READ  addr = %#x , data = %#x ",align_addr, *data);
+	//printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
 	record_mem_trace(READ, align_addr , sizeof(uint32_t));	
 	return;
 }
@@ -187,30 +187,30 @@ extern "C" void sdram_write(int chipid, int ba, int ra, int ca, int wdata, int w
 	case 0b0001:
 		*(uint8_t *)guest_to_host_sdram(align_addr, chipid) = wdata;
 		align_addr = (chipid == 2 || chipid == 3)? align_addr + 0x2000000 : align_addr;
-		printf("WRITE addr = %#x , data = %#x ,wstrb = %d",align_addr, wdata, wstrb);
-		printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
+		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d",align_addr, wdata, wstrb);
+		//printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
 		break;
 	case 0b0010:
 		*(uint8_t *)(guest_to_host_sdram(align_addr, chipid) + 1) = (wdata >> 8);
 		align_addr = (chipid == 2 || chipid == 3)? align_addr + 0x2000000 : align_addr;
-		printf("WRITE addr = %#x , data = %#x ,wstrb = %d",align_addr, wdata >> 8, wstrb);
-		printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
+		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d",align_addr, wdata >> 8, wstrb);
+		//printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
 		break;
 	case 0b0011:
 		*(uint16_t *)guest_to_host_sdram(align_addr, chipid) = wdata;
 		align_addr = (chipid == 2 || chipid == 3)? align_addr + 0x2000000 : align_addr;
-		printf("WRITE addr = %#x , data = %#x ,wstrb = %d",align_addr, wdata, wstrb);
-		printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
+		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d",align_addr, wdata, wstrb);
+		//printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
 		break;
 	case 0b1111:
 		assert(0);
 		*(uint32_t *)guest_to_host_sdram(align_addr, chipid) = wdata;
 		align_addr = (chipid == 2 || chipid == 3)? align_addr + 0x2000000 : align_addr;
-		printf("WRITE addr = %#x , data = %#x ,wstrb = %d\n",align_addr, wdata, wstrb);
-		printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
+		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d\n",align_addr, wdata, wstrb);
+		//printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
 		break;
 	default:
-		printf("wstrb is %d\n", wstrb);
+		//printf("wstrb is %d\n", wstrb);
 		break;
 	}
 	return;
