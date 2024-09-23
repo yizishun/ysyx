@@ -55,7 +55,7 @@ class AXI4DelayerChisel extends Module {
   //in burst counter logic
   when(io.in.ar.valid){
     burstCntIn := 0.U
-  }.elsewhen(io.in.r.fire){
+  }.elsewhen(io.in.r.fire && burstCntIn < burstLenR){
     burstCntIn := burstCntIn + 1.U
   }
   //delay counter logic

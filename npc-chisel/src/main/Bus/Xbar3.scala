@@ -80,7 +80,7 @@ class Xbar3 extends Module{
     )),
     s_i_soc -> Mux((soc_rready & soc_rvalid_prev === 1.U && io.soc.rvalid === 0.U && burstCnt === 0.U), Mux(io.imem.arvalid, s_i_soc, s_select), s_i_soc),
     s_d_soc -> Mux((soc_rready & soc_rvalid_prev === 1.U && io.soc.rvalid === 0.U)|(soc_bready & soc_bvalid_prev === 1.U), s_select, s_d_soc),
-    s_d_clint -> Mux((io.dmem.rready & clint_rvalid_prev === 1.U && io.clint.rvalid === 0.U)|(io.dmem.bready & clint_bvalid_prev === 1.U && io.clint.bvalid === 0.U), s_select, s_d_clint),
+    s_d_clint -> Mux((clint_rvalid_prev === 1.U && io.clint.rvalid === 0.U)|(clint_bvalid_prev === 1.U && io.clint.bvalid === 0.U), s_select, s_d_clint),
   ))
   state := nextState
   dontTouch(nextState)
