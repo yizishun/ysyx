@@ -10,7 +10,11 @@ class IduPcIO extends Bundle{
 }
 
 class IduOutIO extends Bundle{
-  val signals = new idu.Signals
+  val signals = new Bundle{
+    val exu = new idu.EXUSignals
+    val lsu = new idu.LSUSignals
+    val wbu = new idu.WBUSignals
+  }
   val rd1 = Output(UInt(32.W))
   val rd2 = Output(UInt(32.W))
   val crd1 = Output(UInt(32.W))
@@ -29,6 +33,8 @@ class IduIO(xlen: Int) extends Bundle{
   val out = Decoupled(new IduOutIO)
   //pc value to IFU
   val pc = new IduPcIO
+  //signals to IFU
+  val ifuSignals = Irrevocable(new idu.IFUSignals)
   //connect to the external "state" elements(i.e.gpr,csr,imem)
   val gpr = Flipped(new gprReadIO(xlen))
   val csr = Flipped(new csrReadIO(xlen))
@@ -98,6 +104,7 @@ class IDU(val conf: npc.CoreConfig) extends Module{
       //pc value back to IFU
     io.pc.mepc := io.csr.mepc
     io.pc.mtvec := io.csr.mtvec
+    io.ifuSignals <> controller.io.signals.ifu
       //out to EXU
     io.out.bits.signals := controller.io.signals
     io.out.bits.rd1 := io.gpr.rdata1

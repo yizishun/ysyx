@@ -9,6 +9,7 @@ import npc.bus._
 class ICacheIO extends Bundle{
     val in = new AXI4
     val out = Flipped(new AXI4)
+    val fencei = Flipped(Irrevocable(new npc.core.idu.IFUSignals))
 }
 class ICacheBlock(val tagSize: Int, val block_sz: Int) extends Bundle{
     val valid = Bool()
@@ -126,15 +127,18 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
 
     //state transition
     val is_sdram = dontTouch(RegEnable(io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), false.B, io.in.arready & io.in.arvalid))
-    val s_bfF1 :: s_btF12 :: s_btF12_bfF1 :: s_btF12_btF12 :: s_btF12_afF12 :: Nil = Enum(5)
+    val s_bfF1 :: s_btF12 :: s_btF12_bfF1 :: s_btF12_btF12 :: s_btF12_afF12 :: s_fence_i ::Nil = Enum(6)
     val state = RegInit(s_bfF1)
     val nextState = Wire(UInt(4.W))
     nextState := MuxLookup(state, s_bfF1)(Seq(
-        s_bfF1 -> Mux(io.in.arready & io.in.arvalid, s_btF12, s_bfF1),
+        s_bfF1 -> MuxCase(s_bfF1, 
+                Array((io.in.arready && io.in.arvalid) -> s_btF12,
+                      (io.fencei.valid && io.fencei.bits.is_fencei) -> s_fence_i)),
         s_btF12 ->  Mux(hit_2 && io.in.rready && io.in.rvalid, s_bfF1, s_btF12_bfF1),
         s_btF12_bfF1 -> Mux(io.out.arready & io.out.arvalid, s_btF12_btF12, s_btF12_bfF1),
         s_btF12_btF12 -> Mux(io.out.rready & io.out.rvalid, Mux(count === 0.U, s_btF12_afF12, Mux(is_sdram, s_btF12_btF12, s_btF12_bfF1)), s_btF12_btF12),
-        s_btF12_afF12 -> Mux(io.in.rready & io.in.rvalid, s_bfF1, s_btF12_afF12)
+        s_btF12_afF12 -> Mux(io.in.rready & io.in.rvalid, s_bfF1, s_btF12_afF12),
+        s_fence_i -> s_bfF1
     ))
     state := nextState
     dontTouch(nextState)
@@ -143,10 +147,19 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
         import npc.EVENT._
         val hitState = RegEnable(hit, false.B, nextState === s_btF12)
         PerformanceProbe(clock, ICacheHit, hit, 0.U, io.in.arready & io.in.arvalid & hit, io.in.rready & io.in.rvalid & hitState)
-        PerformanceProbe(clock, ICacheMiss, state === s_btF12_afF12, 0.U, io.in.arready & io.in.arvalid & ~hit, io.in.rready & io.in.rvalid & ~hitState)
+        PerformanceProbe(clock, ICacheMiss, state === s_btF12_afF12 && io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), 0.U, io.in.arready & io.in.arvalid & ~hit & io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), io.in.rready & io.in.rvalid & ~hitState & io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W))
+    }
+//fence_i logic
+    io.fencei.ready := io.fencei.valid
+    when(nextState === s_fence_i){
+        for(i <- 0 until set){
+            for(j <- 0 until way){
+                icache(i).set(j).valid := false.B
+            }
+        }
     }
 
-    //addr decode
+//addr decode
     //b=4 k=16 m=2 n=4 tagSize=26
     tagA := io.in.araddr(31, m+n)
     index := io.in.araddr(m+n-1, m)
@@ -157,12 +170,12 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     dontTouch(offset)
     dontTouch(tagA)
 
-    //get and decode cacheData default
+//get and decode cacheData default
     cacheData := 0.U.asTypeOf(new ICacheBlock(tagSize, block_sz))
     data_h := 0.U
     wayHit := 0.U
     dontTouch(wayHit)
-    //hit logic
+//hit logic
     hit := false.B
     hit_2 := false.B //to avoid nextstate combinational cycle
     valid := false.B
@@ -249,7 +262,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     in_rdata := Mux(nextState === s_btF12 && hit, data_h, 
                 Mux(nextState === s_btF12_afF12 , data_m, in_rdata))
     //data tag valid
-    //miss logic
+//miss logic
     data_m := 0.U
     val wayMiss = Wire(UInt(w.W))
     wayMiss := getWay_FIFO()
@@ -273,7 +286,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
         icache(index).set := newCacheSet
     }
     //count logic
-    when(state === s_btF12 ){
+    when(state === s_btF12 || state === s_bfF1){
         count := Mux(is_sdram, (c-1).U,c.U)
     }.elsewhen(count =/= 0.U && ((nextState === s_btF12_btF12 && state === s_btF12_bfF1 && ~is_sdram) || (is_sdram && io.out.rready & io.out.rvalid))){
         count := count - 1.U
