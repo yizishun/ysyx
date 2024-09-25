@@ -102,12 +102,12 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     //icache (use dff by default)
     val icache = Mem(set, new ICacheSet(tagSize, block_sz, way))
     // 初始化所有地址的值为0
-    // 在仿真阶段初始化
-    when (reset.asBool) {
-        for (i <- 0 until set + 1) {
-            icache.write(i.U, 0.U.asTypeOf(new ICacheSet(tagSize, block_sz, way)))
-        }
-    }
+    // 在仿真阶段初始化(这部分产生了超大的面积)
+    //when (reset.asBool) {
+        //for (i <- 0 until set + 1) {
+            //icache.write(i.U, 0.U.asTypeOf(new ICacheSet(tagSize, block_sz, way)))
+        //}
+    //}
     val base_addr = Wire(UInt(32.W))
     val tagA = Wire(UInt(tagSize.W))
     val index = Wire(UInt(n.W))
@@ -138,7 +138,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
         s_btF12_bfF1 -> Mux(io.out.arready & io.out.arvalid, s_btF12_btF12, s_btF12_bfF1),
         s_btF12_btF12 -> Mux(io.out.rready & io.out.rvalid, Mux(count === 0.U, s_btF12_afF12, Mux(is_sdram, s_btF12_btF12, s_btF12_bfF1)), s_btF12_btF12),
         s_btF12_afF12 -> Mux(io.in.rready & io.in.rvalid, s_bfF1, s_btF12_afF12),
-        s_fence_i -> s_bfF1
+        s_fence_i -> Mux(io.fencei.ready, s_bfF1, s_fence_i)
     ))
     state := nextState
     dontTouch(nextState)
@@ -150,13 +150,22 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
         PerformanceProbe(clock, ICacheMiss, state === s_btF12_afF12 && io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), 0.U, io.in.arready & io.in.arvalid & ~hit & io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), io.in.rready & io.in.rvalid & ~hitState & io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W))
     }
 //fence_i logic
-    io.fencei.ready := io.fencei.valid
-    when(nextState === s_fence_i){
-        for(i <- 0 until set){
-            for(j <- 0 until way){
-                icache(i).set(j).valid := false.B
-            }
-        }
+    val fenceCnt = RegInit(0.U(n.W))
+    when(io.fencei.valid & io.fencei.bits.is_fencei){
+        fenceCnt := fenceCnt + 1.U
+    } otherwise {
+        fenceCnt := 0.U
+    }
+    io.fencei.ready := fenceCnt === set.U - 1.U
+    //when(nextState === s_fence_i){
+        //for(i <- 0 until set){
+            //for(j <- 0 until way){
+                //icache(i).set(j).valid := false.B
+            //}
+        //}
+    //}
+    when(io.fencei.valid & io.fencei.bits.is_fencei){
+        icache.write(fenceCnt, 0.U.asTypeOf(new ICacheSet(tagSize, block_sz, way)))
     }
 
 //addr decode

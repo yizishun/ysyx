@@ -44,7 +44,7 @@ class csrIO(xlen: Int) extends Bundle{
 class csr(conf: CoreConfig) extends Module{
   val io = IO(new csrIO(conf.xlen))
   //val rf = RegInit(VecInit(Seq.fill(4)(0.U(32.W))))
-  val rf = Mem(6, UInt(conf.xlen.W))
+  val rf = Reg(Vec(6, UInt(conf.xlen.W)))
   import CsrReg._
   val waddr_in = Wire(UInt(3.W))
   val raddr_in = Wire(UInt(3.W))
