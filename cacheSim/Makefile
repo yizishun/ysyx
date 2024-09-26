@@ -1,8 +1,10 @@
 BUILD_DIR = $(CACHESIM_HOME)/build
-ITRACE_DIR = $(CACHESIM_HOME)/itrace
+TRACE_DIR = $(CACHESIM_HOME)/trace
 
-ITRACE_FILE_BIG = $(ITRACE_DIR)/itrace.log
-ITRACE_FILE = $(ITRACE_DIR)/itrace.log.bz2
+ITRACE_FILE_BIG = $(TRACE_DIR)/itrace.log
+ITRACE_FILE = $(TRACE_DIR)/itrace.log.bz2
+MTRACE_FILE_BIG = $(TRACE_DIR)/mtrace.log
+MTRACE_FILE = $(TRACE_DIR)/mtrace.log.bz2
 SRCS = $(shell find $(CACHESIM_HOME)/src/ -name "*.cpp")
 SRCS += $(shell find $(CACHESIM_HOME)/src/ -name "*.c")
 CPPFLAGS = -std=c++17 -O2
@@ -16,10 +18,18 @@ $(bin): $(SRCS)
 	@g++ $(CPPFLAGS) -o $@ $(INCLUDE_FLAG) $^
 
 run: $(bin)
-	@echo "#[Run CacheSim]"
+	@echo "#[Run CacheSim(icache)]"
 	$(bin) $(ITRACE_FILE)
-zip:
+icache: $(bin)
+	@echo "#[Run CacheSim(icache)]"
+	$(bin) $(ITRACE_FILE)
+dcache: $(bin)
+	@echo "#[Run CacheSim(dcache)]"
+	$(bin) $(MTRACE_FILE)
+zipi:
 	pbzip2 -p4 -kv $(ITRACE_FILE_BIG)
+zipm:
+	pbzip2 -p4 -kv $(MTRACE_FILE_BIG)
 clean:
 	rm -rf $(BUILD_DIR)
 

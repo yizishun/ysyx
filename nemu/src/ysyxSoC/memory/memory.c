@@ -5,8 +5,11 @@ uint8_t *flash = NULL;
 static uint8_t *psram = NULL;
 static uint8_t *sdram = NULL;
 static FILE *itrace_fp = NULL;
+static FILE *mtrace_fp = NULL;
 static char * itrace_file = "build/itrace.log";
+static char * mtrace_file = "build/mtrace.log";
 void init_icacheitrace();
+void init_mcacheitrace();
 void init_mrom() {
   mrom = malloc(0xfff);
   assert(mrom);
@@ -41,9 +44,10 @@ void init_soc() {
     init_flash();
     init_sram();
     init_sdram();
-    #ifndef CONFIG_REF_DIFF
     init_icacheitrace();
-    #endif
+    init_mcacheitrace();
+    Log("cache trace init");    
+    Log("soc init");    
 }
 
 
@@ -175,4 +179,14 @@ void init_icacheitrace(){
 
 void write_icacheitrace(paddr_t addr){
     fprintf(itrace_fp, "%u\n", addr);
+}
+
+void init_mcacheitrace(){
+    mtrace_fp = fopen(mtrace_file, "w");
+    Log("mcache trace file %s", mtrace_file);
+    assert(mtrace_fp);
+}
+
+void write_mcacheitrace(paddr_t addr){
+    fprintf(mtrace_fp, "%u\n", addr);
 }

@@ -37,13 +37,16 @@ bool Cache::has_empty(cacheSet_t set)
 
 void Cache::statistic(){
     double miss_penalty;
+    double miss_penalty_d = 22.546192;
     if(block_size == 4) miss_penalty = 28.782574;
     else if(block_size == 8) miss_penalty = 36.106663;
     else if(block_size == 16) miss_penalty = 52.820628;
     else miss_penalty = 0;
+    printf("Cache par = set(%d) way(%d) bsz(%d)\n", set, way, block_size);
     printf("Req count : %llu\n", report.reqCnt);
     printf("Hit count : %llu\n", report.hit);
     printf("Miss count : %llu\n", report.miss);
     printf("TMT : %lf\n", report.miss * miss_penalty);
+    printf("TMT(dcache) : %lf\n", report.miss * miss_penalty_d);
     printf("Hit rate : %lf\n", (double)report.hit / (double)report.reqCnt);
 }
