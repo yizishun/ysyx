@@ -12,19 +12,23 @@ char mtrace[128] = {0};
 char *char_test = "/Users/yizishun/ysyx-workbench/char-test.bin";
 #define READ 1
 #define WRITE 0
+
 static const uint32_t img[] = {
-	0b00000000110000000000001011101111, //jal   x5 12         0x80000000
-	0b00000000000000000001001000110111, //lui   x4 1          0x80000004
-	0b00000000000000000001000110010111, //auipc x3 1          0x80000008
-	0b00000000010100000000000010010011, //addi  x1 x0 5       0x8000000c
-	0b00000000010100000000000010010011, //addi  x1 x0 5       0x80000010
-	0b00000000000100000000000100010011, //addi  x2 x0 1       0x80000014
-	0b00000000001000000000000100010011, //addi  x2 x0 2       0x80000018
-	0b00000000000001010000010100010011, //addi x10 x10 0      0x8000001c mv a0,a0;
-	0b00110000010100010001001001110011, //csrrw x4 mstatus x2 0x80000020 mstatus=0b010 x2=0b010 x4=0b000
-	0b00110000010100001010001011110011, //csrrs x5 mstatus x1 0x80000024 mstatus=0b111 x1=0b101 x5=0b010
-	0b00000000000100000000000001110011  //ebreak              0x80000028  
+	0b00000000010000000000000001101111, // jal x0, 0x4 (jump to next instruction)   0x80000000
+    0b00000000000100000000000010010011, // addi x1, x0, 1 (x1 = 1)                  0x80000004
+    0b00000000001000000000000100010011, // addi x2, x0, 2 (x2 = 2)                  0x80000008
+    0b00000000001100000000000110010011, // addi x3, x0, 3 (x3 = 3)                  0x8000000C
+    0b00000000010000000000001000010011, // addi x4, x0, 4 (x4 = 4)                  0x80000010
+    0b00000000010100000000001010010011, // addi x5, x0, 5 (x5 = 5)                  0x80000014
+    0b00000000011000000000001100010011, // addi x6, x0, 6 (x6 = 6)                  0x80000018
+    0b00000000011100000000001110010011, // addi x7, x0, 7 (x7 = 7)                  0x8000001C
+    0b00000000000000010000010000110011, // add  x8, x2, x0 (x8 = x2 + x0 = 2)       0x80000020
+    0b00000000000100100000010010110011, // add  x9, x5, x1 (x9 = x5 + x1 = 6)       0x80000024
+    0b00000000001000110000010100110011, // add x10, x6, x2 (x10 = x6 + x2 = 8)      0x80000028
+    0b00000000001101000000010110110011, // add x11, x8, x3 (x11 = x8 + x3 = 5)      0x8000002C
+    0b00000000000100000000000001110011  // ebreak                                  0x80000030
 };
+
 
 static long load(char *img_file, uint32_t addr) {
   if (img_file == NULL) {
@@ -75,6 +79,7 @@ void init_mem(size_t size){
 void init_flash() {
 	flash = (uint8_t *)malloc(256 * 16 * 16 * 256 * sizeof(uint8_t));
 	if(flash == NULL) assert(0);
+	memcpy(flash , img , sizeof(img));
 	Log("flash area [%#x, %#x]",FLASH_BASE, FLASH_BASE + FLASH_SIZE);
 }
 
@@ -117,7 +122,7 @@ extern "C" void mrom_read(int addr, int *data) {
 extern "C" void flash_read(int addr, int *data) {
 	int align_addr = addr + FLASH_BASE;
 	*data = *(int *)guest_to_host(align_addr);
-	//printf("addr = %#x , data = %#x \n",align_addr, *data);
+	printf("addr = %#x , data = %#x \n",align_addr, *data);
 	record_mem_trace(READ, addr , sizeof(uint32_t));	
 	return;
 }
@@ -172,8 +177,8 @@ extern "C" void sdram_read(int chipid, int ba, int ra, int ca, int *data) {
 	int align_addr = (ba * 512 * 2) + (ra * 512 * 2 * 4) + (ca * 2) + SDRAM_BASE;
 	*data = *(uint16_t *)guest_to_host_sdram(align_addr, chipid);
 	align_addr = (chipid == 2 || chipid == 3)? align_addr + 0x2000000 : align_addr;
-	//printf("READ  addr = %#x , data = %#x ",align_addr, *data);
-	//printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
+	printf("READ  addr = %#x , data = %#x ",align_addr, *data);
+	printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
 	record_mem_trace(READ, align_addr , sizeof(uint32_t));	
 	return;
 }
@@ -187,30 +192,30 @@ extern "C" void sdram_write(int chipid, int ba, int ra, int ca, int wdata, int w
 	case 0b0001:
 		*(uint8_t *)guest_to_host_sdram(align_addr, chipid) = wdata;
 		align_addr = (chipid == 2 || chipid == 3)? align_addr + 0x2000000 : align_addr;
-		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d",align_addr, wdata, wstrb);
-		//printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
+		printf("WRITE addr = %#x , data = %#x ,wstrb = %d",align_addr, wdata, wstrb);
+		printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
 		break;
 	case 0b0010:
 		*(uint8_t *)(guest_to_host_sdram(align_addr, chipid) + 1) = (wdata >> 8);
 		align_addr = (chipid == 2 || chipid == 3)? align_addr + 0x2000000 : align_addr;
-		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d",align_addr, wdata >> 8, wstrb);
-		//printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
+		printf("WRITE addr = %#x , data = %#x ,wstrb = %d",align_addr, wdata >> 8, wstrb);
+		printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
 		break;
 	case 0b0011:
 		*(uint16_t *)guest_to_host_sdram(align_addr, chipid) = wdata;
 		align_addr = (chipid == 2 || chipid == 3)? align_addr + 0x2000000 : align_addr;
-		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d",align_addr, wdata, wstrb);
-		//printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
+		printf("WRITE addr = %#x , data = %#x ,wstrb = %d",align_addr, wdata, wstrb);
+		printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
 		break;
 	case 0b1111:
 		assert(0);
 		*(uint32_t *)guest_to_host_sdram(align_addr, chipid) = wdata;
 		align_addr = (chipid == 2 || chipid == 3)? align_addr + 0x2000000 : align_addr;
-		//printf("WRITE addr = %#x , data = %#x ,wstrb = %d\n",align_addr, wdata, wstrb);
-		//printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
+		printf("WRITE addr = %#x , data = %#x ,wstrb = %d\n",align_addr, wdata, wstrb);
+		printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
 		break;
 	default:
-		//printf("wstrb is %d\n", wstrb);
+		printf("wstrb is %d\n", wstrb);
 		break;
 	}
 	return;

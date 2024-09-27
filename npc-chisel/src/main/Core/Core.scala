@@ -18,6 +18,7 @@ class CoreIO(xlen : Int) extends Bundle{
 
 class Core(val conf : CoreConfig) extends Module {
   val io = IO(new CoreIO(conf.xlen))
+  val pfu = Module(new PFU(conf))
   val ifu = Module(new IFU(conf))
   val idu = Module(new IDU(conf))
   val exu = Module(new EXU(conf))
@@ -31,14 +32,15 @@ class Core(val conf : CoreConfig) extends Module {
   val gpr = Module(new gpr(conf))
   val csr = Module(new csr(conf))
 
-  StageConnect(ifu.io.out, idu.io.in)
-  StageConnect(idu.io.out, exu.io.in)
-  StageConnect(exu.io.out, lsu.io.in)
-  StageConnect(lsu.io.out, wbu.io.in)
-  StageConnect(wbu.io.out, ifu.io.in)
+  pipelineConnect(ifu.io.out, idu.io.in, idu.io.out)
+  pipelineConnect(idu.io.out, exu.io.in, exu.io.out)
+  pipelineConnect(exu.io.out, lsu.io.in, lsu.io.out)
+  pipelineConnect(lsu.io.out, wbu.io.in, wbu.io.out)
 
-  ifu.io.pc.idu := idu.io.pc
-  ifu.io.pc.exu := exu.io.pc
+  pfu.io.in.ifuPC :<>= ifu.io.pf
+  pfu.io.in.iduPC :<>= idu.io.pc
+  pfu.io.in.exuPC :<>= exu.io.pc
+  ifu.io.in :<>= pfu.io.out
 
   //Connect to the "state" elements in npc
   ifu.io.imem :<>= icache.io.in
@@ -50,10 +52,18 @@ class Core(val conf : CoreConfig) extends Module {
   lsu.io.dmem :<>= io.dmem
   wbu.io.gpr :<>= gpr.io.write
   wbu.io.csr :<>= csr.io.write
+  wbu.io.out.ready := true.B
 
   wbu.io.statr := stat
   ifu.io.statr := stat
   idu.io.statr := stat
+
+  def pipelineConnect[T <: Data, T2 <: Data](prevOut: DecoupledIO[T],
+  thisIn: DecoupledIO[T], thisOut: DecoupledIO[T2]) = {
+    prevOut.ready := thisIn.ready
+    thisIn.bits := RegEnable(prevOut.bits, prevOut.valid && thisIn.ready)
+    thisIn.valid := RegNext(prevOut.valid);
+  }
 }
 
 object StageConnect {

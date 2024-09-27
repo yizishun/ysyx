@@ -6,9 +6,9 @@ import npc._
 import npc.bus.AXI4
 import npc.core.idu.Control._
 
-class pcIO extends Bundle{
-  val idu = Flipped(new IduPcIO)
-  val exu = Flipped(new ExuPcIO)
+class IfuPcIO extends Bundle{
+  val speculativePC = Output(UInt(32.W))
+  val PcPlus4 = Output(UInt(32.W))
 }
 
 class IfuOutIO extends Bundle{
@@ -19,11 +19,11 @@ class IfuOutIO extends Bundle{
 }
 
 class IfuIO(xlen: Int) extends Bundle{
-  val in = Flipped(Decoupled(new WbuOutIO))
+  val in = Flipped(Decoupled(new PfuOutIO))
   val out = Decoupled(new IfuOutIO)
-  //pc value from IDU and EXU
-  val pc = new pcIO
-  //Connext to the external imem
+  //coonect to the pfu
+  val pf = Decoupled(new IfuPcIO)
+  //Connect to the external imem
   val imem = Flipped(new AXI4)
   val statr = Input(new Stat)
 }
@@ -101,7 +101,9 @@ class IFU(val conf: npc.CoreConfig) extends Module{
       out_valid := false.B
       in_ready := true.B
       //AXI4
+      if(conf.useLFSR){
       delay := lfsr
+      }
       imem_arvalid := false.B
       imem_rready := false.B
       imem_arsize := 2.U
@@ -112,6 +114,7 @@ class IFU(val conf: npc.CoreConfig) extends Module{
       in_ready := false.B
       out_valid := io.imem.rvalid & (io.imem.rresp === 0.U)
       //AXI4
+      if(conf.useLFSR){
       when(delay === 0.U){
         imem_arvalid := true.B
         imem_rready := false.B
@@ -121,6 +124,12 @@ class IFU(val conf: npc.CoreConfig) extends Module{
         imem_arvalid := false.B
         imem_rready := false.B
         imem_arsize := 2.U
+      }
+      }
+      else{
+      imem_arvalid := true.B
+      imem_rready := false.B
+      imem_arsize := 2.U 
       }
       //save all output into regs
     }
@@ -150,41 +159,26 @@ class IFU(val conf: npc.CoreConfig) extends Module{
 //-----------------------------------------------------------------------------------
   def SetupIFU():Unit = {
 
-  //place mux
-    val PCSrc = Wire(UInt(3.W))
-    val nextpc = Wire(UInt(32.W))
-    PCSrc := io.pc.exu.PCSrc
-  
-    nextpc := MuxLookup(PCSrc, addpc.io.nextpc)(Seq(
-      PcPlus4 -> addpc.io.nextpc,
-      PcPlusImm -> io.pc.exu.PcPlusImm,
-      PcPlusRs2 -> io.pc.exu.PcPlusRs2,
-      Mtvec -> io.pc.idu.mtvec,
-      Mepc -> io.pc.idu.mepc
-    ))
-  
   //place wires
     //Addpc module
     addpc.io.pc := pc.io.pc
   
     //PC module
-    pc.io.nextpc := nextpc
+    pc.io.nextpc := io.in.bits.nextPC
     pc.io.wen := io.in.valid
   
     //Imem module(external)
-    imem_araddr := pc.io.pc
+    io.imem.araddr := pc.io.pc
   
     //IFU module(wrapper)
     io.out.bits.PcPlus4 := addpc.io.nextpc
     io.out.bits.pc := pc.io.pc
-    //fit to 64-bit bus
-    val tempmaddr = Wire(UInt(32.W))
-    val dataplace = Wire(UInt(32.W))
-    tempmaddr := imem_araddr & (~3.U(32.W))
-    dataplace := imem_araddr - tempmaddr
-    val inst = Reg(UInt(32.W))
-    inst := Mux(io.in.valid, 0.U, Mux(io.imem.rvalid, io.imem.rdata >> (dataplace(2, 0) << 3), inst)) //correct save and cancel
-    io.out.bits.inst := inst
+    io.out.bits.inst := io.imem.rdata
+
+    //PFU module
+    io.pf.bits.PcPlus4 := addpc.io.nextpc
+    io.pf.bits.speculativePC := addpc.io.nextpc
+    io.pf.valid := io.out.valid
 
   }
   //stat logic
@@ -193,9 +187,9 @@ class IFU(val conf: npc.CoreConfig) extends Module{
     val hasIrq = (nextStateC === sc_BetweenFire12_1_2) && io.imem.rvalid && (io.imem.rresp =/= 0.U)
     io.out.bits.stat.stat := Mux(hasIrq, true.B, false.B)
     io.out.bits.stat.statNum := Mux(hasIrq, IRQ_IAF, 0.U)
-    when(io.statr.stat){
-      pc.io.nextpc := io.pc.idu.mtvec
-      io.out.bits.stat.stat := false.B
-    }
+    //when(io.statr.stat){
+      //pc.io.nextpc := io.pc.idu.mtvec
+      //io.out.bits.stat.stat := false.B
+    //}
   }
 }

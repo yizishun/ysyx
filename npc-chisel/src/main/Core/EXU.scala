@@ -32,7 +32,7 @@ class ExuOutIO extends Bundle{
 class ExuIO extends Bundle{
   val in = Flipped(Decoupled(new IduOutIO))
   val out = Decoupled(new ExuOutIO)
-  val pc = new ExuPcIO
+  val pc = Decoupled(new ExuPcIO)
 }
 
 class EXU(val conf: npc.CoreConfig) extends Module{
@@ -114,10 +114,11 @@ class EXU(val conf: npc.CoreConfig) extends Module{
     jumpPc.io.imm := io.in.bits.immext
   
     //EXU module(wrapper)
-      //pc values back to IFU
-    io.pc.PcPlusImm := jumpPc.io.nextpc
-    io.pc.PcPlusRs2 := alu.io.result & (~1.U(32.W))
-    io.pc.PCSrc := idupc.io.PCSrc
+      //pc values back to PFU
+    io.pc.bits.PcPlusImm := jumpPc.io.nextpc
+    io.pc.bits.PcPlusRs2 := alu.io.result & (~1.U(32.W))
+    io.pc.bits.PCSrc := idupc.io.PCSrc
+    io.pc.valid := io.out.valid
       //out to LSU
     io.out.bits.signals := io.in.bits.signals
     io.out.bits.aluresult := alu.io.result

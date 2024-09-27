@@ -32,7 +32,7 @@ class IduIO(xlen: Int) extends Bundle{
   val in = Flipped(Decoupled(new IfuOutIO))
   val out = Decoupled(new IduOutIO)
   //pc value to IFU
-  val pc = new IduPcIO
+  val pc = Decoupled(new IduPcIO)
   //signals to IFU
   val ifuSignals = Irrevocable(new idu.IFUSignals)
   //connect to the external "state" elements(i.e.gpr,csr,imem)
@@ -102,8 +102,9 @@ class IDU(val conf: npc.CoreConfig) extends Module{
   
     //IFU module(wrapper)
       //pc value back to IFU
-    io.pc.mepc := io.csr.mepc
-    io.pc.mtvec := io.csr.mtvec
+    io.pc.bits.mepc := io.csr.mepc
+    io.pc.bits.mtvec := io.csr.mtvec
+    io.pc.valid := io.out.valid
     io.ifuSignals <> controller.io.signals.ifu
       //out to EXU
     io.out.bits.signals := controller.io.signals
