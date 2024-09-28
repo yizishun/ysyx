@@ -15,7 +15,6 @@ class LsuOutIO extends Bundle{
   val crd1 = Output(UInt(32.W))
   val pc = Output(UInt(32.W))
   val immext = Output(UInt(32.W))
-  val PcPlus4 = Output(UInt(32.W))
   val MemR = Output(UInt(32.W))
   val rw = Output(UInt(5.W))
 	val crw = Output(UInt(12.W))
@@ -249,7 +248,6 @@ class LSU(val conf: npc.CoreConfig) extends Module{
     io.out.bits.crd1 := io.in.bits.crd1
     io.out.bits.pc := io.in.bits.pc
     io.out.bits.immext := io.in.bits.immext
-    io.out.bits.PcPlus4 := io.in.bits.PcPlus4
     io.out.bits.rw := io.in.bits.rw
   	io.out.bits.crw := io.in.bits.crw
   

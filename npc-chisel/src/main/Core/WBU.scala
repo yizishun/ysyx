@@ -72,7 +72,7 @@ class WBU(val conf: npc.CoreConfig) extends Module{
     io.gpr.wdata := MuxLookup(io.in.bits.signals.wbu.RegwriteD, io.in.bits.aluresult)(Seq(
       RAluresult -> io.in.bits.aluresult,
       RImm -> io.in.bits.immext,
-      RPcPlus4 -> io.in.bits.PcPlus4,
+      RPcPlus4 -> (io.in.bits.pc + 4.U),
       RMemRD -> io.in.bits.MemR,
       RCSR -> io.in.bits.crd1
     ))

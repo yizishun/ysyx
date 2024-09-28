@@ -19,7 +19,6 @@ class ExuOutIO extends Bundle{
   val crd1 = Output(UInt(32.W))
   val pc = Output(UInt(32.W))
   val immext = Output(UInt(32.W))
-  val PcPlus4 = Output(UInt(32.W))
   val rd1 = Output(UInt(32.W))
   val rd2 = Output(UInt(32.W))
   val rw = Output(UInt(5.W))
@@ -125,7 +124,6 @@ class EXU(val conf: npc.CoreConfig) extends Module{
     io.out.bits.crd1 := io.in.bits.crd1
     io.out.bits.pc := io.in.bits.pc
     io.out.bits.immext := io.in.bits.immext
-    io.out.bits.PcPlus4 := io.in.bits.PcPlus4
     io.out.bits.rd1 := io.in.bits.rd1
     io.out.bits.rd2 := io.in.bits.rd2
     io.out.bits.rw := io.in.bits.rw

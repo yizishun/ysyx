@@ -13,7 +13,6 @@ class IfuPcIO extends Bundle{
 
 class IfuOutIO extends Bundle{
   val inst = Output(UInt(32.W))
-  val PcPlus4 = Output(UInt(32.W))
   val pc = Output(UInt(32.W))
   val stat = Output(new Stat)
 }
@@ -171,7 +170,6 @@ class IFU(val conf: npc.CoreConfig) extends Module{
     io.imem.araddr := pc.io.pc
   
     //IFU module(wrapper)
-    io.out.bits.PcPlus4 := addpc.io.nextpc
     io.out.bits.pc := pc.io.pc
     io.out.bits.inst := io.imem.rdata
 

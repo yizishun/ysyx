@@ -19,7 +19,6 @@ class IduOutIO extends Bundle{
   val rd2 = Output(UInt(32.W))
   val crd1 = Output(UInt(32.W))
   val pc = Output(UInt(32.W))
-  val PcPlus4 = Output(UInt(32.W))
   val immext = Output(UInt(32.W))
 	val rw = Output(UInt(5.W))
 	val crw = Output(UInt(12.W))
@@ -112,7 +111,6 @@ class IDU(val conf: npc.CoreConfig) extends Module{
     io.out.bits.rd2 := io.gpr.rdata2
     io.out.bits.crd1 := io.csr.rdata1
     io.out.bits.pc := io.in.bits.pc
-    io.out.bits.PcPlus4 := io.in.bits.PcPlus4
     io.out.bits.immext := imm.io.immext
     io.out.bits.rw := io.in.bits.inst(11, 7)
     io.out.bits.crw := io.in.bits.inst(31, 20)
