@@ -22,7 +22,7 @@ class IduOutIO extends Bundle{
   val immext = Output(UInt(32.W))
 	val rw = Output(UInt(5.W))
 	val crw = Output(UInt(12.W))
-  val stat = Output(new Stat)
+  //val stat = Output(new Stat)
   //for performance analysis
   val perfSubType = Output(UInt(8.W))
 }
@@ -37,7 +37,7 @@ class IduIO(xlen: Int) extends Bundle{
   //connect to the external "state" elements(i.e.gpr,csr,imem)
   val gpr = Flipped(new gprReadIO(xlen))
   val csr = Flipped(new csrReadIO(xlen))
-  val statr = Input(new Stat)
+  //val statr = Input(new Stat)
 }
 
 class IDU(val conf: npc.CoreConfig) extends Module{
@@ -46,37 +46,32 @@ class IDU(val conf: npc.CoreConfig) extends Module{
   val controller = Module(new idu.Controller(conf))
   val imm = Module(new idu.Imm)
 
-  val in_ready = RegInit(io.in.ready)
-  val out_valid = RegInit(io.out.valid)
-  io.in.ready := in_ready
-  io.out.valid := out_valid
-
-  val s_BeforeFire1 :: s_BetweenFire12 :: Nil = Enum(2)
-  val state = RegInit(s_BeforeFire1)
-  val nextState = WireDefault(state)
-  nextState := MuxLookup(state, s_BeforeFire1)(Seq(
-      s_BeforeFire1   -> Mux(io.in.fire, s_BetweenFire12, s_BeforeFire1),
-      s_BetweenFire12 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12)
+  val s_WaitIfuV :: s_WaitExuR :: Nil = Enum(2)
+  val stateD = RegInit(s_WaitIfuV)
+  val nextStateD = WireDefault(stateD)
+  nextStateD := MuxLookup(stateD, s_WaitIfuV)(Seq(
+      s_WaitIfuV   -> Mux(io.in.valid, Mux(io.out.ready, s_WaitIfuV, s_WaitExuR), s_WaitIfuV),
+      s_WaitExuR   -> Mux(io.out.ready, s_WaitIfuV, s_WaitExuR)
   ))
-  state := nextState
+  stateD := nextStateD
 
   SetupIDU()
-  SetupIRQ()
+  //SetupIRQ()
   io.out.bits.perfSubType := 0.U
-  if(conf.useDPIC) Strob()
+  //if(conf.useDPIC) Strob()
   //default,it will error if no do this
-  in_ready := false.B
-  out_valid := false.B
+  io.in.ready := false.B
+  io.out.valid := false.B
 
-  switch(nextState){
-    is(s_BeforeFire1){
-      in_ready := true.B
-      out_valid := false.B
+  switch(stateD){
+    is(s_WaitIfuV){
+      io.in.ready := true.B
+      io.out.valid := Mux(io.in.valid, true.B, false.B)
       //disable all sequential logic
     }
-    is(s_BetweenFire12){
-      in_ready := false.B
-      out_valid := true.B
+    is(s_WaitExuR){
+      io.in.ready := false.B
+      io.out.valid := true.B
       //save all output into regs
     }
   }
@@ -114,35 +109,39 @@ class IDU(val conf: npc.CoreConfig) extends Module{
     io.out.bits.immext := imm.io.immext
     io.out.bits.rw := io.in.bits.inst(11, 7)
     io.out.bits.crw := io.in.bits.inst(31, 20)
+
+    //temp
+    io.csr.irq := 0.U
+    io.csr.irq_no := 0.U
   }
   //irq logic
-  def SetupIRQ(): Unit = {
-    io.out.bits.stat.stat := controller.io.irq
-    io.out.bits.stat.statNum := controller.io.irq_no
-    //mech
-    when(io.statr.stat){
-      state := s_BeforeFire1
-      io.out.bits.stat.stat := false.B
-    }
-    io.csr.irq := io.statr.stat
-    io.csr.irq_no := io.statr.statNum
-  }
-  def Strob(): Unit = {
-    import idu.Control._
-    import npc.core.exu.AluOp._
-    import npc.EVENT._
-    val isJump = (controller.io.signals.exu.Jump =/= NJump)
-    val isStore = (controller.io.signals.lsu.MemWriteE)
-    val isLoad = (controller.io.signals.lsu.MemValid & ~controller.io.signals.lsu.MemWriteE)
-    val isCal = (controller.io.signals.exu.alucontrol =/= ALU_XXX && ~isLoad && ~isJump && ~isStore)
-    val isCsr = (controller.io.signals.wbu.CSRWriteE === CSRWRITE && controller.io.irq === NIRQ)
-    val subType = WireInit(VecInit(Seq.fill(8)(0.U(1.W))))
-    io.out.bits.perfSubType := subType.asUInt
-    subType(0) := isJump.asUInt
-    subType(1) := isStore.asUInt
-    subType(2) := isLoad.asUInt
-    subType(3) := isCal.asUInt
-    subType(4) := isCsr.asUInt
-    PerformanceProbe(clock, IDUFinDec, nextState === s_BetweenFire12, subType.asUInt, nextState === s_BetweenFire12, false.B)
-  }
+//  def SetupIRQ(): Unit = {
+//    io.out.bits.stat.stat := controller.io.irq
+//    io.out.bits.stat.statNum := controller.io.irq_no
+//    //mech
+//    when(io.statr.stat){
+//      state := s_BeforeFire1
+//      io.out.bits.stat.stat := false.B
+//    }
+//    io.csr.irq := io.statr.stat
+//    io.csr.irq_no := io.statr.statNum
+//  }
+//  def Strob(): Unit = {
+//    import idu.Control._
+//    import npc.core.exu.AluOp._
+//    import npc.EVENT._
+//    val isJump = (controller.io.signals.exu.Jump =/= NJump)
+//    val isStore = (controller.io.signals.lsu.MemWriteE)
+//    val isLoad = (controller.io.signals.lsu.MemValid & ~controller.io.signals.lsu.MemWriteE)
+//    val isCal = (controller.io.signals.exu.alucontrol =/= ALU_XXX && ~isLoad && ~isJump && ~isStore)
+//    val isCsr = (controller.io.signals.wbu.CSRWriteE === CSRWRITE && controller.io.irq === NIRQ)
+//    val subType = WireInit(VecInit(Seq.fill(8)(0.U(1.W))))
+//    io.out.bits.perfSubType := subType.asUInt
+//    subType(0) := isJump.asUInt
+//    subType(1) := isStore.asUInt
+//    subType(2) := isLoad.asUInt
+//    subType(3) := isCal.asUInt
+//    subType(4) := isCsr.asUInt
+//    PerformanceProbe(clock, IDUFinDec, nextState === s_BetweenFire12, subType.asUInt, nextState === s_BetweenFire12, false.B)
+//  }
 }

@@ -18,7 +18,7 @@ class LsuOutIO extends Bundle{
   val MemR = Output(UInt(32.W))
   val rw = Output(UInt(5.W))
 	val crw = Output(UInt(12.W))
-  val stat = Output(new Stat)
+  //val stat = Output(new Stat)
   //for performance analysis
   val perfSubType = Output(UInt(8.W))
 }
@@ -40,30 +40,6 @@ class LSU(val conf: npc.CoreConfig) extends Module{
   io.dmem.awburst := 0.U
   io.dmem.wlast := true.B
 
-  //Between Modules handshake reg
-  val in_ready = RegInit(io.in.ready)
-  val out_valid = RegInit(io.out.valid)
-  io.in.ready := in_ready
-  io.out.valid := out_valid
-
-  //AXI handshake reg
-  val dmem_arvalid = RegInit(io.dmem.arvalid)
-  val dmem_arsize = RegInit(io.dmem.arsize)
-  val dmem_rready = RegInit(io.dmem.rready)
-  val dmem_awvalid = RegInit(io.dmem.awvalid)
-  val dmem_awsize = RegInit(io.dmem.awsize)
-  val dmem_wvalid = RegInit(io.dmem.wvalid)
-  val dmem_bready = RegInit(io.dmem.bready)
-  io.dmem.arvalid := dmem_arvalid
-  io.dmem.arsize := dmem_arsize
-  io.dmem.rready := dmem_rready
-  io.dmem.awvalid := dmem_awvalid
-  io.dmem.awsize := dmem_awsize
-  io.dmem.wvalid := dmem_wvalid
-  io.dmem.bready := dmem_bready
-  val dmem_arready_prev = RegNext(io.dmem.arready)
-  val dmem_rready_prev = RegNext(io.dmem.rready)
-
   //isLoad?isStore?
   val isLoad = Wire(Bool())
   val isStore = Wire(Bool())
@@ -80,145 +56,118 @@ class LSU(val conf: npc.CoreConfig) extends Module{
   val delay = RegInit(lfsr)
 
   //state transition
-  val s_BeforeFire1 :: s_BetweenFire12 :: s_BetweenFire12_1_1 :: s_BetweenFire12_1_2 ::s_BetweenFire12_2 ::Nil = Enum(5)
-  val state = RegInit(s_BeforeFire1)
-  val nextState = WireDefault(state)
-  nextState := MuxLookup(state, s_BeforeFire1)(Seq(
-      s_BeforeFire1   -> Mux(io.in.fire, Mux(notLS, s_BetweenFire12, s_BetweenFire12_1_1), s_BeforeFire1),
-      s_BetweenFire12 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12),
-      s_BetweenFire12_1_1 -> Mux((io.dmem.arvalid & io.dmem.arready)|(io.dmem.awvalid & io.dmem.awready & io.dmem.wvalid & io.dmem.wready),s_BetweenFire12_1_2, s_BetweenFire12_1_1),
-      s_BetweenFire12_1_2 -> Mux((io.dmem.rvalid & dmem_rready)|(io.dmem.bvalid & dmem_bready), s_BetweenFire12_2, s_BetweenFire12_1_2),
-      s_BetweenFire12_2 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12_2)
+  val s_WaitExuV :: s_WaitDmemAXR :: s_WaitDmemXV :: s_WaitWbuR :: Nil = Enum(4)
+  val stateM = RegInit(s_WaitExuV)
+  val nextStateM = WireDefault(stateM)
+  nextStateM := MuxLookup(stateM, s_WaitExuV)(Seq(
+      s_WaitExuV    -> Mux(io.in.valid, 
+                       Mux(notLS, 
+                       Mux(io.out.ready, s_WaitExuV, s_WaitWbuR), 
+                       Mux(io.dmem.arready | (io.dmem.awready & io.dmem.wready), s_WaitDmemXV,s_WaitDmemAXR)), s_WaitExuV),
+      s_WaitWbuR    -> Mux(io.out.ready, s_WaitExuV, s_WaitWbuR),
+      s_WaitDmemAXR -> Mux((io.dmem.arready) | (io.dmem.awready & io.dmem.wready),s_WaitDmemXV, s_WaitDmemAXR),
+      s_WaitDmemXV  -> Mux((io.dmem.rvalid)|(io.dmem.bvalid), Mux(io.out.ready, s_WaitExuV, s_WaitWbuR), s_WaitDmemXV),
   ))
-  state := nextState
+  stateM := nextStateM
 
   SetupLSU()
-  SetupIRQ()
+  //SetupIRQ()
 
-  if(conf.useDPIC){
-    import npc.EVENT._
-    PerformanceProbe(clock, LSUGetData, (io.dmem.rvalid & io.dmem.rready).asUInt, 0.U, io.dmem.arvalid & io.dmem.arready, io.dmem.rvalid & io.dmem.rready)
-  }
+  //if(conf.useDPIC){
+    //import npc.EVENT._
+    //PerformanceProbe(clock, LSUGetData, (io.dmem.rvalid & io.dmem.rready).asUInt, 0.U, io.dmem.arvalid & io.dmem.arready, io.dmem.rvalid & io.dmem.rready)
+  //}
+  io.in.ready := 0.U
+  io.out.valid := 0.U
+
+  io.dmem.arvalid := 0.U
+  io.dmem.arsize := 0.U
+  io.dmem.rready := 0.U
+  io.dmem.awvalid := 0.U
+  io.dmem.awsize := 0.U
+  io.dmem.wvalid := 0.U
+  io.dmem.bready := 0.U
   import npc.core.idu.Control._
-  //output logic
-  switch(nextState){
-    is(s_BeforeFire1){
-      //between modules
-      in_ready := true.B
-      out_valid := false.B
-      //disable all sequential logic
-      //AXI4-Lite
-      delay := lfsr
-      dmem_arvalid := false.B
-      dmem_arsize := 2.U
-      dmem_rready := false.B
-      dmem_awvalid := false.B
-      dmem_awsize := 2.U
-      dmem_wvalid := false.B
-      dmem_bready := false.B
-    }
-    is(s_BetweenFire12){
-      //between modules
-      in_ready := false.B
-      out_valid := true.B
-      //AXI4-Lite
-      dmem_arvalid := false.B
-      dmem_arsize := 2.U
-      dmem_rready := false.B
-      dmem_awvalid := false.B
-      dmem_awsize := 2.U
-      dmem_wvalid := false.B
-      dmem_bready := false.B
-    }
-    is(s_BetweenFire12_1_1){
-      //between modules
-      in_ready := false.B
-      out_valid := false.B
-      //AXI4-Lite
-      when(delay === 0.U){
-          //AR
-        dmem_arvalid := Mux(isLoad, true.B, false.B)
-        dmem_arsize := MuxLookup(io.in.bits.signals.lsu.MemRD, 2.U)(Seq(
-          RBYTE   -> 0.U,
-          RHALFW  -> 1.U,
-          RWORD   -> 2.U,
-          RBYTEU  -> 0.U,
-          RHALFWU -> 1.U
-        ))
-          //R
-        dmem_rready := Mux(isLoad, false.B, false.B)
-          //AW
-        dmem_awvalid := Mux(isStore, true.B, false.B)
-        dmem_awsize := MuxLookup(io.in.bits.signals.lsu.MemWmask, 2.U)(Seq(
-          WBYTE  -> 0.U,
-          WHALFW -> 1.U,
-          WWORD  -> 2.U
-        ))
-          //W
-        dmem_wvalid := Mux(isStore, true.B, false.B)
-          //B
-        dmem_bready := Mux(isStore, false.B, false.B)
-      }.otherwise{
-        delay := delay - 1.U
-        dmem_arvalid := false.B
-        dmem_arsize := 2.U
-        dmem_rready := false.B
-        dmem_awvalid := false.B
-        dmem_awsize := 2.U
-        dmem_wvalid := false.B
-        dmem_bready := false.B
-      }
-      //save all output to regs
-
-    }
-    is(s_BetweenFire12_1_2){
-      //between modules
-      in_ready := false.B
-      out_valid := false.B
-      //AXI4-Lite
-        //AR
-      dmem_arvalid := Mux(isLoad, false.B, false.B)
-      dmem_arsize := MuxLookup(io.in.bits.signals.lsu.MemRD, 2.U)(Seq(
+  val arsize = MuxLookup(io.in.bits.signals.lsu.MemRD, 2.U)(Seq(
         RBYTE   -> 0.U,
         RHALFW  -> 1.U,
         RWORD   -> 2.U,
         RBYTEU  -> 0.U,
         RHALFWU -> 1.U
       ))
-        //R
-      dmem_rready := Mux(isLoad, true.B, false.B)
-        //AW
-      dmem_awvalid := Mux(isStore, false.B, false.B)
-      dmem_awsize := MuxLookup(io.in.bits.signals.lsu.MemWmask, 2.U)(Seq(
+  val awsize = MuxLookup(io.in.bits.signals.lsu.MemWmask, 2.U)(Seq(
         WBYTE  -> 0.U,
         WHALFW -> 1.U,
         WWORD  -> 2.U
       ))
-        //W
-      dmem_wvalid := Mux(isStore, false.B, false.B)
-        //B
-      dmem_bready := Mux(isStore, true.B, false.B)
-      //save all output to regs
-    }
-    is(s_BetweenFire12_2){
+
+  //output logic
+  switch(stateM){
+    is(s_WaitExuV){
       //between modules
-      in_ready := false.B
-      out_valid := true.B
+      io.in.ready := true.B
+      io.out.valid := Mux(io.in.valid & notLS, true.B, false.B)
+      //disable all sequential logic
+      //AXI4-Lite
+      delay := lfsr
+      io.dmem.arvalid := Mux(io.in.valid & isLoad, true.B, false.B)
+      io.dmem.arsize := Mux(io.in.valid & isLoad, arsize, 2.U)
+      io.dmem.rready := Mux(io.in.valid & isLoad, false.B, true.B)
+      io.dmem.awvalid := Mux(io.in.valid & isStore, true.B, false.B)
+      io.dmem.awsize := Mux(io.in.valid & isStore, awsize, 2.U)
+      io.dmem.wvalid := Mux(io.in.valid & isStore, true.B, false.B)
+      io.dmem.bready := Mux(io.in.valid & isStore, false.B, true.B)
+    }
+    is(s_WaitWbuR){
+      //between modules
+      io.in.ready := false.B
+      io.out.valid := true.B
+      //AXI4-Lite
+      io.dmem.arvalid := false.B
+      io.dmem.arsize := 2.U
+      io.dmem.rready := false.B
+      io.dmem.awvalid := false.B
+      io.dmem.awsize := 2.U
+      io.dmem.wvalid := false.B
+      io.dmem.bready := false.B
+    }
+    is(s_WaitDmemAXR){
+      //between modules
+      io.in.ready := false.B
+      io.out.valid := false.B
       //AXI4-Lite
         //AR
-      dmem_arvalid := false.B
-      dmem_arsize := 2.U
+      io.dmem.arvalid := Mux(isLoad, true.B, false.B)
+      io.dmem.arsize := arsize
         //R
-      dmem_rready := false.B
+      io.dmem.rready := Mux(isLoad, false.B, false.B)
         //AW
-      dmem_awvalid := false.B
+      io.dmem.awvalid := Mux(isStore, true.B, false.B)
+      io.dmem.awsize := awsize
         //W
-      dmem_wvalid := false.B
-      dmem_awsize := 2.U
+      io.dmem.wvalid := Mux(isStore, true.B, false.B)
         //B
-      dmem_bready := false.B
+      io.dmem.bready := Mux(isStore, false.B, false.B)
+
+    }
+    is(s_WaitDmemXV){
+      //between modules
+      io.in.ready := false.B
+      io.out.valid := false.B
+      //AXI4-Lite
+        //AR
+      io.dmem.arvalid := Mux(isLoad, false.B, false.B)
+      io.dmem.arsize := arsize
+        //R
+      io.dmem.rready := Mux(isLoad, true.B, false.B)
+        //AW
+      io.dmem.awvalid := Mux(isStore, false.B, false.B)
+      io.dmem.awsize := awsize
+        //W
+      io.dmem.wvalid := Mux(isStore, false.B, false.B)
+        //B
+      io.dmem.bready := Mux(isStore, true.B, false.B)
       //save all output to regs
-      
     }
   }
 
@@ -269,11 +218,11 @@ class LSU(val conf: npc.CoreConfig) extends Module{
     io.out.bits.perfSubType := io.in.bits.perfSubType
   
   }
-  def SetupIRQ() :Unit = {
-    import npc.core.idu.Control._
-    val hasLAF = RegEnable(nextState === s_BetweenFire12_1_2 || nextState === s_BetweenFire12, io.dmem.rvalid && (io.dmem.rresp =/= 0.U)) 
-    val hasSAF = RegEnable(nextState === s_BetweenFire12_1_2 || nextState === s_BetweenFire12, io.dmem.bvalid & (io.dmem.bresp =/= 0.U))
-    io.out.bits.stat.stat := Mux(hasSAF || hasLAF, true.B, io.in.bits.stat.stat)
-    io.out.bits.stat.statNum := Mux(hasSAF, IRQ_SAF, Mux(hasLAF, IRQ_LAF, io.in.bits.stat.statNum))
-  }
+//  def SetupIRQ() :Unit = {
+//    import npc.core.idu.Control._
+//    val hasLAF = RegEnable(nextState === s_BetweenFire12_1_2 || nextState === s_BetweenFire12, io.dmem.rvalid && (io.dmem.rresp =/= 0.U)) 
+//    val hasSAF = RegEnable(nextState === s_BetweenFire12_1_2 || nextState === s_BetweenFire12, io.dmem.bvalid & (io.dmem.bresp =/= 0.U))
+//    io.out.bits.stat.stat := Mux(hasSAF || hasLAF, true.B, io.in.bits.stat.stat)
+//    io.out.bits.stat.statNum := Mux(hasSAF, IRQ_SAF, Mux(hasLAF, IRQ_LAF, io.in.bits.stat.statNum))
+//  }
 }

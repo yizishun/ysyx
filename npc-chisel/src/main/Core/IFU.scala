@@ -14,7 +14,16 @@ class IfuPcIO extends Bundle{
 class IfuOutIO extends Bundle{
   val inst = Output(UInt(32.W))
   val pc = Output(UInt(32.W))
-  val stat = Output(new Stat)
+  //val stat = Output(new Stat)
+}
+
+class Ifu2IcacheIO extends Bundle{
+  val araddr = Output(UInt(32.W))
+  val arready = Input(Bool())
+  val arvalid = Output(Bool())
+  val rvalid = Input(Bool())
+  val rready = Output(Bool())
+  val rdata = Input(UInt(32.W))
 }
 
 class IfuIO(xlen: Int) extends Bundle{
@@ -23,47 +32,22 @@ class IfuIO(xlen: Int) extends Bundle{
   //coonect to the pfu
   val pf = Decoupled(new IfuPcIO)
   //Connect to the external imem
-  val imem = Flipped(new AXI4)
-  val statr = Input(new Stat)
+  val imem = new Ifu2IcacheIO
+  //val statr = Input(new Stat)
 }
 
 
 class IFU(val conf: npc.CoreConfig) extends Module{
   val io = IO(new IfuIO(conf.xlen))
-  //disable AW W B channel
-  io.imem.arid := 0.U
-  io.imem.arlen := 0.U
-  io.imem.arburst := 0.U
-  io.imem.awaddr := DontCare
-  io.imem.awvalid := false.B
-  io.imem.awid := 0.U
-  io.imem.awlen := 0.U
-  io.imem.awsize := 0.U
-  io.imem.awburst := 0.U
-  io.imem.wdata := DontCare
-  io.imem.wstrb := 0.U
-  io.imem.wvalid := 0.U
-  io.imem.wlast := false.B
-  io.imem.bready := false.B
-  //place modules
-  val addpc = Module(new ifu.Addpc)
-  val pc = Module(new ifu.PC(conf))
-
-  //Beteen Modules handshake reg
-  val in_ready = RegInit(io.in.ready)
-  val out_valid = RegInit(io.out.valid)
-  io.in.ready := in_ready
-  io.out.valid := out_valid
-
-  //AXI handshake reg
-  val imem_arvalid = RegInit(io.imem.arvalid)
-  val imem_rready = RegInit(io.imem.rready)
-  val imem_araddr = RegInit(io.imem.araddr)
-  val imem_arsize = RegInit(io.imem.arsize)
+  val imem_arvalid = RegInit(false.B)
+  val imem_rready = RegInit(false.B)
   io.imem.arvalid := imem_arvalid
-  io.imem.arsize := imem_arsize
   io.imem.rready := imem_rready
-  io.imem.araddr := imem_araddr
+  //place modules
+  val pcInit = if(conf.ysyxsoc){ "h3000_0000".U(32.W) }else if(conf.npc){ "h8000_0000".U(32.W)} else { "h0000_0000".U(32.W) }
+  val pcReg = RegEnable(io.in.bits.nextPC, pcInit, io.in.valid)
+  val PcPlus4 = Wire(UInt(32.W))
+  PcPlus4 := pcReg + 4.U
 
   //LSFR
   val lfsr = RegInit(3.U(4.W))
@@ -72,85 +56,83 @@ class IFU(val conf: npc.CoreConfig) extends Module{
   //Delay
   val delay = RegInit(lfsr)
 
-  //state transition
-  val sc_BeforeFire1 :: sc_BetweenFire12_1_1 :: sc_BetweenFire12_1_2 :: sc_BetweenFire12_2 :: Nil = Enum(4)
-  val stateC = RegInit(sc_BetweenFire12_1_1)
-  val nextStateC = WireDefault(stateC)
-  nextStateC := MuxLookup(stateC, sc_BeforeFire1)(Seq(
-      sc_BeforeFire1   -> Mux(io.in.fire, sc_BetweenFire12_1_1, sc_BeforeFire1),
-      sc_BetweenFire12_1_1 -> Mux(io.imem.arvalid & io.imem.arready, sc_BetweenFire12_1_2, sc_BetweenFire12_1_1),
-      sc_BetweenFire12_1_2 -> Mux(io.imem.rvalid & imem_rready, sc_BetweenFire12_2, sc_BetweenFire12_1_2),
-      sc_BetweenFire12_2 -> Mux(io.out.fire, sc_BeforeFire1, sc_BetweenFire12_2)
+  //state transition(mearly)
+  val s_WaitPfuV :: s_WaitImemARR :: s_WaitImemRV :: s_WaitIduR :: Nil = Enum(4)
+  val stateF = RegInit(s_WaitImemARR)
+  val nextStateF = WireDefault(stateF)
+  nextStateF := MuxLookup(stateF, s_WaitPfuV)(Seq(
+      s_WaitPfuV      -> Mux(io.in.valid, Mux(io.imem.arready, s_WaitImemRV,s_WaitImemARR), s_WaitPfuV),
+      s_WaitImemARR   -> Mux(io.imem.arready, s_WaitImemRV, s_WaitImemARR),
+      s_WaitImemRV    -> Mux(io.imem.rvalid, Mux(io.out.ready, s_WaitPfuV,s_WaitIduR), s_WaitImemRV),
+      s_WaitIduR      -> Mux(io.out.ready, s_WaitPfuV, s_WaitIduR)
   ))
-  stateC := nextStateC
-  dontTouch(nextStateC)
+
+  stateF := nextStateF
+  dontTouch(nextStateF)
 
   SetupIFU()
-  SetupIRQ()
+  //SetupIRQ()
 
-  if(conf.useDPIC){
-    import npc.EVENT._
-    PerformanceProbe(clock, IFUGetInst, (io.imem.rvalid & imem_rready).asUInt, 0.U, io.imem.arvalid & io.imem.arready, io.imem.rvalid & imem_rready)
-  }
+  //if(conf.useDPIC){
+    //import npc.EVENT._
+    //PerformanceProbe(clock, IFUGetInst, (io.imem.rvalid & io.imem.rready).asUInt, 0.U, io.imem.arvalid & io.imem.arready, io.imem.rvalid & io.imem.rready)
+  //}
   //handshake
   //output logic
-  switch(nextStateC){
-    is(sc_BeforeFire1){
+  io.out.valid := false.B
+  io.in.ready := false.B
+  io.imem.arvalid := false.B
+  io.imem.rready := false.B
+  switch(stateF){
+    is(s_WaitPfuV){
       //between modules
-      out_valid := false.B
-      in_ready := true.B
-      //AXI4
+      io.out.valid := Mux(io.imem.arready & io.imem.rvalid, true.B, false.B)
+      io.in.ready := true.B
+      //delay
       if(conf.useLFSR){
       delay := lfsr
       }
-      imem_arvalid := false.B
-      imem_rready := false.B
-      imem_arsize := 2.U
-      //disable all sequential logic
+      //AXI4
+      io.imem.arvalid := false.B
+      io.imem.araddr := 0.U
+      io.imem.rready := false.B
     }
-    is(sc_BetweenFire12_1_1){
+    is(s_WaitImemARR){
       //between modules
-      in_ready := false.B
-      out_valid := io.imem.rvalid & (io.imem.rresp === 0.U)
+      io.in.ready := false.B
+      io.out.valid := false.B
       //AXI4
       if(conf.useLFSR){
       when(delay === 0.U){
-        imem_arvalid := true.B
-        imem_rready := false.B
-        imem_arsize := 2.U
+        io.imem.arvalid := true.B
+        io.imem.rready := false.B
       }.otherwise{
         delay := delay - 1.U
-        imem_arvalid := false.B
-        imem_rready := false.B
-        imem_arsize := 2.U
+        io.imem.arvalid := false.B
+        io.imem.rready := false.B
       }
       }
       else{
-      imem_arvalid := true.B
-      imem_rready := false.B
-      imem_arsize := 2.U 
+      io.imem.arvalid := true.B
+      io.imem.rready := Mux(io.imem.arready, true.B, false.B) //!!
       }
-      //save all output into regs
     }
-    is(sc_BetweenFire12_1_2){
+    is(s_WaitImemRV){
       //between modules
-      in_ready := false.B
-      out_valid := io.imem.rvalid & (io.imem.rresp === 0.U)
+      io.in.ready := false.B
+      io.out.valid := io.imem.rvalid
       //AXI4
-      imem_arvalid := false.B
-      imem_rready := true.B
-      imem_arsize := 2.U
-
+      io.imem.araddr := pcReg
+      io.imem.arvalid := true.B
+      io.imem.rready := true.B
     }
-    is(sc_BetweenFire12_2){
+    is(s_WaitIduR){
       //between modules
-      in_ready := false.B
-      out_valid := io.imem.rvalid & (io.imem.rresp === 0.U)
+      io.in.ready := false.B
+      io.out.valid := io.imem.rvalid
       //AXI4
-      imem_arvalid := false.B
-      imem_rready := false.B
-      imem_arsize := 2.U
-      //save all output into regs
+      io.imem.arvalid := false.B
+      io.imem.rready := false.B
     }
   }
 
@@ -159,35 +141,28 @@ class IFU(val conf: npc.CoreConfig) extends Module{
   def SetupIFU():Unit = {
 
   //place wires
-    //Addpc module
-    addpc.io.pc := pc.io.pc
-  
-    //PC module
-    pc.io.nextpc := io.in.bits.nextPC
-    pc.io.wen := io.in.valid
-  
     //Imem module(external)
-    io.imem.araddr := pc.io.pc
+    io.imem.araddr := pcReg
   
     //IFU module(wrapper)
-    io.out.bits.pc := pc.io.pc
+    io.out.bits.pc := pcReg
     io.out.bits.inst := io.imem.rdata
 
     //PFU module
-    io.pf.bits.PcPlus4 := addpc.io.nextpc
-    io.pf.bits.speculativePC := addpc.io.nextpc
+    io.pf.bits.PcPlus4 := PcPlus4
+    io.pf.bits.speculativePC := PcPlus4
     io.pf.valid := io.out.valid
 
   }
   //stat logic
 //-----------------------------------------------------------------------------------
-  def SetupIRQ():Unit = {
-    val hasIrq = (nextStateC === sc_BetweenFire12_1_2) && io.imem.rvalid && (io.imem.rresp =/= 0.U)
-    io.out.bits.stat.stat := Mux(hasIrq, true.B, false.B)
-    io.out.bits.stat.statNum := Mux(hasIrq, IRQ_IAF, 0.U)
+  //def SetupIRQ():Unit = {
+    //val hasIrq = (nextStateC === sc_BetweenFire12_1_2) && io.imem.rvalid && (io.imem.rresp =/= 0.U)
+    //io.out.bits.stat.stat := Mux(hasIrq, true.B, false.B)
+    //io.out.bits.stat.statNum := Mux(hasIrq, IRQ_IAF, 0.U)
     //when(io.statr.stat){
       //pc.io.nextpc := io.pc.idu.mtvec
       //io.out.bits.stat.stat := false.B
     //}
-  }
+  //}
 }

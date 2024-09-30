@@ -10,59 +10,28 @@ class WbuOutIO extends Bundle{
 
 class WbuIO(xlen: Int) extends Bundle{
   val in = Flipped(Decoupled(new LsuOutIO))
-  val out = Decoupled(new WbuOutIO)
   //connect to the external "state" elements(i.e.gpr,csr)
   val gpr = Flipped(new gprWriteIO(xlen))
   val csr = Flipped(new csrWriteIO(xlen))
-  val statw = Output(new Stat)
-  val statEn = Output(Bool())
+  //val statw = Output(new Stat)
+  //val statEn = Output(Bool())
   //read the stat reg
-  val statr = Input(new Stat)
+  //val statr = Input(new Stat)
 }
 
 class WBU(val conf: npc.CoreConfig) extends Module{
   val io = IO(new WbuIO(conf.xlen))
 
-  val in_ready = RegInit(io.in.ready)
-  val out_valid = RegInit(io.out.valid)
-  io.in.ready := in_ready
-  io.out.valid := out_valid
-
-  val s_BeforeFire1 :: s_BetweenFire12 :: Nil = Enum(2)
-  val state = RegInit(s_BeforeFire1)
-  val nextState = WireDefault(state)
-  nextState := MuxLookup(state, s_BeforeFire1)(Seq(
-      s_BeforeFire1   -> Mux(io.in.fire, s_BetweenFire12, s_BeforeFire1),
-      s_BetweenFire12 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12)
-  ))
-  state := nextState
-
   SetupWBU()
-  SetupIRQ()
+  //SetupIRQ()
 
-  if(conf.useDPIC){
-    import npc.EVENT._
-    PerformanceProbe(clock, IDUFinDec, 0.U, io.in.bits.perfSubType, false.B, nextState === s_BetweenFire12, false.B)
-  }
+  //if(conf.useDPIC){
+    //import npc.EVENT._
+    //PerformanceProbe(clock, IDUFinDec, 0.U, io.in.bits.perfSubType, false.B, nextState === s_BetweenFire12, false.B)
+  //}
   //default,it will error if no do this
-  in_ready := false.B
-  out_valid := false.B
-  
-  switch(nextState){
-    is(s_BeforeFire1){
-      in_ready := true.B
-      out_valid := false.B
-      //disable all sequential logic
-      io.gpr.wen := false.B
-      io.csr.wen := false.B
-    }
-    is(s_BetweenFire12){
-      in_ready := false.B
-      out_valid := true.B
-      //save all output to regs
-    }
-  }
 
+  io.in.ready := true.B
 
   //------------------------------------------------------------------------------------------------------
   def SetupWBU():Unit = {
@@ -95,12 +64,12 @@ class WBU(val conf: npc.CoreConfig) extends Module{
     //WBU(wrapper)
 
   }
-  def SetupIRQ():Unit = {
-    io.statw := io.in.bits.stat
-    io.statEn := (nextState === s_BetweenFire12) || io.statr.stat
-    //mech
-    when(io.statr.stat){
-      io.csr.wdata := io.in.bits.pc
-    }
-  }
+//  def SetupIRQ():Unit = {
+//    io.statw := io.in.bits.stat
+//    io.statEn := (nextState === s_BetweenFire12) || io.statr.stat
+//    //mech
+//    when(io.statr.stat){
+//      io.csr.wdata := io.in.bits.pc
+//    }
+//  }
 }

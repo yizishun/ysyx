@@ -7,7 +7,7 @@ import npc._
 import npc.bus._
 
 class ICacheIO extends Bundle{
-    val in = new AXI4
+    val in = Flipped(new Ifu2IcacheIO)
     val out = Flipped(new AXI4)
     val fencei = Flipped(Irrevocable(new npc.core.idu.IFUSignals))
 }
@@ -25,73 +25,6 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     val io = IO(new ICacheIO)
     val bus_w = 4
 
-    //axi4 requre reg input and output,but i just reg output
-    //"Each AXI interface has a single clock signal, ACLK. "
-    //"All input signals are sampled on the rising edge of ACLK. "
-    //"All output signal changes can only occur after the rising edge of ACLK."
-    //"On Manager and Subordinate interfaces, there must be no combinatorial paths between input and output signals."
-    //in reg
-    val in_arready = RegInit(false.B)
-    val in_rdata = RegInit(io.in.rdata)
-    val in_rresp = RegInit(io.in.rresp)
-    val in_rvalid = RegInit(false.B)
-    val in_rlast = RegInit(io.in.rlast)
-    val in_rid = RegInit(io.in.rid)
-    val in_awready = RegInit(false.B)
-    val in_wready = RegInit(false.B)
-    val in_bresp = RegInit(false.B)
-    val in_bvalid = RegInit(false.B)
-    val in_bid = RegInit(io.in.bid)
-    io.in.arready := in_arready
-    io.in.rdata := in_rdata
-    io.in.rresp := in_rresp
-    io.in.rvalid := in_rvalid
-    io.in.rlast := in_rlast
-    io.in.rid := in_rid
-    io.in.awready := in_awready
-    io.in.wready := in_wready
-    io.in.bresp := in_bresp
-    io.in.bvalid := in_bvalid
-    io.in.bid := in_bid
-    //out reg
-    val out_araddr = RegInit(io.out.araddr)
-    val out_arvalid = RegInit(false.B)
-    val out_arid = RegInit(io.out.arid)
-    val out_arlen = RegInit(io.out.arlen)
-    val out_arsize = RegInit(io.out.arsize)
-    val out_arburst = RegInit(io.out.arburst)
-    val out_rready = RegInit(false.B)
-    val out_awaddr = RegInit(io.out.awaddr)
-    val out_awvalid = RegInit(io.out.awvalid)
-    val out_awid = RegInit(io.out.awid)
-    val out_awlen = RegInit(io.out.awlen)
-    val out_awsize = RegInit(io.out.awsize)
-    val out_awburst = RegInit(io.out.awburst)
-    val out_wdata = RegInit(io.out.wdata)
-    val out_wstrb = RegInit(io.out.wstrb)
-    val out_wvalid = RegInit(io.out.wvalid)
-    val out_wlast = RegInit(io.out.wlast)
-    val out_bready = RegInit(io.out.bready)
-    io.out.araddr := out_araddr
-    io.out.arvalid := out_arvalid
-    io.out.arid := out_arid
-    io.out.arlen := out_arlen
-    io.out.arsize := out_arsize
-    io.out.arburst := out_arburst
-    io.out.rready := out_rready
-    io.out.awaddr := out_awaddr
-    io.out.awvalid := out_awvalid
-    io.out.awid := out_awid
-    io.out.awlen := out_awlen
-    io.out.awsize := out_awsize
-    io.out.awburst := out_awburst
-    io.out.wdata := out_wdata
-    io.out.wstrb := out_wstrb
-    io.out.wvalid := out_wvalid
-    io.out.wlast := out_wlast
-    io.out.bready := out_bready
-    val out_arvalid_prev = RegNext(io.out.arvalid)
-
     val m = log2(block_sz).toInt
     val n = log2(set).toInt
     val w = log2(way).toInt
@@ -101,69 +34,53 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     println(tagSize + (block_sz/4)*32 + 1)
     //icache (use dff by default)
     val icache = Mem(set, new ICacheSet(tagSize, block_sz, way))
-    // 初始化所有地址的值为0
-    // 在仿真阶段初始化(这部分产生了超大的面积)
-    //when (reset.asBool) {
-        //for (i <- 0 until set + 1) {
-            //icache.write(i.U, 0.U.asTypeOf(new ICacheSet(tagSize, block_sz, way)))
-        //}
-    //}
-    val base_addr = Wire(UInt(32.W))
-    val tagA = Wire(UInt(tagSize.W))
-    val index = Wire(UInt(n.W))
-    val offset = Wire(UInt(m.W))
+    val base_addr = dontTouch(Wire(UInt(32.W)))
+    val tagA = dontTouch(Wire(UInt(tagSize.W)))
+    val index = dontTouch(Wire(UInt(n.W)))
+    val offset = dontTouch(Wire(UInt(m.W)))
 
-    val cacheSet = Wire(new ICacheSet(tagSize, block_sz, way))
-    val cacheData = Wire(new ICacheBlock(tagSize, block_sz))
-    val wayHit = Wire(UInt(w.W))
-    val valid = Wire(Bool())
-    val tagC = Wire(UInt(tagSize.W))
-    val data_h = Wire(UInt((bus_w*8).W))
-    val data_m = Wire(UInt((bus_w*8).W))
-    val hit = Wire(Bool())
-    val hit_2 = Wire(Bool())//to avoid nextstate combinational cycle
-    val valid_2 = Wire(Bool())
-    val tagC_2 = Wire(UInt(tagSize.W))
+    val cacheSet = dontTouch(Wire(new ICacheSet(tagSize, block_sz, way)))
+    val cacheData = dontTouch(Wire(new ICacheBlock(tagSize, block_sz)))
+    val wayHit = dontTouch(Wire(UInt(w.W)))
+    val valid = dontTouch(Wire(Bool()))
+    val tagC = dontTouch(Wire(UInt(tagSize.W)))
+    val data_h = dontTouch(Wire(UInt((bus_w*8).W)))
+    val data_m = dontTouch(Wire(UInt((bus_w*8).W)))
+    val hit = dontTouch(Wire(Bool()))
+    val fenceCnt = RegInit(0.U(n.W))
+    val fifoPtr = dontTouch(RegInit(0.U(w.W)))
 
     //state transition
     val is_sdram = dontTouch(RegEnable(io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), false.B, io.in.arready & io.in.arvalid))
-    val s_bfF1 :: s_btF12 :: s_btF12_bfF1 :: s_btF12_btF12 :: s_btF12_afF12 :: s_fence_i ::Nil = Enum(6)
-    val state = RegInit(s_bfF1)
+    val s_WaitUpV :: s_WaitImemARR :: s_WaitImemRV :: s_WaitUpR :: s_fence_i :: Nil = Enum(5)
+    val skip_UpR2V = Mux(io.in.rready, s_WaitUpV, s_WaitUpR)
+    val state = RegInit(s_WaitUpV)
     val nextState = Wire(UInt(4.W))
-    nextState := MuxLookup(state, s_bfF1)(Seq(
-        s_bfF1 -> MuxCase(s_bfF1, 
-                Array((io.in.arready && io.in.arvalid) -> s_btF12,
+    nextState := MuxLookup(state, s_WaitUpV)(Seq(
+        s_WaitUpV -> MuxCase(s_WaitUpV, 
+                Array((io.in.arvalid) -> Mux(hit, skip_UpR2V, s_WaitImemARR),
                       (io.fencei.valid && io.fencei.bits.is_fencei) -> s_fence_i)),
-        s_btF12 ->  Mux(hit_2 && io.in.rready && io.in.rvalid, s_bfF1, s_btF12_bfF1),
-        s_btF12_bfF1 -> Mux(io.out.arready & io.out.arvalid, s_btF12_btF12, s_btF12_bfF1),
-        s_btF12_btF12 -> Mux(io.out.rready & io.out.rvalid, Mux(count === 0.U, s_btF12_afF12, Mux(is_sdram, s_btF12_btF12, s_btF12_bfF1)), s_btF12_btF12),
-        s_btF12_afF12 -> Mux(io.in.rready & io.in.rvalid, s_bfF1, s_btF12_afF12),
-        s_fence_i -> Mux(io.fencei.ready, s_bfF1, s_fence_i)
+        s_WaitImemARR -> Mux(io.out.arready, s_WaitImemRV, s_WaitImemARR),
+        s_WaitImemRV -> Mux(io.out.rvalid, Mux(count === 0.U, skip_UpR2V, Mux(is_sdram, s_WaitImemRV, s_WaitImemARR)), s_WaitImemRV),
+        s_WaitUpR -> Mux(io.in.rready, s_WaitUpV, s_WaitUpR),
+        s_fence_i -> Mux(fenceCnt === set.U - 1.U, s_WaitUpV, s_fence_i)
     ))
     state := nextState
     dontTouch(nextState)
 
     if(conf.useDPIC){
         import npc.EVENT._
-        val hitState = RegEnable(hit, false.B, nextState === s_btF12)
+        val hitState = RegEnable(hit, false.B, state === s_WaitUpV)
         PerformanceProbe(clock, ICacheHit, hit, 0.U, io.in.arready & io.in.arvalid & hit, io.in.rready & io.in.rvalid & hitState)
-        PerformanceProbe(clock, ICacheMiss, state === s_btF12_afF12 && io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), 0.U, io.in.arready & io.in.arvalid & ~hit & io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), io.in.rready & io.in.rvalid & ~hitState & io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W))
+        //PerformanceProbe(clock, ICacheMiss, state === s_btF12_afF12 && io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), 0.U, io.in.arready & io.in.arvalid & ~hit & io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), io.in.rready & io.in.rvalid & ~hitState & io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W))
     }
 //fence_i logic
-    val fenceCnt = RegInit(0.U(n.W))
     when(io.fencei.valid & io.fencei.bits.is_fencei){
         fenceCnt := fenceCnt + 1.U
     } otherwise {
         fenceCnt := 0.U
     }
     io.fencei.ready := fenceCnt === set.U - 1.U
-    //when(nextState === s_fence_i){
-        //for(i <- 0 until set){
-            //for(j <- 0 until way){
-                //icache(i).set(j).valid := false.B
-            //}
-        //}
-    //}
     when(io.fencei.valid & io.fencei.bits.is_fencei){
         icache.write(fenceCnt, 0.U.asTypeOf(new ICacheSet(tagSize, block_sz, way)))
     }
@@ -174,41 +91,24 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     index := io.in.araddr(m+n-1, m)
     offset := io.in.araddr(m-1, 0)
     base_addr := io.in.araddr - offset
-    dontTouch(base_addr)
-    dontTouch(index)
-    dontTouch(offset)
-    dontTouch(tagA)
-
 //get and decode cacheData default
     cacheData := 0.U.asTypeOf(new ICacheBlock(tagSize, block_sz))
     data_h := 0.U
     wayHit := 0.U
-    dontTouch(wayHit)
 //hit logic
     hit := false.B
-    hit_2 := false.B //to avoid nextstate combinational cycle
     valid := false.B
     tagC := 0.U
-    valid_2 := false.B
-    tagC_2 := 0.U
-    dontTouch(hit_2)
-    cacheSet := icache(index)
+    cacheSet := icache(index) //first read port
     for(i <- 0 until way){
-        val cacheDataTemp = Wire(new ICacheBlock(tagSize, block_sz))
-        val validTemp = Wire(Bool())
-        val tagCTemp = Wire(UInt(tagSize.W))
+        val cacheDataTemp = dontTouch(Wire(new ICacheBlock(tagSize, block_sz)))
+        val validTemp = dontTouch(Wire(Bool()))
+        val tagCTemp = dontTouch(Wire(UInt(tagSize.W)))
         cacheDataTemp := cacheSet.set(i)
-        dontTouch(cacheDataTemp)
-        dontTouch(validTemp)
-        dontTouch(tagCTemp)
         tagCTemp := cacheDataTemp.tag
         validTemp := cacheDataTemp.valid
-        hit_2 := valid_2 && (tagA === tagC_2)
+        //hit!
         when(validTemp && (tagA === tagCTemp)){
-            valid_2 := validTemp
-            tagC_2 := tagCTemp
-        }
-        when(validTemp && (tagA === tagCTemp) && nextState === s_btF12){
             valid := validTemp
             tagC := tagCTemp
             hit := true.B
@@ -216,88 +116,76 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
             wayHit := i.U
         }
     }
-//    cacheData := icache(index)
-//    valid := cacheData.valid
-//    tagC := cacheData.tag
-//    data_h := cacheData.data(offset >> 2)
-//    hit := valid && (tagA === tagC) && nextState === s_btF12
-    dontTouch(hit)
-    dontTouch(valid)
-    dontTouch(data_h)
-    dontTouch(data_m)
-    dontTouch(cacheData)
 
     DefaultConnect()
 
-    switch(nextState){
-        is(s_bfF1){
-            out_arvalid := false.B
-            out_rready := false.B
-            out_araddr := 0.U
-        } //default connect
-        is(s_btF12){
-            in_arready := false.B
-            in_rvalid := hit
-            out_arvalid := false.B
-            out_rready := false.B
-            out_araddr := ((c.U-(count)) << 2) + base_addr
-        }
-        is(s_btF12_bfF1){
-            in_arready := false.B
-            in_rvalid := hit
-            out_arvalid := ~hit
-            out_rready := false.B
-            out_araddr := Mux(is_sdram, base_addr, ((c.U-(count)) << 2) + base_addr)
-            out_arburst := Mux(is_sdram, "b01".U, out_arburst)
-            out_arlen := Mux(is_sdram, (c - 1).U, out_arlen)
-            out_arsize := Mux(is_sdram, "b10".U, out_arsize)
-        }
-        is(s_btF12_btF12){
-            in_arready := false.B
-            in_rvalid := false.B
-            out_arvalid := false.B
-            out_rready := true.B
-            out_araddr := 0.U
-        }
-        is(s_btF12_afF12){
-            in_arready := false.B
-            in_rvalid := true.B
-            out_arvalid := false.B
-            out_rready := false.B
-            out_araddr := 0.U
-        }
+    switch(state){
+        is(s_WaitUpV){
+            io.in.arready := true.B
+            io.in.rvalid := Mux(hit, true.B, false.B)
 
+            io.out.arvalid := false.B
+            io.out.rready := false.B
+            io.out.araddr := 0.U
+        }
+        is(s_WaitUpR){
+            io.in.arready := false.B
+            io.in.rvalid := true.B
+
+            io.out.arvalid := false.B
+            io.out.rready := false.B
+            io.out.araddr := 0.U
+        }
+        is(s_WaitImemARR){
+            io.in.arready := false.B
+            io.in.rvalid := false.B
+
+            io.out.arvalid := true.B
+            io.out.rready := false.B
+            io.out.araddr := Mux(is_sdram, base_addr, ((c.U-(count)) << 2) + base_addr)
+            io.out.arburst := "b01".U
+            io.out.arlen := Mux(is_sdram, (c - 1).U, 0.U)
+            io.out.arsize := "b10".U
+        }
+        is(s_WaitImemRV){
+            io.in.arready := false.B
+            io.in.rvalid := Mux(count === 0.U & io.out.rvalid, true.B, false.B)
+
+            io.out.arvalid := false.B
+            io.out.rready := true.B
+            io.out.araddr := 0.U
+        }
     }
-    in_rdata := Mux(nextState === s_btF12 && hit, data_h, 
-                Mux(nextState === s_btF12_afF12 , data_m, in_rdata))
+    io.in.rdata := Mux(hit, data_h, 
+                Mux(count === 0.U, data_m, 0.U))
     //data tag valid
 //miss logic
     data_m := 0.U
-    val wayMiss = Wire(UInt(w.W))
-    wayMiss := getWay_FIFO()
-    dontTouch(wayMiss)
-    val wayMissWrite = RegEnable(wayMiss, state === s_btF12)
-    dontTouch(wayMissWrite)
-    cacheData := icache(index).set(wayMissWrite)
-    when(io.out.rready && io.out.rvalid) {
+    val wayMiss = dontTouch(Wire(UInt(w.W)))
+    wayMiss := fifoPtr
+    cacheData := cacheSet.set(wayMiss)
+    when(io.out.rvalid) {
         val newBlock = Wire(new ICacheBlock(tagSize, block_sz)) // 创建一个临时块来执行写操作
         newBlock.valid := true.B
         newBlock.tag := tagA
-        newBlock.data := icache(index).set(wayMissWrite).data // 首先复制原来的数据
+        newBlock.data := cacheSet.set(wayMiss).data // 首先复制原来的数据
         newBlock.data(c.U - (count + 1.U)) := io.out.rdata      // 更新需要修改的部分
-        data_m := Mux(offset === (block_sz - bus_w).U, newBlock.data(offset >> 2).asUInt, cacheData.data(offset >> 2).asUInt).asUInt //forwarding when it will access the last 4B
+        data_m := newBlock.data(offset >> 2).asUInt
 
-        val newCacheSet = Wire(icache(index).set.cloneType) // 创建一个新的 CacheSet
-        newCacheSet := icache(index).set              // 复制原来的 CacheSet
+        val newCacheSet = Wire(cacheSet.set.cloneType) // 创建一个新的 CacheSet
+        newCacheSet := cacheSet.set              // 复制原来的 CacheSet
         // 更新特定的 way
-        newCacheSet(wayMissWrite) := newBlock
+        newCacheSet(wayMiss) := newBlock
         // 将更新后的 CacheSet 写回
+        when(io.out.rvalid & count === 0.U){
+            fifoPtr := fifoPtr + 1.U
+        }
         icache(index).set := newCacheSet
     }
     //count logic
-    when(state === s_btF12 || state === s_bfF1){
-        count := Mux(is_sdram, (c-1).U,c.U)
-    }.elsewhen(count =/= 0.U && ((nextState === s_btF12_btF12 && state === s_btF12_bfF1 && ~is_sdram) || (is_sdram && io.out.rready & io.out.rvalid))){
+    when(state === s_WaitUpV){
+        count := (c-1).U
+    }.elsewhen(count =/= 0.U && (io.out.rvalid)){
         count := count - 1.U
     }
 
@@ -305,56 +193,30 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     def log2(x: Int): Double = {
         math.log(x) / math.log(2)
     }
-    def getWay_FIFO(): UInt = {
-        val wayIndex = Wire(UInt(w.W))
-        wayIndex := 0.U
-        dontTouch(wayIndex)
-        val empty = Wire(Bool())
-        empty := false.B
-        for(i <- way - 1 to 0 by -1){
-            when(cacheSet.set(i).valid === false.B){
-                wayIndex := i.U
-                empty := true.B
-            }
-        }
-        when(!empty && nextState === s_btF12 && ~hit){
-            for(i <- way - 1 to 1 by -1){
-                icache(index).set(i-1) := icache(index).set(i)
-            }
-            wayIndex := (way-1).U
-        }
-        wayIndex
-    }
     def DefaultConnect(): Unit = {
-        in_arready := io.out.arready
-        in_rdata := io.out.rdata
-        in_rresp := io.out.rresp
-        in_rvalid := io.out.rvalid
-        in_rlast := io.out.rlast
-        in_rid := io.out.rid
-        in_awready := io.out.awready
-        in_wready := io.out.wready
-        in_bresp := io.out.bresp
-        in_bvalid := io.out.bvalid
-        in_bid := io.out.bid
+        // Set default values for internal signals
+        io.in.arready := false.B
+        io.in.rdata   := 0.U
+        io.in.rvalid  := false.B
 
-        out_araddr := io.in.araddr
-        out_arvalid := io.in.arvalid
-        out_arid := io.in.arid
-        out_arlen := io.in.arlen
-        out_arsize := io.in.arsize
-        out_arburst := io.in.arburst
-        out_rready := io.in.rready
-        out_awaddr := io.in.awaddr
-        out_awvalid := io.in.awvalid
-        out_awid := io.in.awid
-        out_awlen := io.in.awlen
-        out_awsize := io.in.awsize
-        out_awburst := io.in.awburst
-        out_wdata := io.in.wdata
-        out_wstrb := io.in.wstrb
-        out_wvalid := io.in.wvalid
-        out_wlast := io.in.wlast
-        out_bready := io.in.bready
-    }
+        io.out.araddr  := 0.U
+        io.out.arvalid := false.B
+        io.out.arid    := 0.U
+        io.out.arlen   := 0.U
+        io.out.arsize  := 0.U
+        io.out.arburst := 0.U
+        io.out.rready  := false.B
+        io.out.awaddr  := 0.U
+        io.out.awvalid := false.B
+        io.out.awid    := 0.U
+        io.out.awlen   := 0.U
+        io.out.awsize  := 0.U
+        io.out.awburst := 0.U
+        io.out.wdata   := 0.U
+        io.out.wstrb   := 0.U
+        io.out.wvalid  := false.B
+        io.out.wlast   := false.B
+        io.out.bready  := false.B
+}
+
 }

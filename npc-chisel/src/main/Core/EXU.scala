@@ -23,7 +23,7 @@ class ExuOutIO extends Bundle{
   val rd2 = Output(UInt(32.W))
   val rw = Output(UInt(5.W))
 	val crw = Output(UInt(12.W))
-  val stat = Output(new Stat)
+  //val stat = Output(new Stat)
   //for performance analysis
   val perfSubType = Output(UInt(8.W))
 }
@@ -41,40 +41,34 @@ class EXU(val conf: npc.CoreConfig) extends Module{
   val idupc = Module(new exu.IduPC)
   val jumpPc = Module(new exu.JumpPc)
 
-  val in_ready = RegInit(io.in.ready)
-  val out_valid = RegInit(io.out.valid)
-  io.in.ready := in_ready
-  io.out.valid := out_valid
-
-  val s_BeforeFire1 :: s_BetweenFire12 :: Nil = Enum(2)
-  val state = RegInit(s_BeforeFire1)
-  val nextState = Wire(UInt(1.W))
-  nextState := MuxLookup(state, s_BeforeFire1)(Seq(
-      s_BeforeFire1   -> Mux(io.in.fire, s_BetweenFire12, s_BeforeFire1),
-      s_BetweenFire12 -> Mux(io.out.fire, s_BeforeFire1, s_BetweenFire12)
+  val s_WaitIduV :: s_WaitLsuR :: Nil = Enum(2)
+  val stateE = RegInit(s_WaitIduV)
+  val nextStateE = WireDefault(stateE)
+  nextStateE := MuxLookup(stateE, s_WaitIduV)(Seq(
+      s_WaitIduV   -> Mux(io.in.valid, Mux(io.out.ready, s_WaitIduV, s_WaitLsuR), s_WaitIduV),
+      s_WaitLsuR   -> Mux(io.out.ready, s_WaitIduV, s_WaitLsuR)
   ))
-  state := nextState
-  dontTouch(nextState)
-  if(conf.useDPIC){
-    import npc.EVENT._
-    PerformanceProbe(clock, EXUFinCal, nextState, 0.U, io.in.fire, io.out.fire)
-  }
+  stateE := nextStateE
+  //if(conf.useDPIC){
+    //import npc.EVENT._
+    //PerformanceProbe(clock, EXUFinCal, nextState, 0.U, io.in.fire, io.out.fire)
+  //}
   SetupEXU()
-  SetupIRQ()
+  //SetupIRQ()
 
   //default,it will error if no do this
-  in_ready := false.B
-  out_valid := false.B
+  io.in.ready := false.B
+  io.out.valid := false.B
   
-  switch(nextState){
-    is(s_BeforeFire1){
-      in_ready := true.B
-      out_valid := false.B
+  switch(stateE){
+    is(s_WaitIduV){
+      io.in.ready := true.B
+      io.out.valid := Mux(io.in.valid, true.B, false.B)
       //disable all sequential logic
     }
-    is(s_BetweenFire12){
-      in_ready := false.B
-      out_valid := true.B
+    is(s_WaitLsuR){
+      io.in.ready := false.B
+      io.out.valid := true.B
       //save all output to regs
     }
   }
@@ -131,8 +125,8 @@ class EXU(val conf: npc.CoreConfig) extends Module{
   
     io.out.bits.perfSubType := io.in.bits.perfSubType
   }
-  def SetupIRQ():Unit = {
-    io.out.bits.stat := io.in.bits.stat
-  }
+//  def SetupIRQ():Unit = {
+//    io.out.bits.stat := io.in.bits.stat
+//  }
   
 }

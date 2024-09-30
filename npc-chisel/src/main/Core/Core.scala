@@ -28,14 +28,14 @@ class Core(val conf : CoreConfig) extends Module {
   val icache = Module(new ICache(4, 1, 8, conf))
 
   //"state" elements in npc core
-  val stat = RegEnable(wbu.io.statw, 0.U.asTypeOf(new Stat), wbu.io.statEn)
+  //val stat = RegEnable(wbu.io.statw, 0.U.asTypeOf(new Stat), wbu.io.statEn)
   val gpr = Module(new gpr(conf))
   val csr = Module(new csr(conf))
 
-  pipelineConnect(ifu.io.out, idu.io.in, idu.io.out)
-  pipelineConnect(idu.io.out, exu.io.in, exu.io.out)
-  pipelineConnect(exu.io.out, lsu.io.in, lsu.io.out)
-  pipelineConnect(lsu.io.out, wbu.io.in, wbu.io.out)
+  pipelineConnect(ifu.io.out, idu.io.in)
+  pipelineConnect(idu.io.out, exu.io.in)
+  pipelineConnect(exu.io.out, lsu.io.in)
+  pipelineConnect(lsu.io.out, wbu.io.in)
 
   pfu.io.in.ifuPC :<>= ifu.io.pf
   pfu.io.in.iduPC :<>= idu.io.pc
@@ -43,7 +43,7 @@ class Core(val conf : CoreConfig) extends Module {
   ifu.io.in :<>= pfu.io.out
 
   //Connect to the "state" elements in npc
-  ifu.io.imem :<>= icache.io.in
+  ifu.io.imem <> icache.io.in
   icache.io.out :<>= io.imem
   icache.io.fencei <> idu.io.ifuSignals
   idu.io.gpr :<>= gpr.io.read
@@ -52,14 +52,12 @@ class Core(val conf : CoreConfig) extends Module {
   lsu.io.dmem :<>= io.dmem
   wbu.io.gpr :<>= gpr.io.write
   wbu.io.csr :<>= csr.io.write
-  wbu.io.out.ready := true.B
 
-  wbu.io.statr := stat
-  ifu.io.statr := stat
-  idu.io.statr := stat
+  //wbu.io.statr := stat
+  //ifu.io.statr := stat
+  //idu.io.statr := stat
 
-  def pipelineConnect[T <: Data, T2 <: Data](prevOut: DecoupledIO[T],
-  thisIn: DecoupledIO[T], thisOut: DecoupledIO[T2]) = {
+  def pipelineConnect[T <: Data, T2 <: Data](prevOut: DecoupledIO[T], thisIn: DecoupledIO[T]) = {
     prevOut.ready := thisIn.ready
     thisIn.bits := RegEnable(prevOut.bits, prevOut.valid && thisIn.ready)
     thisIn.valid := RegNext(prevOut.valid);
