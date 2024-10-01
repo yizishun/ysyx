@@ -57,10 +57,10 @@ class WBU(val conf: npc.CoreConfig) extends Module{
   //place wires
     //GPR module(external)
     io.gpr.waddr := io.in.bits.rw
-    io.gpr.wen := io.in.bits.signals.wbu.RegwriteE
+    io.gpr.wen := io.in.bits.signals.wbu.RegwriteE & io.in.valid
     //CSR module(external)
     io.csr.waddr := io.in.bits.crw
-    io.csr.wen := io.in.bits.signals.wbu.CSRWriteE
+    io.csr.wen := io.in.bits.signals.wbu.CSRWriteE & io.in.valid
     //WBU(wrapper)
 
   }

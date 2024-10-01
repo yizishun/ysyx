@@ -142,7 +142,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
 
             io.out.arvalid := true.B
             io.out.rready := false.B
-            io.out.araddr := Mux(is_sdram, base_addr, ((c.U-(count)) << 2) + base_addr)
+            io.out.araddr := Mux(is_sdram, base_addr, ((c.U-1.U-(count)) << 2) + base_addr)
             io.out.arburst := "b01".U
             io.out.arlen := Mux(is_sdram, (c - 1).U, 0.U)
             io.out.arsize := "b10".U
@@ -156,7 +156,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
             io.out.araddr := 0.U
         }
     }
-    io.in.rdata := Mux(hit, data_h, 
+    io.in.rdata := Mux(hit & state =/= s_WaitImemRV, data_h, 
                 Mux(count === 0.U, data_m, 0.U))
     //data tag valid
 //miss logic

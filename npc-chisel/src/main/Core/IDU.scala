@@ -37,6 +37,9 @@ class IduIO(xlen: Int) extends Bundle{
   //connect to the external "state" elements(i.e.gpr,csr,imem)
   val gpr = Flipped(new gprReadIO(xlen))
   val csr = Flipped(new csrReadIO(xlen))
+  val rs1ren = Output(Bool())
+  val rs2ren = Output(Bool())
+  val isRaw = Input(Bool())
   //val statr = Input(new Stat)
 }
 
@@ -65,13 +68,13 @@ class IDU(val conf: npc.CoreConfig) extends Module{
 
   switch(stateD){
     is(s_WaitIfuV){
-      io.in.ready := true.B
-      io.out.valid := Mux(io.in.valid, true.B, false.B)
+      io.in.ready := Mux(io.isRaw, false.B, true.B)
+      io.out.valid := Mux(io.in.valid, Mux(io.isRaw, false.B, true.B), false.B)
       //disable all sequential logic
     }
     is(s_WaitExuR){
       io.in.ready := false.B
-      io.out.valid := true.B
+      io.out.valid := Mux(io.isRaw, false.B, true.B)
       //save all output into regs
     }
   }
@@ -89,6 +92,8 @@ class IDU(val conf: npc.CoreConfig) extends Module{
     //GPR module(external)
     io.gpr.raddr1 := io.in.bits.inst(19, 15)
     io.gpr.raddr2 := io.in.bits.inst(24, 20)
+    io.rs1ren := controller.io.signals.idu.Rs1Ren
+    io.rs2ren := controller.io.signals.idu.Rs2Ren
   
     //CSR module(external)
     

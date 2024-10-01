@@ -11,6 +11,7 @@ void difftest_step();
 uint64_t cycle = 0;
 uint64_t instCnt = 0;
 uint32_t waveCounter = 0;
+bool prev_wbu;
 static uint64_t g_timer = 0;
 static bool g_print_step = false;
 word_t pc, snpc, dnpc,inst , prev_pc;
@@ -63,7 +64,7 @@ void record_inst_trace(char *p, uint8_t *inst){
 static void trace_and_difftest(){
 	/* DiffTest */
 	#ifdef CONFIG_DIFFTEST
-	if(prev_pc != pc){
+	if(prev_wbu){
 		difftest_step();
 	}
 	#endif
@@ -115,6 +116,7 @@ void cpu_exec(uint32_t n){
 	g_print_step = (n < MAX_INST_TO_PRINT);
 	while(n > 0){
 		prev_pc = cpu->rootp -> V_PC;
+		prev_wbu = cpu->rootp->WBU;
 		snpc = pc + 4;
 		if(cpu->rootp->V_E_GETINST == 1)
 			instCnt ++;

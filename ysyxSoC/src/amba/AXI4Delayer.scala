@@ -66,7 +66,7 @@ class AXI4DelayerChisel extends Module {
   }.elsewhen(nextState === s_delay){
     delayCnt := Mux(state =/= s_delay, (delayCnt >> 1) - 1.U, delayCnt - 1.U)
     for(i <- 0 until 8){
-      singleBurstDelay(i) := Mux(state =/= s_delay, (singleBurstDelay(i) >> 1) - 1.U, singleBurstDelay(i) - 1.U)
+      singleBurstDelay(i) := Mux(state =/= s_delay, ((singleBurstDelay(i) + 5.U) >> 1) - 1.U, singleBurstDelay(i) - 1.U)
     }
   }
   when(io.in.ar.valid){
@@ -86,8 +86,8 @@ class AXI4DelayerChisel extends Module {
   }
   when(is_read){
     //in read logic
-    io.in.r.valid := Mux(nextState === s_delay && singleBurstDelay(burstCntIn) === 0.U, true.B, false.B)
-    io.in.r.bits.last := burstCntIn === burstLenR
+    io.in.r.valid := Mux(state === s_delay && singleBurstDelay(burstCntIn) === 0.U, true.B, false.B)
+    io.in.r.bits.last := Mux(burstCntIn === burstLenR, Mux(delayCnt === 0.U, true.B, false.B), false.B)
     //out read logic
     //io.out.ar.valid := Mux(nextState === s_delay, false.B, io.in.ar.valid)
     //io.out.r.ready := Mux(nextState === s_delay, false.B, io.in.r.ready)
