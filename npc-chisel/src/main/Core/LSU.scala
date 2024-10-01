@@ -2,7 +2,7 @@ package npc.core
 
 import chisel3._
 import chisel3.util._
-import npc.bus.AXI4
+import npc.bus._
 import npc._
 
 class LsuOutIO extends Bundle{
@@ -27,7 +27,7 @@ class LsuIO(xlen: Int) extends Bundle{
   val in = Flipped(Decoupled(new ExuOutIO))
   val out = Decoupled(new LsuOutIO)
   //connect to the external "state" elements(i.e.dmem)
-  val dmem = Flipped(new AXI4)
+  val dmem = new AXI4Master
 }
 
 class LSU(val conf: npc.CoreConfig) extends Module{
@@ -153,7 +153,7 @@ class LSU(val conf: npc.CoreConfig) extends Module{
     is(s_WaitDmemXV){
       //between modules
       io.in.ready := false.B
-      io.out.valid := false.B
+      io.out.valid := Mux(io.dmem.rvalid | io.dmem.bvalid, true.B, false.B)
       //AXI4-Lite
         //AR
       io.dmem.arvalid := Mux(isLoad, false.B, false.B)
@@ -188,8 +188,7 @@ class LSU(val conf: npc.CoreConfig) extends Module{
     io.dmem.wdata := io.in.bits.rd2 << (dataplace(2, 0) << 3)
     io.dmem.wstrb := RealMemWmask
     //some operation to read data
-    val dmem_rdata = RegNext(io.dmem.rdata)
-    rdplace := dmem_rdata >> (dataplace(2, 0) << 3)
+    rdplace := io.dmem.rdata >> (dataplace(2, 0) << 3)
     //LSU module(wrapper)
     io.out.bits.signals := io.in.bits.signals
     io.out.bits.rd1 := io.in.bits.rd1

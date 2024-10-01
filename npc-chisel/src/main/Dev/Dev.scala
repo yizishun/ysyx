@@ -3,6 +3,7 @@ package npc.dev
 import chisel3._
 import chisel3.util._
 import npc._
+import npc.bus._
 
 class AXI4Lite(xlen: Int) extends Bundle{
   val clk = Input(Clock())
@@ -45,7 +46,7 @@ class Clint(coreConfig: CoreConfig) extends BlackBox with HasBlackBoxPath{
   val io = IO(new Bundle {
     val clk = Input(Clock())
     val rst = Input(Reset())
-    val axi = new npc.bus.AXI4
+    val axi = new AXI4Slave
   })
   addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/Dev/CLINT.sv")
 }

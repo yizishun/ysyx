@@ -8,7 +8,7 @@ import npc.bus._
 
 class ICacheIO extends Bundle{
     val in = Flipped(new Ifu2IcacheIO)
-    val out = Flipped(new AXI4)
+    val out = new AXI4Master
     val fencei = Flipped(Irrevocable(new npc.core.idu.IFUSignals))
 }
 class ICacheBlock(val tagSize: Int, val block_sz: Int) extends Bundle{

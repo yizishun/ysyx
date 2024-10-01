@@ -59,17 +59,18 @@ class EXU(val conf: npc.CoreConfig) extends Module{
   //default,it will error if no do this
   io.in.ready := false.B
   io.out.valid := false.B
+  io.pc.valid := false.B
   
   switch(stateE){
     is(s_WaitIduV){
       io.in.ready := true.B
       io.out.valid := Mux(io.in.valid, true.B, false.B)
-      //disable all sequential logic
+      io.pc.valid := Mux(io.in.valid & io.pc.ready, true.B, false.B)
     }
     is(s_WaitLsuR){
       io.in.ready := false.B
       io.out.valid := true.B
-      //save all output to regs
+      io.pc.valid := false.B
     }
   }
 
@@ -111,7 +112,6 @@ class EXU(val conf: npc.CoreConfig) extends Module{
     io.pc.bits.PcPlusImm := jumpPc.io.nextpc
     io.pc.bits.PcPlusRs2 := alu.io.result & (~1.U(32.W))
     io.pc.bits.PCSrc := idupc.io.PCSrc
-    io.pc.valid := io.out.valid
       //out to LSU
     io.out.bits.signals := io.in.bits.signals
     io.out.bits.aluresult := alu.io.result

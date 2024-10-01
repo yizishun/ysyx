@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import npc.dev._
 import npc._
-import npc.bus.AXI4
+import npc.bus._
 
 class Stat extends Bundle{
   val stat = Bool()
@@ -12,8 +12,8 @@ class Stat extends Bundle{
 }
 
 class CoreIO(xlen : Int) extends Bundle{
-  val imem = Flipped(new AXI4)
-  val dmem = Flipped(new AXI4)
+  val imem = new AXI4Master
+  val dmem = new AXI4Master
 }
 
 class Core(val conf : CoreConfig) extends Module {
@@ -44,12 +44,12 @@ class Core(val conf : CoreConfig) extends Module {
 
   //Connect to the "state" elements in npc
   ifu.io.imem <> icache.io.in
-  icache.io.out :<>= io.imem
+  icache.io.out <> io.imem
   icache.io.fencei <> idu.io.ifuSignals
   idu.io.gpr :<>= gpr.io.read
   idu.io.csr :<>= csr.io.read
 
-  lsu.io.dmem :<>= io.dmem
+  lsu.io.dmem <> io.dmem
   wbu.io.gpr :<>= gpr.io.write
   wbu.io.csr :<>= csr.io.write
 
@@ -60,7 +60,7 @@ class Core(val conf : CoreConfig) extends Module {
   def pipelineConnect[T <: Data, T2 <: Data](prevOut: DecoupledIO[T], thisIn: DecoupledIO[T]) = {
     prevOut.ready := thisIn.ready
     thisIn.bits := RegEnable(prevOut.bits, prevOut.valid && thisIn.ready)
-    thisIn.valid := RegNext(prevOut.valid);
+    thisIn.valid := RegEnable(prevOut.valid, thisIn.ready);
   }
 }
 

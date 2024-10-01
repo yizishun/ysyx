@@ -3,7 +3,7 @@ package npc.core
 import chisel3._
 import chisel3.util._
 import npc._
-import npc.bus.AXI4
+import npc.bus._
 import npc.core.idu.Control._
 
 class IfuPcIO extends Bundle{
