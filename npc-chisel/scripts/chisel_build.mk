@@ -23,4 +23,7 @@ checkformat:
 clean:
 	-rm -rf $(BUILD_DIR)
 
+cleanv:
+	-rm -rf $(BUILD_DIR)/sv-gen
+
 .PHONY: test verilog help reformat checkformat clean

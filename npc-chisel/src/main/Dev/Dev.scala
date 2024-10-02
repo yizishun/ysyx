@@ -42,11 +42,12 @@ class Uart(coreConfig: CoreConfig) extends BlackBox with HasBlackBoxPath{
   addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/Dev/UART.sv")
 }
 
-class Clint(coreConfig: CoreConfig) extends BlackBox with HasBlackBoxPath{
-  val io = IO(new Bundle {
-    val clk = Input(Clock())
-    val rst = Input(Reset())
-    val axi = new AXI4Slave
-  })
-  addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/Dev/CLINT.sv")
-}
+//class Clint(coreConfig: CoreConfig) extends BlackBox with HasBlackBoxPath{
+//  val io = IO(new Bundle {
+//    val clk = Input(Clock())
+//    val rst = Input(Reset())
+//    val axi = new AXI4Slave
+//  })
+//  addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/Dev/CLINT.sv")
+//}
+//

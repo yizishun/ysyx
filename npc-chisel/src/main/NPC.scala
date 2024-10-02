@@ -19,36 +19,8 @@ class npcIO extends Bundle{
 
 class NPC(val coreConfig : CoreConfig) extends Module {
   val io = IO(new npcIO)
-  io.slave.arready := false.B
-  io.slave.rdata := DontCare
-  io.slave.rresp := 0.U
-  io.slave.rid := 0.U
-  io.slave.rready := DontCare
-  io.slave.rvalid := false.B
-  io.slave.rlast := true.B
-  io.slave.awready := false.B
-  io.slave.wready := false.B
-  io.slave.bresp := 0.U
-  io.slave.bvalid := false.B
-  io.slave.bid := 0.U
-  io.master.araddr := DontCare
-  io.master.arvalid := false.B
-  io.master.arid := 0.U
-  io.master.arlen := 0.U
-  io.master.arsize := 0.U
-  io.master.arburst := 0.U
-  io.master.rready := false.B
-  io.master.awaddr := DontCare
-  io.master.awvalid := false.B
-  io.master.awid := 0.U
-  io.master.awlen := 0.U
-  io.master.awsize := 0.U
-  io.master.awburst := 0.U
-  io.master.wdata := DontCare
-  io.master.wstrb := 0.U
-  io.master.wvalid := 0.U
-  io.master.wlast := false.B
-  io.master.bready := false.B
+  io.master.setDefaults()
+  io.slave.setDefaults()
 
   if(coreConfig.ysyxsoc){
     val core = Module(new Core(coreConfig))
@@ -57,10 +29,8 @@ class NPC(val coreConfig : CoreConfig) extends Module {
 
     connectAll(core.io.imem ,xbar.io.imem)
     connectAll(core.io.dmem ,xbar.io.dmem)
-    connectAll(xbar.io.clint ,clint.io.axi)
+    connectAll(xbar.io.clint ,clint.io)
     xbar.io.soc <> io.master
-    clint.io.clk := clock
-    clint.io.rst := reset
   }
 //  else if(coreConfig.npc){
 //    val core = Module(new Core(coreConfig))

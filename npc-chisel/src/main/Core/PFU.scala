@@ -3,6 +3,7 @@ package npc.core
 import chisel3._
 import chisel3.util._
 import npc._
+import scala.annotation.switch
 
 class PfuInIO extends Bundle{
     val ifuPC = Flipped(Decoupled(new IfuPcIO))
@@ -25,30 +26,29 @@ class PFU(val conf: npc.CoreConfig) extends Module{
     io.in.iduPC.ready := true.B
     io.in.exuPC.ready := true.B
 
-//    //state transition
-//    val s_BeforeFire1 :: s_BetweenFire12 :: Nil= Enum(2)
-//    val state = RegInit(s_BetweenFire12)
-//    val nextState = WireDefault(state)
-//    nextState := MuxLookup(state, s_BeforeFire1)(Seq(
-//        sc_BeforeFire1   -> Mux(io.in.fire, s_BetweenFire12_1_1, s_BeforeFire1),
-//        sc_BetweenFire12 -> Mux(io.imem.arvalid & io.imem.arready, s_BeforeFire1, s_BetweenFire12),
-//    ))
-//    state := nextState
-//    dontTouch(nextState)
 
-    import npc.core.idu.Control._
-    //place mux
-    val PCSrc = Wire(UInt(3.W))
-    val nextpc = Wire(UInt(32.W))
-    PCSrc := io.in.exuPC.bits.PCSrc
-  
-    nextpc := MuxLookup(PCSrc, io.in.ifuPC.bits.speculativePC)(Seq(
-      PcPlus4 -> io.in.ifuPC.bits.PcPlus4,
-      PcPlusImm -> io.in.exuPC.bits.PcPlusImm,
-      PcPlusRs2 -> io.in.exuPC.bits.PcPlusRs2,
-      Mtvec -> io.in.iduPC.bits.mtvec,
-      Mepc -> io.in.iduPC.bits.mepc
+      //state transition(mearly)
+    val s_WaitIfuV :: s_WaitIfuR :: Nil = Enum(2)
+    val stateP = RegInit(s_WaitIfuV)
+    val nextStateP = WireDefault(stateP)
+    nextStateP := MuxLookup(stateP, s_WaitIfuV)(Seq(
+        s_WaitIfuV -> Mux(io.in.ifuPC.valid, Mux(io.out.ready, s_WaitIfuV, s_WaitIfuR), s_WaitIfuV),
+        s_WaitIfuR -> Mux(io.out.ready, s_WaitIfuV, s_WaitIfuR)
     ))
-    io.out.bits.nextPC := nextpc
-    io.out.valid := io.in.exuPC.fire
+
+    stateP := nextStateP
+    dontTouch(nextStateP)
+    io.out.bits.nextPC := io.in.ifuPC.bits.speculativePC
+    io.out.valid := false.B
+    io.in.ifuPC.ready := false.B
+    switch(stateP){
+        is(s_WaitIfuV){
+            io.in.ifuPC.ready := true.B
+            io.out.valid := Mux(io.in.ifuPC.valid, true.B, false.B)
+        }
+        is(s_WaitIfuR){
+            io.in.ifuPC.ready := false.B
+            io.out.valid := true.B
+        }
+    }
 }

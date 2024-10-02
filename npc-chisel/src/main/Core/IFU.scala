@@ -39,15 +39,11 @@ class IfuIO(xlen: Int) extends Bundle{
 
 class IFU(val conf: npc.CoreConfig) extends Module{
   val io = IO(new IfuIO(conf.xlen))
-  val imem_arvalid = RegInit(false.B)
-  val imem_rready = RegInit(false.B)
-  io.imem.arvalid := imem_arvalid
-  io.imem.rready := imem_rready
   //place modules
   val pcInit = if(conf.ysyxsoc){ "h3000_0000".U(32.W) }else if(conf.npc){ "h8000_0000".U(32.W)} else { "h0000_0000".U(32.W) }
   val pcReg = RegEnable(io.in.bits.nextPC, pcInit, io.in.valid)
   val PcPlus4 = Wire(UInt(32.W))
-  PcPlus4 := pcReg + 4.U
+  PcPlus4 := Mux(io.in.valid, io.in.bits.nextPC + 4.U, pcReg + 4.U)
 
   //LSFR
   val lfsr = RegInit(3.U(4.W))
@@ -61,7 +57,7 @@ class IFU(val conf: npc.CoreConfig) extends Module{
   val stateF = RegInit(s_WaitImemARR)
   val nextStateF = WireDefault(stateF)
   nextStateF := MuxLookup(stateF, s_WaitPfuV)(Seq(
-      s_WaitPfuV      -> Mux(io.in.valid, Mux(io.imem.arready, s_WaitImemRV,s_WaitImemARR), s_WaitPfuV),
+      s_WaitPfuV      -> Mux(io.in.valid, Mux(io.imem.arready, Mux(io.imem.rvalid, s_WaitPfuV, s_WaitImemRV),s_WaitImemARR), s_WaitPfuV),
       s_WaitImemARR   -> Mux(io.imem.arready, s_WaitImemRV, s_WaitImemARR),
       s_WaitImemRV    -> Mux(io.imem.rvalid, Mux(io.out.ready, s_WaitPfuV,s_WaitIduR), s_WaitImemRV),
       s_WaitIduR      -> Mux(io.out.ready, s_WaitPfuV, s_WaitIduR)
@@ -86,16 +82,16 @@ class IFU(val conf: npc.CoreConfig) extends Module{
   switch(stateF){
     is(s_WaitPfuV){
       //between modules
-      io.out.valid := Mux(io.imem.arready & io.imem.rvalid, true.B, false.B)
+      io.out.valid := Mux(io.in.valid & io.imem.arready & io.imem.rvalid, true.B, false.B)
       io.in.ready := true.B
       //delay
       if(conf.useLFSR){
       delay := lfsr
       }
       //AXI4
-      io.imem.arvalid := false.B
-      io.imem.araddr := 0.U
-      io.imem.rready := false.B
+      io.imem.arvalid := Mux(io.in.valid & io.imem.arready, true.B, false.B)
+      io.imem.araddr := Mux(io.in.valid & io.imem.arready, io.in.bits.nextPC, 0.U)
+      io.imem.rready := Mux(io.in.valid & io.imem.rvalid & io.imem.arready, true.B, false.B)
     }
     is(s_WaitImemARR){
       //between modules
@@ -123,7 +119,7 @@ class IFU(val conf: npc.CoreConfig) extends Module{
       io.out.valid := io.imem.rvalid
       //AXI4
       io.imem.araddr := pcReg
-      io.imem.arvalid := true.B
+      io.imem.arvalid := false.B
       io.imem.rready := true.B
     }
     is(s_WaitIduR){
@@ -145,7 +141,7 @@ class IFU(val conf: npc.CoreConfig) extends Module{
     io.imem.araddr := pcReg
   
     //IFU module(wrapper)
-    io.out.bits.pc := pcReg
+    io.out.bits.pc := Mux(io.in.valid, io.in.bits.nextPC, pcReg)
     io.out.bits.inst := io.imem.rdata
 
     //PFU module

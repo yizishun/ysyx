@@ -32,6 +32,7 @@ class Core(val conf : CoreConfig) extends Module {
   val gpr = Module(new gpr(conf))
   val csr = Module(new csr(conf))
 
+  pipelineConnect(ifu.io.pf, pfu.io.in.ifuPC)
   pipelineConnect(ifu.io.out, idu.io.in)
   pipelineConnect(idu.io.out, exu.io.in)
   pipelineConnect(exu.io.out, lsu.io.in)
@@ -55,7 +56,6 @@ class Core(val conf : CoreConfig) extends Module {
   idu.io.isRaw := isRAW
 
   //Connect to the pfu
-  pfu.io.in.ifuPC :<>= ifu.io.pf
   pfu.io.in.iduPC :<>= idu.io.pc
   pfu.io.in.exuPC :<>= exu.io.pc
   ifu.io.in :<>= pfu.io.out

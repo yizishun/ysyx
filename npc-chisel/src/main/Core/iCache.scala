@@ -111,7 +111,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
         when(validTemp && (tagA === tagCTemp)){
             valid := validTemp
             tagC := tagCTemp
-            hit := true.B
+            hit := Mux(io.in.arvalid ,true.B, false.B)
             data_h := cacheDataTemp.data(offset >> 2)
             wayHit := i.U
         }
