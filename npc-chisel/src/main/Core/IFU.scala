@@ -33,6 +33,8 @@ class IfuIO(xlen: Int) extends Bundle{
   val pf = Decoupled(new IfuPcIO)
   //Connect to the external imem
   val imem = new Ifu2IcacheIO
+  val isFlush = Input(Bool())
+  val correctedPC = Input(UInt(32.W))
   //val statr = Input(new Stat)
 }
 
@@ -53,15 +55,32 @@ class IFU(val conf: npc.CoreConfig) extends Module{
   val delay = RegInit(lfsr)
 
   //state transition(mearly)
-  val s_WaitPfuV :: s_WaitImemARR :: s_WaitImemRV :: s_WaitIduR :: Nil = Enum(4)
+  val s_WaitPfuV :: s_WaitImemARR :: s_WaitImemRV :: s_WaitIduR :: s_WaitFlushAXIARR :: s_WaitFlushAXIRV  ::Nil = Enum(6)
   val stateF = RegInit(s_WaitImemARR)
   val nextStateF = WireDefault(stateF)
+  val checkedS_WaitImemARR = Mux(io.isFlush, s_WaitFlushAXIARR, s_WaitImemARR)
+  val checkedS_WaitImemRV = Mux(io.isFlush, s_WaitFlushAXIRV, s_WaitImemRV)
   nextStateF := MuxLookup(stateF, s_WaitPfuV)(Seq(
-      s_WaitPfuV      -> Mux(io.in.valid, Mux(io.imem.arready, Mux(io.imem.rvalid, s_WaitPfuV, s_WaitImemRV),s_WaitImemARR), s_WaitPfuV),
-      s_WaitImemARR   -> Mux(io.imem.arready, s_WaitImemRV, s_WaitImemARR),
-      s_WaitImemRV    -> Mux(io.imem.rvalid, Mux(io.out.ready, s_WaitPfuV,s_WaitIduR), s_WaitImemRV),
-      s_WaitIduR      -> Mux(io.out.ready, s_WaitPfuV, s_WaitIduR)
+      s_WaitPfuV      -> Mux(io.in.valid, Mux(io.imem.arready, Mux(io.imem.rvalid, Mux(io.out.ready, s_WaitPfuV, s_WaitIduR), checkedS_WaitImemRV),checkedS_WaitImemARR), s_WaitPfuV),
+      s_WaitImemARR   -> Mux(io.imem.arready, checkedS_WaitImemRV, checkedS_WaitImemARR),
+      s_WaitImemRV    -> Mux(io.imem.rvalid, Mux(io.out.ready, s_WaitPfuV,s_WaitIduR), checkedS_WaitImemRV),
+      s_WaitIduR      -> Mux(io.out.ready, s_WaitPfuV, s_WaitIduR),
+      s_WaitFlushAXIARR -> Mux(io.imem.arready, s_WaitFlushAXIRV, s_WaitFlushAXIARR),
+      s_WaitFlushAXIRV  -> Mux(io.imem.rvalid, s_WaitPfuV, s_WaitFlushAXIRV)
   ))
+//  when(io.isFlush){
+//    when(stateF === s_WaitImemRV){
+//      nextStateF := s_WaitFlushAXIRV
+//    }.elsewhen(stateF === s_WaitImemARR){
+//      nextStateF := s_WaitFlushAXIARR
+//    }.elsewhen(stateF === s_WaitIduR){
+//      nextStateF := s_WaitPfuV
+//    }.elsewhen(io.imem.arvalid & io.imem.arready){
+//      nextStateF := s_WaitFlushAXIRV
+//    }.elsewhen(io.imem.arvalid & ~io.imem.arready){
+//      nextStateF := s_WaitFlushAXIARR
+//    }
+//  }
 
   stateF := nextStateF
   dontTouch(nextStateF)
@@ -83,7 +102,8 @@ class IFU(val conf: npc.CoreConfig) extends Module{
     is(s_WaitPfuV){
       //between modules
       io.out.valid := Mux(io.in.valid & io.imem.arready & io.imem.rvalid, true.B, false.B)
-      io.in.ready := true.B
+      io.in.ready := Mux(io.out.ready & io.imem.arready & io.imem.rvalid, true.B, false.B)
+      when(io.isFlush){io.out.valid := false.B}
       //delay
       if(conf.useLFSR){
       delay := lfsr
@@ -91,7 +111,7 @@ class IFU(val conf: npc.CoreConfig) extends Module{
       //AXI4
       io.imem.arvalid := Mux(io.in.valid & io.imem.arready, true.B, false.B)
       io.imem.araddr := Mux(io.in.valid & io.imem.arready, io.in.bits.nextPC, 0.U)
-      io.imem.rready := Mux(io.in.valid & io.imem.rvalid & io.imem.arready, true.B, false.B)
+      io.imem.rready := Mux(io.in.valid & io.imem.rvalid & io.imem.arready & io.out.ready, true.B, false.B)
     }
     is(s_WaitImemARR){
       //between modules
@@ -115,7 +135,7 @@ class IFU(val conf: npc.CoreConfig) extends Module{
     }
     is(s_WaitImemRV){
       //between modules
-      io.in.ready := false.B
+      io.in.ready := Mux(io.imem.rvalid & io.out.ready, true.B, false.B)
       io.out.valid := io.imem.rvalid
       //AXI4
       io.imem.araddr := pcReg
@@ -124,11 +144,26 @@ class IFU(val conf: npc.CoreConfig) extends Module{
     }
     is(s_WaitIduR){
       //between modules
-      io.in.ready := false.B
-      io.out.valid := io.imem.rvalid
+      io.in.ready := Mux(io.out.ready, true.B, false.B)
+      io.out.valid := true.B
       //AXI4
+      io.imem.arvalid := true.B
+      io.imem.rready := Mux(io.out.ready, true.B, false.B)
+    }
+    is(s_WaitFlushAXIARR){
+      io.in.ready := false.B
+      io.out.valid := false.B
+      //AXI4
+      io.imem.arvalid := true.B
+      io.imem.rready := Mux(io.imem.arready, true.B, false.B) //!!
+    }
+    is(s_WaitFlushAXIRV){
+      io.in.ready := false.B
+      io.out.valid := false.B
+      //AXI4
+      io.imem.araddr := pcReg
       io.imem.arvalid := false.B
-      io.imem.rready := false.B
+      io.imem.rready := true.B
     }
   }
 
@@ -146,8 +181,8 @@ class IFU(val conf: npc.CoreConfig) extends Module{
 
     //PFU module
     io.pf.bits.PcPlus4 := PcPlus4
-    io.pf.bits.speculativePC := PcPlus4
-    io.pf.valid := io.out.valid
+    io.pf.bits.speculativePC := Mux(io.isFlush, io.correctedPC, PcPlus4)
+    io.pf.valid := Mux(io.isFlush, true.B, io.in.ready)
 
   }
   //stat logic

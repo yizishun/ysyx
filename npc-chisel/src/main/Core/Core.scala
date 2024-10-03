@@ -39,8 +39,8 @@ class Core(val conf : CoreConfig) extends Module {
   pipelineConnect(lsu.io.out, wbu.io.in)
 
   //data conflict detection
-  def conflict(rs: UInt, rd: UInt) = (rs === rd)
-  def conflictWithStage(stageID: IduIO, rd: UInt, is_write: Bool, stageIsWorking: Bool) = {
+  def dataConflict(rs: UInt, rd: UInt) = (rs === rd)
+  def dataConflictWithStage(stageID: IduIO, rd: UInt, is_write: Bool, stageIsWorking: Bool) = {
     val rs1 = stageID.gpr.raddr1
     val rs2 = stageID.gpr.raddr2
     val stagesIsWorking = (stageID.in.valid | ~stageID.in.ready) & stageIsWorking
@@ -48,12 +48,35 @@ class Core(val conf : CoreConfig) extends Module {
     val rs2IsNotZero = rs2 =/= 0.U
     val rs1ren = stageID.rs1ren
     val rs2ren = stageID.rs2ren
-    ((rs1ren & rs1IsNotZero & conflict(rs1, rd)) || (rs2ren & rs2IsNotZero & conflict(rs2, rd))) && is_write && stageIsWorking
+    ((rs1ren & rs1IsNotZero & dataConflict(rs1, rd)) || (rs2ren & rs2IsNotZero & dataConflict(rs2, rd))) && is_write && stageIsWorking
   }
-  val isRAW = conflictWithStage(idu.io, exu.io.in.bits.rw, exu.io.in.bits.signals.wbu.RegwriteE, exu.io.in.valid | ~exu.io.in.ready) ||
-              conflictWithStage(idu.io, lsu.io.in.bits.rw, lsu.io.in.bits.signals.wbu.RegwriteE, lsu.io.in.valid | ~lsu.io.in.ready) ||
-              conflictWithStage(idu.io, wbu.io.in.bits.rw, wbu.io.in.bits.signals.wbu.RegwriteE, wbu.io.in.valid | ~wbu.io.in.ready)
+  val isRAW = dataConflictWithStage(idu.io, exu.io.in.bits.rw, exu.io.in.bits.signals.wbu.RegwriteE, exu.io.in.valid | ~exu.io.in.ready) ||
+              dataConflictWithStage(idu.io, lsu.io.in.bits.rw, lsu.io.in.bits.signals.wbu.RegwriteE, lsu.io.in.valid | ~lsu.io.in.ready) ||
+              dataConflictWithStage(idu.io, wbu.io.in.bits.rw, wbu.io.in.bits.signals.wbu.RegwriteE, wbu.io.in.valid | ~wbu.io.in.ready)
   idu.io.isRaw := isRAW
+  //control hazard detection
+  //place mux
+  import npc.core.idu.Control._
+  val correctedPC = Wire(UInt(32.W))
+  val PCSrc = exu.io.pc.bits.PCSrc
+  correctedPC := MuxLookup(PCSrc, exu.io.pc.bits.PcPlus4)(Seq(
+    PcPlus4 -> exu.io.pc.bits.PcPlus4,
+    PcPlusImm -> exu.io.pc.bits.PcPlusImm,
+    PcPlusRs2 -> exu.io.pc.bits.PcPlusRs2,
+    //Mtvec -> io.in.iduPC.bits.mtvec,
+    //Mepc -> io.in.iduPC.bits.mepc
+  ))
+  val iduIsWorking = idu.io.in.valid
+  val pfuIsWorking = pfu.io.in.ifuPC.valid
+  val isJump = exu.io.in.bits.signals.exu.Jump =/= NJump & exu.io.pc.valid
+  val isCH = dontTouch(Wire(Bool()))
+  pfu.io.correctedPC := correctedPC
+  pfu.io.isFlush := isCH
+  ifu.io.isFlush := isCH
+  idu.io.isFlush := isCH
+  isCH := Mux(isJump, Mux(iduIsWorking & correctedPC === ifu.io.out.bits.pc, false.B, PCSrc =/= PcPlus4), 0.U) 
+  ifu.io.correctedPC := correctedPC
+
 
   //Connect to the pfu
   pfu.io.in.iduPC :<>= idu.io.pc

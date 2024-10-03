@@ -54,11 +54,12 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     val is_sdram = dontTouch(RegEnable(io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), false.B, io.in.arready & io.in.arvalid))
     val s_WaitUpV :: s_WaitImemARR :: s_WaitImemRV :: s_WaitUpR :: s_fence_i :: Nil = Enum(5)
     val skip_UpR2V = Mux(io.in.rready, s_WaitUpV, s_WaitUpR)
+    val skip_AR2V = Mux(io.out.arready, s_WaitImemRV, s_WaitImemARR)
     val state = RegInit(s_WaitUpV)
-    val nextState = Wire(UInt(4.W))
+    val nextState = Wire(UInt(3.W))
     nextState := MuxLookup(state, s_WaitUpV)(Seq(
         s_WaitUpV -> MuxCase(s_WaitUpV, 
-                Array((io.in.arvalid) -> Mux(hit, skip_UpR2V, s_WaitImemARR),
+                Array((io.in.arvalid) -> Mux(hit, skip_UpR2V, Mux(io.out.arready, s_WaitImemRV, s_WaitImemARR)),
                       (io.fencei.valid && io.fencei.bits.is_fencei) -> s_fence_i)),
         s_WaitImemARR -> Mux(io.out.arready, s_WaitImemRV, s_WaitImemARR),
         s_WaitImemRV -> Mux(io.out.rvalid, Mux(count === 0.U, skip_UpR2V, Mux(is_sdram, s_WaitImemRV, s_WaitImemARR)), s_WaitImemRV),
@@ -87,10 +88,11 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
 
 //addr decode
     //b=4 k=16 m=2 n=4 tagSize=26
-    tagA := io.in.araddr(31, m+n)
-    index := io.in.araddr(m+n-1, m)
-    offset := io.in.araddr(m-1, 0)
-    base_addr := io.in.araddr - offset
+    val inAddr = RegEnable(io.in.araddr, io.in.arvalid)
+    tagA := Mux(io.in.arvalid, io.in.araddr(31, m+n), inAddr(31, m+n))
+    index := Mux(io.in.arvalid, io.in.araddr(m+n-1, m), inAddr(m+n-1, m))
+    offset := Mux(io.in.arvalid, io.in.araddr(m-1, 0), inAddr(m-1, 0))
+    base_addr := Mux(io.in.arvalid, io.in.araddr, inAddr) - offset
 //get and decode cacheData default
     cacheData := 0.U.asTypeOf(new ICacheBlock(tagSize, block_sz))
     data_h := 0.U
@@ -119,14 +121,19 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
 
     DefaultConnect()
 
+    val addr = Mux(is_sdram, base_addr, ((c.U-1.U-(count)) << 2) + base_addr)
     switch(state){
         is(s_WaitUpV){
             io.in.arready := true.B
             io.in.rvalid := Mux(hit, true.B, false.B)
 
-            io.out.arvalid := false.B
+            io.out.arvalid := Mux(~hit & io.in.arvalid, true.B, false.B)
             io.out.rready := false.B
-            io.out.araddr := 0.U
+            io.out.araddr := Mux(~hit & io.in.arvalid, base_addr, 0.U)
+            when(reset.asBool){
+                io.in.arready := false.B
+                io.out.arvalid := false.B
+            }
         }
         is(s_WaitUpR){
             io.in.arready := false.B
@@ -142,7 +149,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
 
             io.out.arvalid := true.B
             io.out.rready := false.B
-            io.out.araddr := Mux(is_sdram, base_addr, ((c.U-1.U-(count)) << 2) + base_addr)
+            io.out.araddr := addr
             io.out.arburst := "b01".U
             io.out.arlen := Mux(is_sdram, (c - 1).U, 0.U)
             io.out.arsize := "b10".U

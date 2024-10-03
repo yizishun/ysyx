@@ -10,7 +10,7 @@ int main(int argc, char** argv, char** env){
 	init_monitor(argc,argv);
 	init_wave();
 	Verilated::commandArgs(argc, argv);
-	reset(15);
+	reset(25);
 	sdb_mainloop();
 	close_wave();
 }

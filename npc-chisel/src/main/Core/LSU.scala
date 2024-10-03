@@ -105,7 +105,7 @@ class LSU(val conf: npc.CoreConfig) extends Module{
   switch(stateM){
     is(s_WaitExuV){
       //between modules
-      io.in.ready := true.B
+      io.in.ready := Mux((isLoad | isStore) & io.in.valid, false.B, true.B)
       io.out.valid := Mux(io.in.valid & notLS, true.B, false.B)
       //disable all sequential logic
       //AXI4-Lite
@@ -152,7 +152,7 @@ class LSU(val conf: npc.CoreConfig) extends Module{
     }
     is(s_WaitDmemXV){
       //between modules
-      io.in.ready := false.B
+      io.in.ready := Mux(io.dmem.rvalid | io.dmem.bvalid, true.B, false.B)
       io.out.valid := Mux(io.dmem.rvalid | io.dmem.bvalid, true.B, false.B)
       //AXI4-Lite
         //AR

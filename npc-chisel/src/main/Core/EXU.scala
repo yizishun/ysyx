@@ -7,6 +7,7 @@ import npc._
 class ExuPcIO extends Bundle{
   val PcPlusImm = Output(UInt(32.W))
   val PcPlusRs2 = Output(UInt(32.W))
+  val PcPlus4 = Output(UInt(32.W))
   val PCSrc = Output(UInt(3.W))
 }
 
@@ -63,12 +64,12 @@ class EXU(val conf: npc.CoreConfig) extends Module{
   
   switch(stateE){
     is(s_WaitIduV){
-      io.in.ready := true.B
+      io.in.ready := Mux(io.out.ready, true.B, false.B) //这周期可以来，下周期别来了
       io.out.valid := Mux(io.in.valid, true.B, false.B)
       io.pc.valid := Mux(io.in.valid & io.pc.ready, true.B, false.B)
     }
     is(s_WaitLsuR){
-      io.in.ready := false.B
+      io.in.ready := Mux(io.out.ready, true.B, false.B)
       io.out.valid := true.B
       io.pc.valid := false.B
     }
@@ -111,6 +112,7 @@ class EXU(val conf: npc.CoreConfig) extends Module{
       //pc values back to PFU
     io.pc.bits.PcPlusImm := jumpPc.io.nextpc
     io.pc.bits.PcPlusRs2 := alu.io.result & (~1.U(32.W))
+    io.pc.bits.PcPlus4 := io.in.bits.pc + 4.U
     io.pc.bits.PCSrc := idupc.io.PCSrc
       //out to LSU
     io.out.bits.signals := io.in.bits.signals

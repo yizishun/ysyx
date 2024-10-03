@@ -18,6 +18,8 @@ class PfuOutIO extends Bundle{
 class PfuIO(xlen: Int) extends Bundle{
     val in = new PfuInIO
     val out = Decoupled(new PfuOutIO)
+    val isFlush = Input(Bool())
+    val correctedPC = Input(UInt(32.W))
 }
 
 class PFU(val conf: npc.CoreConfig) extends Module{
@@ -35,6 +37,7 @@ class PFU(val conf: npc.CoreConfig) extends Module{
         s_WaitIfuV -> Mux(io.in.ifuPC.valid, Mux(io.out.ready, s_WaitIfuV, s_WaitIfuR), s_WaitIfuV),
         s_WaitIfuR -> Mux(io.out.ready, s_WaitIfuV, s_WaitIfuR)
     ))
+    when(io.isFlush){ nextStateP := s_WaitIfuV }
 
     stateP := nextStateP
     dontTouch(nextStateP)
@@ -47,8 +50,11 @@ class PFU(val conf: npc.CoreConfig) extends Module{
             io.out.valid := Mux(io.in.ifuPC.valid, true.B, false.B)
         }
         is(s_WaitIfuR){
-            io.in.ifuPC.ready := false.B
+            io.in.ifuPC.ready := Mux(io.out.ready, true.B, false.B)
             io.out.valid := true.B
         }
+    }
+    when(io.isFlush){
+        io.in.ifuPC.ready := true.B
     }
 }

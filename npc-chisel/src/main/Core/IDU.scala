@@ -40,6 +40,7 @@ class IduIO(xlen: Int) extends Bundle{
   val rs1ren = Output(Bool())
   val rs2ren = Output(Bool())
   val isRaw = Input(Bool())
+  val isFlush = Input(Bool())
   //val statr = Input(new Stat)
 }
 
@@ -57,6 +58,7 @@ class IDU(val conf: npc.CoreConfig) extends Module{
       s_WaitExuR   -> Mux(io.out.ready, s_WaitIfuV, s_WaitExuR)
   ))
   stateD := nextStateD
+  when(io.isFlush){ nextStateD := s_WaitIfuV }
 
   SetupIDU()
   //SetupIRQ()
@@ -68,15 +70,19 @@ class IDU(val conf: npc.CoreConfig) extends Module{
 
   switch(stateD){
     is(s_WaitIfuV){
-      io.in.ready := Mux(io.isRaw, false.B, true.B)
+      io.in.ready := Mux(io.isRaw, false.B, Mux(io.out.ready, true.B, false.B))
       io.out.valid := Mux(io.in.valid, Mux(io.isRaw, false.B, true.B), false.B)
       //disable all sequential logic
     }
     is(s_WaitExuR){
-      io.in.ready := false.B
+      io.in.ready := Mux(io.out.ready, Mux(io.isRaw, false.B, true.B), false.B)
       io.out.valid := Mux(io.isRaw, false.B, true.B)
       //save all output into regs
     }
+  }
+  when(io.isFlush){
+    io.in.ready := true.B
+    io.out.valid := false.B
   }
 
 //-----------------------------------------------------------------------
