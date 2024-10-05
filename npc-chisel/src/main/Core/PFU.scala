@@ -7,8 +7,6 @@ import scala.annotation.switch
 
 class PfuInIO extends Bundle{
     val ifuPC = Flipped(Decoupled(new IfuPcIO))
-    val iduPC = Flipped(Decoupled(new IduPcIO))
-    val exuPC = Flipped(Decoupled(new ExuPcIO))
 }
 
 class PfuOutIO extends Bundle{
@@ -25,9 +23,6 @@ class PfuIO(xlen: Int) extends Bundle{
 class PFU(val conf: npc.CoreConfig) extends Module{
     val io = IO(new PfuIO(conf.xlen))
     io.in.ifuPC.ready := true.B
-    io.in.iduPC.ready := true.B
-    io.in.exuPC.ready := true.B
-
 
       //state transition(mearly)
     val s_WaitIfuV :: s_WaitIfuR :: Nil = Enum(2)

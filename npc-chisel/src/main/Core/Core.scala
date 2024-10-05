@@ -70,6 +70,7 @@ class Core(val conf : CoreConfig) extends Module {
   val pfuIsWorking = pfu.io.in.ifuPC.valid
   val isJump = exu.io.in.bits.signals.exu.Jump =/= NJump & exu.io.pc.valid
   val isCH = dontTouch(Wire(Bool()))
+  exu.io.pc.ready := true.B
   pfu.io.correctedPC := correctedPC
   pfu.io.isFlush := isCH
   ifu.io.isFlush := isCH
@@ -79,8 +80,6 @@ class Core(val conf : CoreConfig) extends Module {
 
 
   //Connect to the pfu
-  pfu.io.in.iduPC :<>= idu.io.pc
-  pfu.io.in.exuPC :<>= exu.io.pc
   ifu.io.in :<>= pfu.io.out
 
   //Connect to the "state" elements in npc

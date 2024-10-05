@@ -8,7 +8,6 @@ import npc.core.idu.Control._
 
 class IfuPcIO extends Bundle{
   val speculativePC = Output(UInt(32.W))
-  val PcPlus4 = Output(UInt(32.W))
 }
 
 class IfuOutIO extends Bundle{
@@ -180,7 +179,6 @@ class IFU(val conf: npc.CoreConfig) extends Module{
     io.out.bits.inst := io.imem.rdata
 
     //PFU module
-    io.pf.bits.PcPlus4 := PcPlus4
     io.pf.bits.speculativePC := Mux(io.isFlush, io.correctedPC, PcPlus4)
     io.pf.valid := Mux(io.isFlush, true.B, io.in.ready)
 
