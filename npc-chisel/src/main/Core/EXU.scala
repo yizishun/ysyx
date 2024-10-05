@@ -41,15 +41,6 @@ class EXU(val conf: npc.CoreConfig) extends Module{
   val alu = Module(new exu.Alu(conf.xlen))
   val idupc = Module(new exu.IduPC)
   val jumpPc = Module(new exu.JumpPc)
-
-  val s_WaitIduV :: s_WaitLsuR :: Nil = Enum(2)
-  val stateE = RegInit(s_WaitIduV)
-  val nextStateE = WireDefault(stateE)
-  nextStateE := MuxLookup(stateE, s_WaitIduV)(Seq(
-      s_WaitIduV   -> Mux(io.in.valid, Mux(io.out.ready, s_WaitIduV, s_WaitLsuR), s_WaitIduV),
-      s_WaitLsuR   -> Mux(io.out.ready, s_WaitIduV, s_WaitLsuR)
-  ))
-  stateE := nextStateE
   //if(conf.useDPIC){
     //import npc.EVENT._
     //PerformanceProbe(clock, EXUFinCal, nextState, 0.U, io.in.fire, io.out.fire)
@@ -58,25 +49,11 @@ class EXU(val conf: npc.CoreConfig) extends Module{
   //SetupIRQ()
 
   //default,it will error if no do this
-  io.in.ready := false.B
-  io.out.valid := false.B
-  io.pc.valid := false.B
-  
-  switch(stateE){
-    is(s_WaitIduV){
-      io.in.ready := Mux(io.out.ready, true.B, false.B) //这周期可以来，下周期别来了
-      io.out.valid := Mux(io.in.valid, true.B, false.B)
-      io.pc.valid := Mux(io.in.valid & io.pc.ready, true.B, false.B)
-    }
-    is(s_WaitLsuR){
-      io.in.ready := Mux(io.out.ready, true.B, false.B)
-      io.out.valid := true.B
-      io.pc.valid := false.B
-    }
-  }
-
-
-
+  val ready_go = Wire(Bool())
+  ready_go := true.B
+  io.in.ready := !io.in.valid || (ready_go && io.out.ready)
+  io.out.valid := io.in.valid && ready_go 
+  io.pc.valid := io.out.valid
 //----------------------------------------------------------------------------------------------------  
   def SetupEXU():Unit = {
   //place mux

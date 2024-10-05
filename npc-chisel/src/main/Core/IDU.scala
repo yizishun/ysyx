@@ -50,41 +50,15 @@ class IDU(val conf: npc.CoreConfig) extends Module{
   val controller = Module(new idu.Controller(conf))
   val imm = Module(new idu.Imm)
 
-  val s_WaitIfuV :: s_WaitExuR :: Nil = Enum(2)
-  val stateD = RegInit(s_WaitIfuV)
-  val nextStateD = WireDefault(stateD)
-  nextStateD := MuxLookup(stateD, s_WaitIfuV)(Seq(
-      s_WaitIfuV   -> Mux(io.in.valid, Mux(io.out.ready, s_WaitIfuV, s_WaitExuR), s_WaitIfuV),
-      s_WaitExuR   -> Mux(io.out.ready, s_WaitIfuV, s_WaitExuR)
-  ))
-  stateD := nextStateD
-  when(io.isFlush){ nextStateD := s_WaitIfuV }
-
   SetupIDU()
   //SetupIRQ()
   io.out.bits.perfSubType := 0.U
   //if(conf.useDPIC) Strob()
   //default,it will error if no do this
-  io.in.ready := false.B
-  io.out.valid := false.B
-
-  switch(stateD){
-    is(s_WaitIfuV){
-      io.in.ready := Mux(io.isRaw, false.B, Mux(io.out.ready, true.B, false.B))
-      io.out.valid := Mux(io.in.valid, Mux(io.isRaw, false.B, true.B), false.B)
-      //disable all sequential logic
-    }
-    is(s_WaitExuR){
-      io.in.ready := Mux(io.out.ready, Mux(io.isRaw, false.B, true.B), false.B)
-      io.out.valid := Mux(io.isRaw, false.B, true.B)
-      //save all output into regs
-    }
-  }
-  when(io.isFlush){
-    io.in.ready := true.B
-    io.out.valid := false.B
-  }
-
+  val ready_go = dontTouch(Wire(Bool()))
+  ready_go := ~io.isRaw
+  io.in.ready := !io.in.valid || (ready_go && io.out.ready)
+  io.out.valid := io.in.valid && ready_go
 //-----------------------------------------------------------------------
   def SetupIDU():Unit ={
   //place wires

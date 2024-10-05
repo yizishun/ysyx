@@ -16,7 +16,8 @@ LDFLAGS   += -T $(AM_HOME)/scripts/linkersoc.ld \
 						 --defsym=_flash_start=0x30000000 --defsym=_entry_offset=0x0 \
 						 --defsym=_sram_start=0x0f000000 --defsym=_sram_size=0x2000 \
 						 --defsym=_psram_start=0x80000000 --defsym=_psram_size=0x400000
-LDFLAGS   += --gc-sections -e _start --print-map
+LDFLAGS   += --gc-sections -e _start
+#LDFLAGS   += --print-map
 CFLAGS += -DMAINARGS=\"$(mainargs)\"
 NPCFLAGS += -l $(shell dirname $(IMAGE).bin)/npc_log.txt
 #NPCFLAGS += -e $(IMAGE).elf

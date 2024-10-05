@@ -34,6 +34,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     println(tagSize + (block_sz/4)*32 + 1)
     //icache (use dff by default)
     val icache = Mem(set, new ICacheSet(tagSize, block_sz, way))
+    val rdata = dontTouch(RegEnable(io.in.rdata, io.in.rvalid))
     val base_addr = dontTouch(Wire(UInt(32.W)))
     val tagA = dontTouch(Wire(UInt(tagSize.W)))
     val index = dontTouch(Wire(UInt(n.W)))
@@ -122,6 +123,8 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     DefaultConnect()
 
     val addr = Mux(is_sdram, base_addr, ((c.U-1.U-(count)) << 2) + base_addr)
+    io.in.rdata := Mux(hit & state =/= s_WaitImemRV, data_h, 
+                Mux(count === 0.U, data_m, 0.U))
     switch(state){
         is(s_WaitUpV){
             io.in.arready := true.B
@@ -138,6 +141,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
         is(s_WaitUpR){
             io.in.arready := false.B
             io.in.rvalid := true.B
+            io.in.rdata := rdata
 
             io.out.arvalid := false.B
             io.out.rready := false.B
@@ -163,8 +167,6 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
             io.out.araddr := 0.U
         }
     }
-    io.in.rdata := Mux(hit & state =/= s_WaitImemRV, data_h, 
-                Mux(count === 0.U, data_m, 0.U))
     //data tag valid
 //miss logic
     data_m := 0.U

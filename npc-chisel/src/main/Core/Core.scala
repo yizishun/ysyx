@@ -18,7 +18,6 @@ class CoreIO(xlen : Int) extends Bundle{
 
 class Core(val conf : CoreConfig) extends Module {
   val io = IO(new CoreIO(conf.xlen))
-  val pfu = Module(new PFU(conf))
   val ifu = Module(new IFU(conf))
   val idu = Module(new IDU(conf))
   val exu = Module(new EXU(conf))
@@ -32,11 +31,13 @@ class Core(val conf : CoreConfig) extends Module {
   val gpr = Module(new gpr(conf))
   val csr = Module(new csr(conf))
 
-  pipelineConnect(ifu.io.pf, pfu.io.in.ifuPC)
+  pipelineConnectIFU(ifu.io.pc , ifu.io.in)
   pipelineConnect(ifu.io.out, idu.io.in)
   pipelineConnect(idu.io.out, exu.io.in)
   pipelineConnect(exu.io.out, lsu.io.in)
   pipelineConnect(lsu.io.out, wbu.io.in)
+  when(ifu.io.isFlush){ ifu.io.in.valid := false.B }
+  when(idu.io.isFlush){ idu.io.in.valid := false.B }
 
   //data conflict detection
   def dataConflict(rs: UInt, rd: UInt) = (rs === rd)
@@ -67,20 +68,14 @@ class Core(val conf : CoreConfig) extends Module {
     //Mepc -> io.in.iduPC.bits.mepc
   ))
   val iduIsWorking = idu.io.in.valid
-  val pfuIsWorking = pfu.io.in.ifuPC.valid
   val isJump = exu.io.in.bits.signals.exu.Jump =/= NJump & exu.io.pc.valid
   val isCH = dontTouch(Wire(Bool()))
   exu.io.pc.ready := true.B
-  pfu.io.correctedPC := correctedPC
-  pfu.io.isFlush := isCH
+  ifu.io.correctedPC := correctedPC
   ifu.io.isFlush := isCH
   idu.io.isFlush := isCH
-  isCH := Mux(isJump, Mux(iduIsWorking & correctedPC === ifu.io.out.bits.pc, false.B, PCSrc =/= PcPlus4), 0.U) 
-  ifu.io.correctedPC := correctedPC
+  isCH := Mux(isJump, Mux(correctedPC === idu.io.in.bits.pc, false.B, PCSrc =/= PcPlus4), 0.U) 
 
-
-  //Connect to the pfu
-  ifu.io.in :<>= pfu.io.out
 
   //Connect to the "state" elements in npc
   ifu.io.imem <> icache.io.in
@@ -101,6 +96,11 @@ class Core(val conf : CoreConfig) extends Module {
     prevOut.ready := thisIn.ready
     thisIn.bits := RegEnable(prevOut.bits, prevOut.valid && thisIn.ready)
     thisIn.valid := RegEnable(prevOut.valid, thisIn.ready);
+  }
+  def pipelineConnectIFU[T <: Data, T2 <: Data](prevOut: DecoupledIO[T], thisIn: DecoupledIO[T]) = {
+    prevOut.ready := thisIn.ready
+    thisIn.bits := RegEnable(prevOut.bits, "h30000000".U.asTypeOf(new IfuPcIO), prevOut.valid && thisIn.ready)
+    thisIn.valid := RegEnable(prevOut.valid, true.B, thisIn.ready);
   }
 }
 

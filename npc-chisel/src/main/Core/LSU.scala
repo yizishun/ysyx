@@ -47,46 +47,6 @@ class LSU(val conf: npc.CoreConfig) extends Module{
   isLoad := (~io.in.bits.signals.lsu.MemWriteE & io.in.bits.signals.lsu.MemValid) 
   isStore := (io.in.bits.signals.lsu.MemWriteE & io.in.bits.signals.lsu.MemValid) 
   notLS := ~isLoad & ~isStore
-
-  //LSFR
-  val lfsr = RegInit(3.U(4.W))
-  lfsr := Cat(lfsr(2,0), lfsr(0)^lfsr(1)^lfsr(2))
-
-  //Delay
-  val delay = RegInit(lfsr)
-
-  //state transition
-  val s_WaitExuV :: s_WaitDmemAXR :: s_WaitDmemXV :: s_WaitWbuR :: Nil = Enum(4)
-  val stateM = RegInit(s_WaitExuV)
-  val nextStateM = WireDefault(stateM)
-  nextStateM := MuxLookup(stateM, s_WaitExuV)(Seq(
-      s_WaitExuV    -> Mux(io.in.valid, 
-                       Mux(notLS, 
-                       Mux(io.out.ready, s_WaitExuV, s_WaitWbuR), 
-                       Mux(io.dmem.arready | (io.dmem.awready & io.dmem.wready), s_WaitDmemXV,s_WaitDmemAXR)), s_WaitExuV),
-      s_WaitWbuR    -> Mux(io.out.ready, s_WaitExuV, s_WaitWbuR),
-      s_WaitDmemAXR -> Mux((io.dmem.arready) | (io.dmem.awready & io.dmem.wready),s_WaitDmemXV, s_WaitDmemAXR),
-      s_WaitDmemXV  -> Mux((io.dmem.rvalid)|(io.dmem.bvalid), Mux(io.out.ready, s_WaitExuV, s_WaitWbuR), s_WaitDmemXV),
-  ))
-  stateM := nextStateM
-
-  SetupLSU()
-  //SetupIRQ()
-
-  //if(conf.useDPIC){
-    //import npc.EVENT._
-    //PerformanceProbe(clock, LSUGetData, (io.dmem.rvalid & io.dmem.rready).asUInt, 0.U, io.dmem.arvalid & io.dmem.arready, io.dmem.rvalid & io.dmem.rready)
-  //}
-  io.in.ready := 0.U
-  io.out.valid := 0.U
-
-  io.dmem.arvalid := 0.U
-  io.dmem.arsize := 0.U
-  io.dmem.rready := 0.U
-  io.dmem.awvalid := 0.U
-  io.dmem.awsize := 0.U
-  io.dmem.wvalid := 0.U
-  io.dmem.bready := 0.U
   import npc.core.idu.Control._
   val arsize = MuxLookup(io.in.bits.signals.lsu.MemRD, 2.U)(Seq(
         RBYTE   -> 0.U,
@@ -101,75 +61,46 @@ class LSU(val conf: npc.CoreConfig) extends Module{
         WWORD  -> 2.U
       ))
 
-  //output logic
-  switch(stateM){
-    is(s_WaitExuV){
-      //between modules
-      io.in.ready := Mux((isLoad | isStore) & io.in.valid, false.B, true.B)
-      io.out.valid := Mux(io.in.valid & notLS, true.B, false.B)
-      //disable all sequential logic
-      //AXI4-Lite
-      delay := lfsr
-      io.dmem.arvalid := Mux(io.in.valid & isLoad, true.B, false.B)
-      io.dmem.arsize := Mux(io.in.valid & isLoad, arsize, 2.U)
-      io.dmem.rready := Mux(io.in.valid & isLoad, false.B, true.B)
-      io.dmem.awvalid := Mux(io.in.valid & isStore, true.B, false.B)
-      io.dmem.awsize := Mux(io.in.valid & isStore, awsize, 2.U)
-      io.dmem.wvalid := Mux(io.in.valid & isStore, true.B, false.B)
-      io.dmem.bready := Mux(io.in.valid & isStore, false.B, true.B)
-    }
-    is(s_WaitWbuR){
-      //between modules
-      io.in.ready := false.B
-      io.out.valid := true.B
-      //AXI4-Lite
-      io.dmem.arvalid := false.B
-      io.dmem.arsize := 2.U
-      io.dmem.rready := false.B
-      io.dmem.awvalid := false.B
-      io.dmem.awsize := 2.U
-      io.dmem.wvalid := false.B
-      io.dmem.bready := false.B
-    }
-    is(s_WaitDmemAXR){
-      //between modules
-      io.in.ready := false.B
-      io.out.valid := false.B
-      //AXI4-Lite
-        //AR
-      io.dmem.arvalid := Mux(isLoad, true.B, false.B)
-      io.dmem.arsize := arsize
-        //R
-      io.dmem.rready := Mux(isLoad, false.B, false.B)
-        //AW
-      io.dmem.awvalid := Mux(isStore, true.B, false.B)
-      io.dmem.awsize := awsize
-        //W
-      io.dmem.wvalid := Mux(isStore, true.B, false.B)
-        //B
-      io.dmem.bready := Mux(isStore, false.B, false.B)
 
-    }
-    is(s_WaitDmemXV){
-      //between modules
-      io.in.ready := Mux(io.dmem.rvalid | io.dmem.bvalid, true.B, false.B)
-      io.out.valid := Mux(io.dmem.rvalid | io.dmem.bvalid, true.B, false.B)
-      //AXI4-Lite
-        //AR
-      io.dmem.arvalid := Mux(isLoad, false.B, false.B)
-      io.dmem.arsize := arsize
-        //R
-      io.dmem.rready := Mux(isLoad, true.B, false.B)
-        //AW
-      io.dmem.awvalid := Mux(isStore, false.B, false.B)
-      io.dmem.awsize := awsize
-        //W
-      io.dmem.wvalid := Mux(isStore, false.B, false.B)
-        //B
-      io.dmem.bready := Mux(isStore, true.B, false.B)
-      //save all output to regs
-    }
-  }
+  //LSFR
+  val lfsr = RegInit(3.U(4.W))
+  lfsr := Cat(lfsr(2,0), lfsr(0)^lfsr(1)^lfsr(2))
+
+  //Delay
+  val delay = RegInit(lfsr)
+
+  //state transition
+  val ready_go = dontTouch(Wire(Bool()))
+  val start = dontTouch(Wire(Bool()))
+  val end = dontTouch(Wire(Bool()))
+  val s_WaitStart :: s_WaitEnd ::  Nil = Enum(2)
+  val stateM = RegInit(s_WaitStart)
+  val nextStateM = WireDefault(stateM)
+  nextStateM := MuxLookup(stateM, s_WaitStart)(Seq(
+      s_WaitStart -> Mux(((io.dmem.arready) | (io.dmem.awready & io.dmem.wready)) && start, Mux(end, s_WaitStart, s_WaitEnd), s_WaitStart),
+      s_WaitEnd  -> Mux(end, s_WaitStart, s_WaitEnd),
+  ))
+  stateM := nextStateM
+  io.dmem.arvalid := isLoad && (stateM === s_WaitStart) && start
+  io.dmem.awvalid := isStore && (stateM === s_WaitStart) && start
+  io.dmem.wvalid := isStore && (stateM === s_WaitStart) && start
+  io.dmem.rready := isLoad && (stateM === s_WaitEnd) && end
+  io.dmem.bready := isStore && (stateM === s_WaitEnd) && end
+  io.dmem.arsize := arsize
+  io.dmem.awsize := awsize
+
+  SetupLSU()
+  //SetupIRQ()
+
+  //if(conf.useDPIC){
+    //import npc.EVENT._
+    //PerformanceProbe(clock, LSUGetData, (io.dmem.rvalid & io.dmem.rready).asUInt, 0.U, io.dmem.arvalid & io.dmem.arready, io.dmem.rvalid & io.dmem.rready)
+  //}
+  ready_go := io.dmem.rvalid || io.dmem.bvalid || notLS
+  start := io.in.valid
+  end := ready_go && io.out.ready
+  io.in.ready := !io.in.valid || (ready_go && io.out.ready)
+  io.out.valid := io.in.valid && ready_go
 
 //------------------------------------------------------------------------------------------------------
   def SetupLSU():Unit = {

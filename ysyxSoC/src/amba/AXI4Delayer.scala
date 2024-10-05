@@ -40,14 +40,14 @@ class AXI4DelayerChisel extends Module {
   nextState := MuxLookup(state, s_idle)(Seq(
     s_idle -> Mux(io.in.ar.valid | io.in.aw.valid, Mux(io.in.ar.valid, s_waitR, s_waitW), s_idle),
     s_waitR -> Mux(burstCntOut === burstLenR + 1.U, s_delay, s_waitR),
-    s_waitW -> Mux(io.out.b.fire, s_delay, s_waitW),
+    s_waitW -> Mux(io.out.b.valid, s_delay, s_waitW),
     s_delay -> Mux(delayCnt === 0.U, s_idle, s_delay)
   ))
   state := nextState
   //out burst counter logic
   when(state === s_idle){
     burstCntOut := 0.U
-  }.elsewhen(nextState === s_waitR & io.out.r.fire){
+  }.elsewhen(nextState === s_waitR & io.out.r.valid){
     burstCntOut := burstCntOut + 1.U
     singleBurstDelay(burstCntOut) := delayCnt
     rdata(burstCntOut) := io.out.r.bits.data
