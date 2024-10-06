@@ -23,7 +23,7 @@ class apb_delayer extends BlackBox {
 class APBDelayerChisel extends Module {
   val io = IO(new APBDelayerIO)
   io.out <> io.in
-  val incr = 5.U //* 2
+  val incr = 8.U //* 2
   val delayCnt = RegInit(0.U(32.W))
   val rdata = RegEnable(io.out.prdata, io.out.pready)
   val s_idle :: s_wait :: s_delay :: Nil = Enum(3)

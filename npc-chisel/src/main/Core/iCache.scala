@@ -50,6 +50,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     val hit = dontTouch(Wire(Bool()))
     val fenceCnt = RegInit(0.U(n.W))
     val fifoPtr = dontTouch(RegInit(0.U(w.W)))
+    val inAddr = RegEnable(io.in.araddr, io.in.arvalid)
 
     //state transition
     val is_sdram = dontTouch(RegEnable(io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), false.B, io.in.arready & io.in.arvalid))
@@ -60,7 +61,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     val nextState = Wire(UInt(3.W))
     nextState := MuxLookup(state, s_WaitUpV)(Seq(
         s_WaitUpV -> MuxCase(s_WaitUpV, 
-                Array((io.in.arvalid) -> Mux(hit, skip_UpR2V, Mux(io.out.arready, s_WaitImemRV, s_WaitImemARR)),
+                Array((io.in.arvalid) -> Mux(hit, skip_UpR2V, s_WaitImemARR),
                       (io.fencei.valid && io.fencei.bits.is_fencei) -> s_fence_i)),
         s_WaitImemARR -> Mux(io.out.arready, s_WaitImemRV, s_WaitImemARR),
         s_WaitImemRV -> Mux(io.out.rvalid, Mux(count === 0.U, skip_UpR2V, Mux(is_sdram, s_WaitImemRV, s_WaitImemARR)), s_WaitImemRV),
@@ -73,8 +74,8 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     if(conf.useDPIC){
         import npc.EVENT._
         val hitState = RegEnable(hit, false.B, state === s_WaitUpV)
-        PerformanceProbe(clock, ICacheHit, hit, 0.U, io.in.arready & io.in.arvalid & hit, io.in.rready & io.in.rvalid & hitState)
-        //PerformanceProbe(clock, ICacheMiss, state === s_btF12_afF12 && io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), 0.U, io.in.arready & io.in.arvalid & ~hit & io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), io.in.rready & io.in.rvalid & ~hitState & io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W))
+        PerformanceProbe(clock, ICacheHit, hit & io.in.arvalid, 0.U, io.in.arvalid & hit, io.in.rvalid && state === s_WaitUpV)
+        PerformanceProbe(clock, ICacheMiss, io.in.arvalid & ~hit && io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), 0.U, io.in.arvalid & ~hit & io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), io.in.rready && io.in.rvalid && state === s_WaitImemRV && inAddr >= "ha000_0000".U(32.W) && inAddr <= "hbfff_ffff".U(32.W))
     }
 //fence_i logic
     when(io.fencei.valid & io.fencei.bits.is_fencei){
@@ -89,7 +90,6 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
 
 //addr decode
     //b=4 k=16 m=2 n=4 tagSize=26
-    val inAddr = RegEnable(io.in.araddr, io.in.arvalid)
     tagA := Mux(io.in.arvalid, io.in.araddr(31, m+n), inAddr(31, m+n))
     index := Mux(io.in.arvalid, io.in.araddr(m+n-1, m), inAddr(m+n-1, m))
     offset := Mux(io.in.arvalid, io.in.araddr(m-1, 0), inAddr(m-1, 0))
@@ -130,9 +130,9 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
             io.in.arready := true.B
             io.in.rvalid := Mux(hit, true.B, false.B)
 
-            io.out.arvalid := Mux(~hit & io.in.arvalid, true.B, false.B)
+            io.out.arvalid := false.B
             io.out.rready := false.B
-            io.out.araddr := Mux(~hit & io.in.arvalid, base_addr, 0.U)
+            io.out.araddr := 0.U
             when(reset.asBool){
                 io.in.arready := false.B
                 io.out.arvalid := false.B

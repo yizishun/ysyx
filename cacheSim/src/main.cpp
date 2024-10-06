@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
     if (!fp) assert(0);
     paddr_t addr;
 
-    Cache cache(ra_FIFO, 4, 1, 16); // ra set way bsz
+    Cache cache(ra_FIFO, 2, 1, 16); // ra set way bsz
     while(fscanf(fp, "%u\n", &addr) != EOF){  
         #ifdef CONFIG_TRACE
         fprintf(logfp, "---------------\n");

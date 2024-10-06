@@ -24,6 +24,7 @@ class ExuOutIO extends Bundle{
   val rd2 = Output(UInt(32.W))
   val rw = Output(UInt(5.W))
 	val crw = Output(UInt(12.W))
+  val isEbreak = Output(Bool())
   //val stat = Output(new Stat)
   //for performance analysis
   val perfSubType = Output(UInt(8.W))
@@ -33,6 +34,7 @@ class ExuIO extends Bundle{
   val in = Flipped(Decoupled(new IduOutIO))
   val out = Decoupled(new ExuOutIO)
   val pc = Decoupled(new ExuPcIO)
+  val isFlush = Input(Bool())
 }
 
 class EXU(val conf: npc.CoreConfig) extends Module{
@@ -41,10 +43,10 @@ class EXU(val conf: npc.CoreConfig) extends Module{
   val alu = Module(new exu.Alu(conf.xlen))
   val idupc = Module(new exu.IduPC)
   val jumpPc = Module(new exu.JumpPc)
-  //if(conf.useDPIC){
-    //import npc.EVENT._
-    //PerformanceProbe(clock, EXUFinCal, nextState, 0.U, io.in.fire, io.out.fire)
-  //}
+  if(conf.useDPIC){
+    import npc.EVENT._
+    PerformanceProbe(clock, EXUFinCal, RegNext(io.in.ready) & io.in.valid, 0.U, RegNext(io.in.ready) & io.in.valid, io.out.valid & io.in.ready)
+  }
   SetupEXU()
   //SetupIRQ()
 
@@ -53,7 +55,7 @@ class EXU(val conf: npc.CoreConfig) extends Module{
   ready_go := true.B
   io.in.ready := !io.in.valid || (ready_go && io.out.ready)
   io.out.valid := io.in.valid && ready_go 
-  io.pc.valid := io.out.valid
+  io.pc.valid := io.out.valid && io.in.ready
 //----------------------------------------------------------------------------------------------------  
   def SetupEXU():Unit = {
   //place mux
@@ -101,6 +103,7 @@ class EXU(val conf: npc.CoreConfig) extends Module{
     io.out.bits.rd2 := io.in.bits.rd2
     io.out.bits.rw := io.in.bits.rw
   	io.out.bits.crw := io.in.bits.crw
+    io.out.bits.isEbreak := io.in.bits.isEbreak
   
     io.out.bits.perfSubType := io.in.bits.perfSubType
   }

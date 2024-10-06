@@ -22,6 +22,7 @@ class IduOutIO extends Bundle{
   val immext = Output(UInt(32.W))
 	val rw = Output(UInt(5.W))
 	val crw = Output(UInt(12.W))
+  val isEbreak = Output(Bool())
   //val stat = Output(new Stat)
   //for performance analysis
   val perfSubType = Output(UInt(8.W))
@@ -94,6 +95,7 @@ class IDU(val conf: npc.CoreConfig) extends Module{
     io.out.bits.immext := imm.io.immext
     io.out.bits.rw := io.in.bits.inst(11, 7)
     io.out.bits.crw := io.in.bits.inst(31, 20)
+    io.out.bits.isEbreak := (io.in.bits.inst === "b00000000000100000000000001110011".U)
 
     //temp
     io.csr.irq := 0.U
@@ -111,22 +113,22 @@ class IDU(val conf: npc.CoreConfig) extends Module{
 //    io.csr.irq := io.statr.stat
 //    io.csr.irq_no := io.statr.statNum
 //  }
-//  def Strob(): Unit = {
-//    import idu.Control._
-//    import npc.core.exu.AluOp._
-//    import npc.EVENT._
-//    val isJump = (controller.io.signals.exu.Jump =/= NJump)
-//    val isStore = (controller.io.signals.lsu.MemWriteE)
-//    val isLoad = (controller.io.signals.lsu.MemValid & ~controller.io.signals.lsu.MemWriteE)
-//    val isCal = (controller.io.signals.exu.alucontrol =/= ALU_XXX && ~isLoad && ~isJump && ~isStore)
-//    val isCsr = (controller.io.signals.wbu.CSRWriteE === CSRWRITE && controller.io.irq === NIRQ)
-//    val subType = WireInit(VecInit(Seq.fill(8)(0.U(1.W))))
-//    io.out.bits.perfSubType := subType.asUInt
-//    subType(0) := isJump.asUInt
-//    subType(1) := isStore.asUInt
-//    subType(2) := isLoad.asUInt
-//    subType(3) := isCal.asUInt
-//    subType(4) := isCsr.asUInt
-//    PerformanceProbe(clock, IDUFinDec, nextState === s_BetweenFire12, subType.asUInt, nextState === s_BetweenFire12, false.B)
-//  }
+  def Strob(): Unit = {
+    import idu.Control._
+    import npc.core.exu.AluOp._
+    import npc.EVENT._
+    val isJump = (controller.io.signals.exu.Jump =/= NJump)
+    val isStore = (controller.io.signals.lsu.MemWriteE)
+    val isLoad = (controller.io.signals.lsu.MemValid & ~controller.io.signals.lsu.MemWriteE)
+    val isCal = (controller.io.signals.exu.alucontrol =/= ALU_XXX && ~isLoad && ~isJump && ~isStore)
+    val isCsr = (controller.io.signals.wbu.CSRWriteE === CSRWRITE && controller.io.irq === NIRQ)
+    val subType = WireInit(VecInit(Seq.fill(8)(0.U(1.W))))
+    io.out.bits.perfSubType := subType.asUInt
+    subType(0) := isJump.asUInt
+    subType(1) := isStore.asUInt
+    subType(2) := isLoad.asUInt
+    subType(3) := isCal.asUInt
+    subType(4) := isCsr.asUInt
+    PerformanceProbe(clock, IDUFinDec, RegNext(io.in.ready) & io.in.valid, subType.asUInt, RegNext(io.in.ready) & io.in.valid, false.B)
+  }
 }

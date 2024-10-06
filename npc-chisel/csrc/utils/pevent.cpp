@@ -63,6 +63,7 @@ void e_IFUGetInst(int inc, int start, int end){
     if(start) IFUGetInst.switchTime = true;
     if(end) {if(!IFUGetInst.switchTime)assert(0); IFUGetInst.switchTime = false;}
     if(IFUGetInst.switchTime) IFUGetInst.time ++;
+    if(start & end) IFUGetInst.time ++;
 }
 
 void e_LSUGetData(int inc, int start, int end){
@@ -70,6 +71,7 @@ void e_LSUGetData(int inc, int start, int end){
     if(start) LSUGetData.switchTime = true;
     if(end) {if(!LSUGetData.switchTime)assert(0); LSUGetData.switchTime = false;}
     if(LSUGetData.switchTime) LSUGetData.time ++;
+    if(start & end) LSUGetData.time ++;
 }
 
 void e_EXUFinCal(int inc, int start, int end){
@@ -77,6 +79,7 @@ void e_EXUFinCal(int inc, int start, int end){
     if(start) EXUFinCal.switchTime = true;
     if(end) {if(!EXUFinCal.switchTime)assert(0); EXUFinCal.switchTime = false;}
     if(EXUFinCal.switchTime) EXUFinCal.time ++;
+    if(start & end) EXUFinCal.time ++;
 }
 
 void e_ICacheHit(int inc, int start, int end){
@@ -84,6 +87,7 @@ void e_ICacheHit(int inc, int start, int end){
     if(start) ICacheHit.switchTime = true;
     if(end) {if(!ICacheHit.switchTime)assert(0); ICacheHit.switchTime = false;}
     if(ICacheHit.switchTime) ICacheHit.time ++;
+    if(start & end) ICacheHit.time ++;
 }
 
 void e_ICacheMiss(int inc, int start, int end){
@@ -114,6 +118,7 @@ void d_Jump(int inc, int start, int end, int timeEn)
     if(start) DECisJump.switchTime = true;
     if(end) {if(!DECisJump.switchTime)assert(0); DECisJump.switchTime = false;}
     if(DECisJump.switchTime && timeEn) DECisJump.time ++;
+    if(start & end) DECisJump.time ++;
 }
 
 void d_Store(int inc, int start, int end, int timeEn)
@@ -122,6 +127,7 @@ void d_Store(int inc, int start, int end, int timeEn)
     if(start) DECisStore.switchTime = true;
     if(end) {if(!DECisStore.switchTime)assert(0); DECisStore.switchTime = false;}
     if(DECisStore.switchTime && timeEn) DECisStore.time ++;
+    if(start & end) DECisStore.time ++;
 }
 
 void d_Load(int inc, int start, int end, int timeEn)
@@ -130,6 +136,7 @@ void d_Load(int inc, int start, int end, int timeEn)
     if(start) DECisLoad.switchTime = true;
     if(end) {if(!DECisLoad.switchTime)assert(0); DECisLoad.switchTime = false;}
     if(DECisLoad.switchTime && timeEn) DECisLoad.time ++;
+    if(start & end) DECisLoad.time ++;
 }
 
 void d_Cal(int inc, int start, int end, int timeEn)
@@ -138,6 +145,7 @@ void d_Cal(int inc, int start, int end, int timeEn)
     if(start) DECisCal.switchTime = true;
     if(end) {if(!DECisCal.switchTime)assert(0); DECisCal.switchTime = false;}
     if(DECisCal.switchTime && timeEn) DECisCal.time ++;
+    if(start & end) DECisCal.time ++;
 }
 
 void d_Csr(int inc, int start, int end, int timeEn)
@@ -146,6 +154,7 @@ void d_Csr(int inc, int start, int end, int timeEn)
     if(start) DECisCsr.switchTime = true;
     if(end) {if(!DECisCsr.switchTime)assert(0); DECisCsr.switchTime = false;}
     if(DECisCsr.switchTime && timeEn) DECisCsr.time ++;
+    if(start & end) DECisCsr.time ++;
 }
 
 void d_Other(int inc, int start, int end, int timeEn)
@@ -154,6 +163,7 @@ void d_Other(int inc, int start, int end, int timeEn)
     if(start) DECisOther.switchTime = true;
     if(end) {if(!DECisOther.switchTime)assert(0); DECisOther.switchTime = false;}
     if(DECisOther.switchTime && timeEn) DECisOther.time ++;
+    if(start & end) DECisOther.time ++;
 }
 
 void record_perf_trace(uint64_t cycle, uint64_t instCnt){

@@ -229,14 +229,6 @@ val map = Array(
   // format: on
 }
 
-class Ebreak(conf : npc.CoreConfig) extends BlackBox with HasBlackBoxPath{
-  val io = IO(new Bundle{
-    val inst = Input(UInt(32.W))
-  })
-  if(conf.useDPIC)
-    addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/core/idu/Ebreak.sv")
-}
-
 class IFUSignals extends Bundle{
   val is_fencei = Output(Bool())
 }
@@ -314,6 +306,4 @@ class Controller(conf : npc.CoreConfig) extends Module{
   fire := io.signals.ifu.fire
   io.signals.ifu.valid := Mux(fire, false.B, true.B)
 
-  val ebreak = if(conf.useDPIC) Some(Module(new Ebreak(conf))) else None
-  if(conf.useDPIC) ebreak.get.io.inst := io.inst
 }

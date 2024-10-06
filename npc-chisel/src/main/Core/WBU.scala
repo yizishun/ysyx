@@ -3,6 +3,14 @@ package npc.core
 import chisel3._
 import chisel3.util._
 import npc._
+class Ebreak(conf: npc.CoreConfig) extends BlackBox with HasBlackBoxPath{
+  val io = IO(new Bundle{
+    val isEbreak = Input(Bool())
+  })
+  if(conf.useDPIC)
+    addPath("/Users/yizishun/ysyx-workbench/npc-chisel/src/main/core/idu/Ebreak.sv")
+}
+
 
 class WbuOutIO extends Bundle{
 
@@ -23,11 +31,13 @@ class WBU(val conf: npc.CoreConfig) extends Module{
   val io = IO(new WbuIO(conf.xlen))
 
   SetupWBU()
+  val ebreak = if(conf.useDPIC) Some(Module(new Ebreak(conf))) else None
+  if(conf.useDPIC) ebreak.get.io.isEbreak := io.in.bits.isEbreak
   //SetupIRQ()
 
   //if(conf.useDPIC){
     //import npc.EVENT._
-    //PerformanceProbe(clock, IDUFinDec, 0.U, io.in.bits.perfSubType, false.B, nextState === s_BetweenFire12, false.B)
+    //PerformanceProbe(clock, IDUFinDec, 0.U, io.in.bits.perfSubType, false.B, io.in.valid, false.B)
   //}
   //default,it will error if no do this
 

@@ -24,7 +24,7 @@ class Core(val conf : CoreConfig) extends Module {
   val lsu = Module(new LSU(conf))
   val wbu = Module(new WBU(conf))
 
-  val icache = Module(new ICache(4, 1, 16, conf))
+  val icache = Module(new ICache(2, 1, 16, conf))
 
   //"state" elements in npc core
   //val stat = RegEnable(wbu.io.statw, 0.U.asTypeOf(new Stat), wbu.io.statEn)
@@ -38,6 +38,7 @@ class Core(val conf : CoreConfig) extends Module {
   pipelineConnect(lsu.io.out, wbu.io.in)
   when(ifu.io.isFlush){ ifu.io.in.valid := false.B }
   when(idu.io.isFlush){ idu.io.in.valid := false.B }
+  when(exu.io.isFlush){ exu.io.in.valid := false.B }
 
   //data conflict detection
   def dataConflict(rs: UInt, rd: UInt) = (rs === rd)
@@ -71,10 +72,12 @@ class Core(val conf : CoreConfig) extends Module {
   val isJump = exu.io.in.bits.signals.exu.Jump =/= NJump & exu.io.pc.valid
   val isCH = dontTouch(Wire(Bool()))
   exu.io.pc.ready := true.B
-  ifu.io.correctedPC := correctedPC
-  ifu.io.isFlush := isCH
-  idu.io.isFlush := isCH
-  isCH := Mux(isJump, Mux(correctedPC === idu.io.in.bits.pc, false.B, PCSrc =/= PcPlus4), 0.U) 
+  ifu.io.correctedPC := RegNext(correctedPC)
+  val isCH_r = RegNext(isCH)
+  ifu.io.isFlush := isCH_r
+  idu.io.isFlush := isCH_r
+  exu.io.isFlush := isCH_r
+  isCH := Mux(isJump, PCSrc =/= PcPlus4, 0.U) 
 
 
   //Connect to the "state" elements in npc

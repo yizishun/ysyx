@@ -18,6 +18,7 @@ class LsuOutIO extends Bundle{
   val MemR = Output(UInt(32.W))
   val rw = Output(UInt(5.W))
 	val crw = Output(UInt(12.W))
+  val isEbreak = Output(Bool())
   //val stat = Output(new Stat)
   //for performance analysis
   val perfSubType = Output(UInt(8.W))
@@ -92,10 +93,10 @@ class LSU(val conf: npc.CoreConfig) extends Module{
   SetupLSU()
   //SetupIRQ()
 
-  //if(conf.useDPIC){
-    //import npc.EVENT._
-    //PerformanceProbe(clock, LSUGetData, (io.dmem.rvalid & io.dmem.rready).asUInt, 0.U, io.dmem.arvalid & io.dmem.arready, io.dmem.rvalid & io.dmem.rready)
-  //}
+  if(conf.useDPIC){
+    import npc.EVENT._
+    PerformanceProbe(clock, LSUGetData, RegNext(io.in.ready) & io.in.valid, 0.U, RegNext(io.in.ready) & io.in.valid, io.out.valid & io.in.ready)
+  }
   ready_go := io.dmem.rvalid || io.dmem.bvalid || notLS
   start := io.in.valid
   end := ready_go && io.out.ready
@@ -129,6 +130,7 @@ class LSU(val conf: npc.CoreConfig) extends Module{
     io.out.bits.immext := io.in.bits.immext
     io.out.bits.rw := io.in.bits.rw
   	io.out.bits.crw := io.in.bits.crw
+    io.out.bits.isEbreak := io.in.bits.isEbreak
   
   //place mux
     import idu.Control._
