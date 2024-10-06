@@ -217,8 +217,8 @@ extern "C" void sdram_read(int chipid, int ba, int ra, int ca, int *data) {
 	int align_addr = (ba * 512 * 2) + (ra * 512 * 2 * 4) + (ca * 2) + SDRAM_BASE;
 	*data = *(uint16_t *)guest_to_host_sdram(align_addr, chipid);
 	align_addr = (chipid == 2 || chipid == 3)? align_addr + 0x2000000 : align_addr;
-	printf("READ  addr = %#x , data = %#x ",align_addr, *data);
-	printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
+	//printf("READ  addr = %#x , data = %#x ",align_addr, *data);
+	//printf(" id = %d ba = %d, ra = %d, ca = %d\n", chipid, ba, ra, ca);
 	record_mem_trace(READ, align_addr , sizeof(uint32_t));	
 	return;
 }

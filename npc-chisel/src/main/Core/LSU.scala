@@ -19,7 +19,7 @@ class LsuOutIO extends Bundle{
   val rw = Output(UInt(5.W))
 	val crw = Output(UInt(12.W))
   val isEbreak = Output(Bool())
-  //val stat = Output(new Stat)
+  val statInst = Output(new Stat)
   //for performance analysis
   val perfSubType = Output(UInt(8.W))
 }
@@ -29,6 +29,8 @@ class LsuIO(xlen: Int) extends Bundle{
   val out = Decoupled(new LsuOutIO)
   //connect to the external "state" elements(i.e.dmem)
   val dmem = new AXI4Master
+  val isFlush = Input(Bool())
+  val statCore = Input(new Stat)
 }
 
 class LSU(val conf: npc.CoreConfig) extends Module{
@@ -74,31 +76,32 @@ class LSU(val conf: npc.CoreConfig) extends Module{
   val ready_go = dontTouch(Wire(Bool()))
   val start = dontTouch(Wire(Bool()))
   val end = dontTouch(Wire(Bool()))
-  val s_WaitStart :: s_WaitEnd ::  Nil = Enum(2)
+  val s_WaitStart :: s_WaitEnd :: s_WaitFlushEnd ::Nil = Enum(3)
   val stateM = RegInit(s_WaitStart)
   val nextStateM = WireDefault(stateM)
   nextStateM := MuxLookup(stateM, s_WaitStart)(Seq(
       s_WaitStart -> Mux(((io.dmem.arready) | (io.dmem.awready & io.dmem.wready)) && start, Mux(end, s_WaitStart, s_WaitEnd), s_WaitStart),
-      s_WaitEnd  -> Mux(end, s_WaitStart, s_WaitEnd),
+      s_WaitEnd  -> Mux(end, s_WaitStart, Mux(io.isFlush, s_WaitFlushEnd, s_WaitEnd)),
+      s_WaitFlushEnd -> Mux(io.dmem.rvalid || io.dmem.bvalid, s_WaitStart, s_WaitFlushEnd)
   ))
   stateM := nextStateM
   io.dmem.arvalid := isLoad && (stateM === s_WaitStart) && start
   io.dmem.awvalid := isStore && (stateM === s_WaitStart) && start
   io.dmem.wvalid := isStore && (stateM === s_WaitStart) && start
-  io.dmem.rready := isLoad && (stateM === s_WaitEnd) && end
-  io.dmem.bready := isStore && (stateM === s_WaitEnd) && end
+  io.dmem.rready := (isLoad && (stateM === s_WaitEnd) && end) || stateM === s_WaitFlushEnd
+  io.dmem.bready := (isStore && (stateM === s_WaitEnd) && end) || stateM === s_WaitFlushEnd
   io.dmem.arsize := arsize
   io.dmem.awsize := awsize
 
   SetupLSU()
-  //SetupIRQ()
+  SetupIRQ()
 
   if(conf.useDPIC){
     import npc.EVENT._
     PerformanceProbe(clock, LSUGetData, RegNext(io.in.ready) & io.in.valid, 0.U, RegNext(io.in.ready) & io.in.valid, io.out.valid & io.in.ready)
   }
   ready_go := io.dmem.rvalid || io.dmem.bvalid || notLS
-  start := io.in.valid
+  start := io.in.valid && !io.isFlush
   end := ready_go && io.out.ready
   io.in.ready := !io.in.valid || (ready_go && io.out.ready)
   io.out.valid := io.in.valid && ready_go
@@ -150,11 +153,11 @@ class LSU(val conf: npc.CoreConfig) extends Module{
     io.out.bits.perfSubType := io.in.bits.perfSubType
   
   }
-//  def SetupIRQ() :Unit = {
-//    import npc.core.idu.Control._
-//    val hasLAF = RegEnable(nextState === s_BetweenFire12_1_2 || nextState === s_BetweenFire12, io.dmem.rvalid && (io.dmem.rresp =/= 0.U)) 
-//    val hasSAF = RegEnable(nextState === s_BetweenFire12_1_2 || nextState === s_BetweenFire12, io.dmem.bvalid & (io.dmem.bresp =/= 0.U))
-//    io.out.bits.stat.stat := Mux(hasSAF || hasLAF, true.B, io.in.bits.stat.stat)
-//    io.out.bits.stat.statNum := Mux(hasSAF, IRQ_SAF, Mux(hasLAF, IRQ_LAF, io.in.bits.stat.statNum))
-//  }
+  def SetupIRQ() :Unit = {
+    import npc.core.idu.Control._
+    val hasLAF = io.dmem.rvalid && io.dmem.rresp =/= 0.U
+    val hasSAF = io.dmem.bvalid && io.dmem.bresp =/= 0.U
+    io.out.bits.statInst.stat := hasSAF || hasLAF || io.in.bits.statInst.stat
+    io.out.bits.statInst.statNum := Mux(hasSAF, IRQ_SAF, Mux(hasLAF, IRQ_LAF, io.in.bits.statInst.statNum))
+  }
 }

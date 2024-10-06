@@ -25,7 +25,7 @@ class ExuOutIO extends Bundle{
   val rw = Output(UInt(5.W))
 	val crw = Output(UInt(12.W))
   val isEbreak = Output(Bool())
-  //val stat = Output(new Stat)
+  val statInst = Output(new Stat)
   //for performance analysis
   val perfSubType = Output(UInt(8.W))
 }
@@ -35,6 +35,7 @@ class ExuIO extends Bundle{
   val out = Decoupled(new ExuOutIO)
   val pc = Decoupled(new ExuPcIO)
   val isFlush = Input(Bool())
+  val statCore = Input(new Stat)
 }
 
 class EXU(val conf: npc.CoreConfig) extends Module{
@@ -48,7 +49,7 @@ class EXU(val conf: npc.CoreConfig) extends Module{
     PerformanceProbe(clock, EXUFinCal, RegNext(io.in.ready) & io.in.valid, 0.U, RegNext(io.in.ready) & io.in.valid, io.out.valid & io.in.ready)
   }
   SetupEXU()
-  //SetupIRQ()
+  SetupIRQ()
 
   //default,it will error if no do this
   val ready_go = Wire(Bool())
@@ -107,8 +108,9 @@ class EXU(val conf: npc.CoreConfig) extends Module{
   
     io.out.bits.perfSubType := io.in.bits.perfSubType
   }
-//  def SetupIRQ():Unit = {
-//    io.out.bits.stat := io.in.bits.stat
-//  }
+  //irq logic----------------------------------------------------------
+  def SetupIRQ():Unit = {
+    io.out.bits.statInst := io.in.bits.statInst
+  }
   
 }

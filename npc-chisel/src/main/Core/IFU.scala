@@ -13,7 +13,7 @@ class IfuPcIO extends Bundle{
 class IfuOutIO extends Bundle{
   val inst = Output(UInt(32.W))
   val pc = Output(UInt(32.W))
-  //val stat = Output(new Stat)
+  val statInst = Output(new Stat)
 }
 
 class Ifu2IcacheIO extends Bundle{
@@ -23,6 +23,7 @@ class Ifu2IcacheIO extends Bundle{
   val rvalid = Input(Bool())
   val rready = Output(Bool())
   val rdata = Input(UInt(32.W))
+  val rresp = Input(UInt(2.W))
 }
 
 class IfuIO(xlen: Int) extends Bundle{
@@ -34,7 +35,8 @@ class IfuIO(xlen: Int) extends Bundle{
   val imem = new Ifu2IcacheIO
   val isFlush = Input(Bool())
   val correctedPC = Input(UInt(32.W))
-  //val statr = Input(new Stat)
+  //read core stat
+  val statCore = Input(new Stat)
 }
 
 
@@ -64,7 +66,7 @@ class IFU(val conf: npc.CoreConfig) extends Module{
   dontTouch(nextStateF)
 
   SetupIFU()
-  //SetupIRQ()
+  SetupIRQ()
 
   if(conf.useDPIC){
     import npc.EVENT._
@@ -100,13 +102,9 @@ class IFU(val conf: npc.CoreConfig) extends Module{
   }
   //stat logic
 //-----------------------------------------------------------------------------------
-  //def SetupIRQ():Unit = {
-    //val hasIrq = (nextStateC === sc_BetweenFire12_1_2) && io.imem.rvalid && (io.imem.rresp =/= 0.U)
-    //io.out.bits.stat.stat := Mux(hasIrq, true.B, false.B)
-    //io.out.bits.stat.statNum := Mux(hasIrq, IRQ_IAF, 0.U)
-    //when(io.statr.stat){
-      //pc.io.nextpc := io.pc.idu.mtvec
-      //io.out.bits.stat.stat := false.B
-    //}
-  //}
+  def SetupIRQ():Unit = {
+    val hasIrq = io.imem.rvalid && (io.imem.rresp =/= 0.U)
+    io.out.bits.statInst.stat := Mux(hasIrq, true.B, false.B)
+    io.out.bits.statInst.statNum := Mux(hasIrq, IRQ_IAF, 0.U)
+  }
 }

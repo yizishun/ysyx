@@ -44,9 +44,11 @@ void init_soc() {
     init_flash();
     init_sram();
     init_sdram();
+    #ifndef CONFIG_TARGET_SHARE
     init_icacheitrace();
     init_mcacheitrace();
     Log("cache trace init");    
+    #endif
     Log("soc init");    
 }
 

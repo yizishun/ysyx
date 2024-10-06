@@ -123,6 +123,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     DefaultConnect()
 
     val addr = Mux(is_sdram, base_addr, ((c.U-1.U-(count)) << 2) + base_addr)
+    io.in.rresp := io.out.rresp
     io.in.rdata := Mux(hit & state =/= s_WaitImemRV, data_h, 
                 Mux(count === 0.U, data_m, 0.U))
     switch(state){

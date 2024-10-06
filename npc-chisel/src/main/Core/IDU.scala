@@ -4,11 +4,6 @@ import chisel3._
 import chisel3.util._
 import npc._
 
-class IduPcIO extends Bundle{
-  val mepc = Output(UInt(32.W))
-  val mtvec = Output(UInt(32.W))
-}
-
 class IduOutIO extends Bundle{
   val signals = new Bundle{
     val exu = new idu.EXUSignals
@@ -23,7 +18,7 @@ class IduOutIO extends Bundle{
 	val rw = Output(UInt(5.W))
 	val crw = Output(UInt(12.W))
   val isEbreak = Output(Bool())
-  //val stat = Output(new Stat)
+  val statInst = Output(new Stat)
   //for performance analysis
   val perfSubType = Output(UInt(8.W))
 }
@@ -42,7 +37,7 @@ class IduIO(xlen: Int) extends Bundle{
   val rs2ren = Output(Bool())
   val isRaw = Input(Bool())
   val isFlush = Input(Bool())
-  //val statr = Input(new Stat)
+  val statCore = Input(new Stat)
 }
 
 class IDU(val conf: npc.CoreConfig) extends Module{
@@ -52,7 +47,7 @@ class IDU(val conf: npc.CoreConfig) extends Module{
   val imm = Module(new idu.Imm)
 
   SetupIDU()
-  //SetupIRQ()
+  SetupIRQ()
   io.out.bits.perfSubType := 0.U
   //if(conf.useDPIC) Strob()
   //default,it will error if no do this
@@ -80,11 +75,7 @@ class IDU(val conf: npc.CoreConfig) extends Module{
     
     io.csr.raddr1 := io.in.bits.inst(31, 20)
   
-    //IFU module(wrapper)
-      //pc value back to IFU
-    //io.pc.bits.mepc := io.csr.mepc
-    //io.pc.bits.mtvec := io.csr.mtvec
-    //io.pc.valid := io.out.valid
+    //Fence.i
     io.ifuSignals <> controller.io.signals.ifu
       //out to EXU
     io.out.bits.signals := controller.io.signals
@@ -97,22 +88,12 @@ class IDU(val conf: npc.CoreConfig) extends Module{
     io.out.bits.crw := io.in.bits.inst(31, 20)
     io.out.bits.isEbreak := (io.in.bits.inst === "b00000000000100000000000001110011".U)
 
-    //temp
-    io.csr.irq := 0.U
-    io.csr.irq_no := 0.U
   }
-  //irq logic
-//  def SetupIRQ(): Unit = {
-//    io.out.bits.stat.stat := controller.io.irq
-//    io.out.bits.stat.statNum := controller.io.irq_no
-//    //mech
-//    when(io.statr.stat){
-//      state := s_BeforeFire1
-//      io.out.bits.stat.stat := false.B
-//    }
-//    io.csr.irq := io.statr.stat
-//    io.csr.irq_no := io.statr.statNum
-//  }
+  //irq logic--------------------------------------------------------------------------
+  def SetupIRQ(): Unit = {
+    io.out.bits.statInst.stat := controller.io.irq
+    io.out.bits.statInst.statNum := controller.io.irq_no
+  }
   def Strob(): Unit = {
     import idu.Control._
     import npc.core.exu.AluOp._

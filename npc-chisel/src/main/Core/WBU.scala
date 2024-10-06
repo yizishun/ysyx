@@ -21,10 +21,11 @@ class WbuIO(xlen: Int) extends Bundle{
   //connect to the external "state" elements(i.e.gpr,csr)
   val gpr = Flipped(new gprWriteIO(xlen))
   val csr = Flipped(new csrWriteIO(xlen))
-  //val statw = Output(new Stat)
-  //val statEn = Output(Bool())
+  val statCoreW = Output(new Stat)
+  val statCoreWEn = Output(Bool())
   //read the stat reg
-  //val statr = Input(new Stat)
+  val isFlush = Input(Bool())
+  val statCoreR = Input(new Stat)
 }
 
 class WBU(val conf: npc.CoreConfig) extends Module{
@@ -33,7 +34,7 @@ class WBU(val conf: npc.CoreConfig) extends Module{
   SetupWBU()
   val ebreak = if(conf.useDPIC) Some(Module(new Ebreak(conf))) else None
   if(conf.useDPIC) ebreak.get.io.isEbreak := io.in.bits.isEbreak
-  //SetupIRQ()
+  SetupIRQ()
 
   //if(conf.useDPIC){
     //import npc.EVENT._
@@ -67,19 +68,16 @@ class WBU(val conf: npc.CoreConfig) extends Module{
   //place wires
     //GPR module(external)
     io.gpr.waddr := io.in.bits.rw
-    io.gpr.wen := io.in.bits.signals.wbu.RegwriteE & io.in.valid
+    io.gpr.wen := io.in.bits.signals.wbu.RegwriteE & io.in.valid & !io.isFlush
     //CSR module(external)
     io.csr.waddr := io.in.bits.crw
-    io.csr.wen := io.in.bits.signals.wbu.CSRWriteE & io.in.valid
+    io.csr.wen := io.in.bits.signals.wbu.CSRWriteE & io.in.valid & !io.isFlush
     //WBU(wrapper)
 
   }
-//  def SetupIRQ():Unit = {
-//    io.statw := io.in.bits.stat
-//    io.statEn := (nextState === s_BetweenFire12) || io.statr.stat
-//    //mech
-//    when(io.statr.stat){
-//      io.csr.wdata := io.in.bits.pc
-//    }
-//  }
+  //irq logic----------------------------------------------------------------------------------------------
+  def SetupIRQ():Unit = {
+    io.statCoreW := io.in.bits.statInst
+    io.statCoreWEn := io.in.valid && !io.isFlush
+  }
 }

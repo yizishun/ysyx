@@ -22,8 +22,6 @@ object CsrReg{
 }
 
 class csrReadIO(xlen: Int) extends Bundle{
-  val irq = Input(Bool())
-  val irq_no = Input(UInt(8.W))
   val raddr1 = Input(UInt(12.W))
 	val rdata1 = Output(UInt(xlen.W))
   val mtvec = Output(UInt(xlen.W))
@@ -37,6 +35,9 @@ class csrWriteIO(xlen: Int) extends Bundle{
 }
 
 class csrIO(xlen: Int) extends Bundle{
+  val irq = Input(Bool())
+  val irq_no = Input(UInt(8.W))
+  val irq_pc = Input(UInt(32.W))
   val read = new csrReadIO(xlen)
   val write = new csrWriteIO(xlen)
 }
@@ -70,11 +71,11 @@ class csr(conf: CoreConfig) extends Module{
   rf(mstatusIn) := 0x1800.U
   rf(mvendoridIn) := "h79737978".U
   rf(marchidIn) := 23060171.U
-  when(io.write.wen & ~(io.read.irq)){
+  when(io.write.wen & ~(io.irq)){
     rf(waddr_in) := io.write.wdata
   }
-  when(io.read.irq){
-    rf(mcauseIn) := io.read.irq_no.asUInt
-    rf(mepcIn) := io.write.wdata
+  when(io.irq){
+    rf(mcauseIn) := io.irq_no.asUInt
+    rf(mepcIn) := io.irq_pc
   }
 }

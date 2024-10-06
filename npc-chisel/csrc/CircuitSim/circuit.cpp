@@ -12,6 +12,7 @@ uint64_t cycle = 0;
 uint64_t instCnt = 0;
 uint32_t waveCounter = 0;
 bool prev_wbu;
+bool isIRQ;
 static uint64_t g_timer = 0;
 static bool g_print_step = false;
 word_t pc, snpc, dnpc,inst , prev_pc;
@@ -61,12 +62,25 @@ void record_inst_trace(char *p, uint8_t *inst){
   disassemble(p, ps+128-p, (uint64_t)prev_pc, inst, ilen);
 }
 
+void difftest(){
+	if(isIRQ){
+		difftest_step();
+		isIRQ = 0;
+		return;
+	}
+	if(prev_wbu){
+		if(cpu->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__core__DOT__isIRQ == 1){
+			isIRQ = 1;
+			return;
+		}
+		difftest_step();
+	}
+}
+
 static void trace_and_difftest(){
 	/* DiffTest */
 	#ifdef CONFIG_DIFFTEST
-	if(prev_wbu){
-		difftest_step();
-	}
+	difftest();
 	#endif
 
 	/* watchpoint check */
@@ -134,7 +148,7 @@ void cpu_exec(uint32_t n){
 		dnpc = cpu->rootp->V_PC;
 		get_reg();
 		waveCounter ++;
-		if(waveCounter >= 1000000000){
+		if(waveCounter >= 1000000){
 			close_wave();
 			if(remove("builds/waveform.vcd") != 0) assert(0);
 			init_wave();

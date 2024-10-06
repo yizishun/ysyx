@@ -27,9 +27,20 @@ class Core(val conf : CoreConfig) extends Module {
   val icache = Module(new ICache(2, 1, 16, conf))
 
   //"state" elements in npc core
-  //val stat = RegEnable(wbu.io.statw, 0.U.asTypeOf(new Stat), wbu.io.statEn)
+  import npc.core.idu.Control._
   val gpr = Module(new gpr(conf))
   val csr = Module(new csr(conf))
+  //irq logic
+  val stat = RegEnable(wbu.io.statCoreW, 0.U.asTypeOf(new Stat), wbu.io.statCoreWEn)
+  ifu.io.statCore := stat
+  idu.io.statCore := stat
+  exu.io.statCore := stat
+  lsu.io.statCore := stat
+  wbu.io.statCoreR := stat
+  val isIRQ = RegNext(wbu.io.statCoreWEn && (wbu.io.statCoreW.stat))
+  csr.io.irq := isIRQ
+  csr.io.irq_no := RegNext(wbu.io.statCoreW.statNum)
+  csr.io.irq_pc := RegNext(wbu.io.in.bits.pc)
 
   pipelineConnectIFU(ifu.io.pc , ifu.io.in)
   pipelineConnect(ifu.io.out, idu.io.in)
@@ -39,6 +50,8 @@ class Core(val conf : CoreConfig) extends Module {
   when(ifu.io.isFlush){ ifu.io.in.valid := false.B }
   when(idu.io.isFlush){ idu.io.in.valid := false.B }
   when(exu.io.isFlush){ exu.io.in.valid := false.B }
+  when{lsu.io.isFlush}{ lsu.io.in.valid := false.B }
+  when(wbu.io.isFlush){ wbu.io.in.valid := false.B }
 
   //data conflict detection
   def dataConflict(rs: UInt, rd: UInt) = (rs === rd)
@@ -66,20 +79,22 @@ class Core(val conf : CoreConfig) extends Module {
     PcPlusImm -> exu.io.pc.bits.PcPlusImm,
     PcPlusRs2 -> exu.io.pc.bits.PcPlusRs2,
     //Mtvec -> io.in.iduPC.bits.mtvec,
-    //Mepc -> io.in.iduPC.bits.mepc
+    Mepc -> csr.io.read.mepc
   ))
   val iduIsWorking = idu.io.in.valid
   val isJump = exu.io.in.bits.signals.exu.Jump =/= NJump & exu.io.pc.valid
   val isCH = dontTouch(Wire(Bool()))
   exu.io.pc.ready := true.B
-  ifu.io.correctedPC := RegNext(correctedPC)
   val isCH_r = RegNext(isCH)
-  ifu.io.isFlush := isCH_r
-  idu.io.isFlush := isCH_r
-  exu.io.isFlush := isCH_r
-  isCH := Mux(isJump, PCSrc =/= PcPlus4, 0.U) 
+  isCH := Mux(isJump, PCSrc =/= PcPlus4, 0.U)
 
+  ifu.io.correctedPC := Mux(isIRQ, csr.io.read.mtvec, Mux(isCH_r, RegNext(correctedPC), 0.U))
 
+  ifu.io.isFlush := isCH_r || isIRQ
+  idu.io.isFlush := isCH_r || isIRQ
+  exu.io.isFlush := isCH_r || isIRQ
+  lsu.io.isFlush := isIRQ
+  wbu.io.isFlush := isIRQ
   //Connect to the "state" elements in npc
   ifu.io.imem <> icache.io.in
   icache.io.out <> io.imem

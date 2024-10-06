@@ -22,11 +22,15 @@ word_t vaddr_ifetch(vaddr_t addr, int len) {
 }
 
 word_t vaddr_read(vaddr_t addr, int len) {
+  #ifndef CONFIG_TARGET_SHARE
   write_mcacheitrace(addr);
+  #endif
   return paddr_read(addr, len);
 }
 
 void vaddr_write(vaddr_t addr, int len, word_t data) {
+  #ifndef CONFIG_TARGET_SHARE
   write_mcacheitrace(addr);
+  #endif
   paddr_write(addr, len, data);
 }
