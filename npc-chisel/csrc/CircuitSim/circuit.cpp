@@ -125,14 +125,14 @@ static void exec_once(){
 	single_cycle();
 }
 
-void cpu_exec(uint32_t n){
+void cpu_exec(uint64_t n){
 	//max inst to print to stdout
 	g_print_step = (n < MAX_INST_TO_PRINT);
 	while(n > 0){
 		prev_pc = cpu->rootp -> V_PC;
 		prev_wbu = cpu->rootp->WBU;
 		snpc = pc + 4;
-		if(cpu->rootp->V_E_GETINST == 1)
+		if(cpu->rootp->WBU == 1)
 			instCnt ++;
 		cycle ++;
 
@@ -158,6 +158,7 @@ void cpu_exec(uint32_t n){
 		if(cpu->rootp->V_INST != 0)
 			n--;
 	}
+	printf("Finish running %llu instructions at PC = " FMT_WORD "\n", instCnt, pc);
 }
 
 static void statistic() {
@@ -178,9 +179,15 @@ static void statistic() {
 	Log("IFUGetInst Event = %llu", IFUGetInst.cnt);
 	Log("IFUGetInst/cycle = %lf", (double)IFUGetInst.time / (double)IFUGetInst.cnt);
 	Log("IFUGetInst total time = %llu", IFUGetInst.time);
+	Log("IFUNGetInst Event = %llu", IFUNGetInst.cnt);
+	Log("IFUNGetInst/cycle = %lf", (double)IFUNGetInst.time / (double)IFUNGetInst.cnt);
+	Log("IFUNGetInst total time = %llu", IFUNGetInst.time);
 	Log("LSUGetData Event = %llu", LSUGetData.cnt);
 	Log("LSUGetData/cycle = %lf", (double)LSUGetData.time / (double)LSUGetData.cnt);
 	Log("LSUGetData total time = %llu", LSUGetData.time);
+	Log("LSUNGetData Event = %llu", LSUNGetData.cnt);
+	Log("LSUNGetData/cycle = %lf", (double)LSUNGetData.time / (double)LSUNGetData.cnt);
+	Log("LSUNGetData total time = %llu", LSUNGetData.time);
 	Log("EXUFinCal  Event = %llu", EXUFinCal.cnt);
 	Log("EXUFinCal/cycle = %lf", (double)EXUFinCal.time / (double)EXUFinCal.cnt);
 	Log("EXUFinCal total time = %llu", EXUFinCal.time);

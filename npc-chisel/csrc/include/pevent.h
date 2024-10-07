@@ -7,7 +7,9 @@ struct Perf {
     bool switchTime = false;
 };
 extern Perf IFUGetInst;
+extern Perf IFUNGetInst;
 extern Perf LSUGetData;
+extern Perf LSUNGetData;
 extern Perf EXUFinCal;
 extern Perf DECisJump ;
 extern Perf DECisStore;
@@ -19,7 +21,9 @@ extern Perf ICacheHit;
 extern Perf ICacheMiss;
 enum {
     t_IFUGetInst,
+    t_IFUNGetInst,
     t_LSUGetData,
+    t_LSUNGetData,
     t_EXUFinCal ,
     t_IDUFinDec ,
     t_ICacheHit ,

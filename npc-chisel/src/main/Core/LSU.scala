@@ -98,7 +98,8 @@ class LSU(val conf: npc.CoreConfig) extends Module{
 
   if(conf.useDPIC){
     import npc.EVENT._
-    PerformanceProbe(clock, LSUGetData, RegNext(io.in.ready) & io.in.valid, 0.U, RegNext(io.in.ready) & io.in.valid, io.out.valid & io.in.ready)
+    PerformanceProbe(clock, LSUGetData, io.dmem.arvalid & io.dmem.arready || io.dmem.awvalid & io.dmem.awready, 0.U, io.dmem.arvalid & io.dmem.arready || io.dmem.awvalid & io.dmem.awready, io.dmem.rvalid & io.dmem.rready || io.dmem.bvalid & io.dmem.bready)
+    PerformanceProbe(clock, LSUNGetData, (io.dmem.rvalid & io.dmem.rready || io.dmem.bvalid & io.dmem.bready) & stateM === s_WaitFlushEnd, 0.U)
   }
   ready_go := io.dmem.rvalid || io.dmem.bvalid || notLS
   start := io.in.valid && !io.isFlush

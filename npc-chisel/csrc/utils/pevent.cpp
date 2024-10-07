@@ -4,7 +4,9 @@ char *trace_csv2 = "builds/trace2.csv";
 FILE *perf_fp = NULL;
 FILE *perf_time_fp = NULL;
 Perf IFUGetInst;
+Perf IFUNGetInst;
 Perf LSUGetData;
+Perf LSUNGetData;
 Perf EXUFinCal ;
 //IDUFinDec
 Perf DECisJump ;
@@ -18,6 +20,8 @@ Perf ICacheHit;
 Perf ICacheMiss;
 
 void e_IFUGetInst(int inc, int start, int end);
+void e_IFUNGetInst(int inc, int start, int end);
+void e_LSUNGetData(int inc, int start, int end);
 void e_LSUGetData(int inc, int start, int end);
 void e_EXUFinCal(int inc, int start, int end);
 void e_IDUFinDec(int inc, int subType, int start, int end, int timeEn);
@@ -51,7 +55,13 @@ extern "C" void peventWrapper(int type, int inc, int subType, int start, int end
     case t_ICacheMiss:
         e_ICacheMiss(inc, start, end);
         break;
-    
+    case t_IFUNGetInst:
+        e_IFUNGetInst(inc, start, end);
+        break;
+    case t_LSUNGetData:
+        e_LSUNGetData(inc, start, end);
+        break;
+
     default:
         break;
     }
@@ -66,6 +76,13 @@ void e_IFUGetInst(int inc, int start, int end){
     if(start & end) IFUGetInst.time ++;
 }
 
+void e_IFUNGetInst(int inc, int start, int end){
+    if(inc) IFUNGetInst.cnt ++;
+    if(start) IFUNGetInst.switchTime = true;
+    if(end) {if(!IFUNGetInst.switchTime)assert(0); IFUNGetInst.switchTime = false;}
+    if(IFUNGetInst.switchTime) IFUNGetInst.time ++;
+    if(start & end) IFUNGetInst.time ++;
+}
 void e_LSUGetData(int inc, int start, int end){
     if(inc) LSUGetData.cnt ++;
     if(start) LSUGetData.switchTime = true;
@@ -74,6 +91,13 @@ void e_LSUGetData(int inc, int start, int end){
     if(start & end) LSUGetData.time ++;
 }
 
+void e_LSUNGetData(int inc, int start, int end){
+    if(inc) LSUNGetData.cnt ++;
+    if(start) LSUNGetData.switchTime = true;
+    if(end) {if(!LSUNGetData.switchTime)assert(0); LSUNGetData.switchTime = false;}
+    if(LSUNGetData.switchTime) LSUNGetData.time ++;
+    if(start & end) LSUNGetData.time ++;
+}
 void e_EXUFinCal(int inc, int start, int end){
     if(inc) EXUFinCal.cnt ++;
     if(start) EXUFinCal.switchTime = true;

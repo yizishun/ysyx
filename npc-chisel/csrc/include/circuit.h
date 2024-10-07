@@ -34,7 +34,7 @@ extern word_t inst,pc;
 extern uint64_t cycle;
 //circuit
 void single_cycle();
-void cpu_exec(uint32_t n);
+void cpu_exec(uint64_t n);
 void reset(int n);
 //wave
 void init_wave();

@@ -24,7 +24,7 @@ class Core(val conf : CoreConfig) extends Module {
   val lsu = Module(new LSU(conf))
   val wbu = Module(new WBU(conf))
 
-  val icache = Module(new ICache(2, 1, 16, conf))
+  val icache = Module(new ICache(4, 1, 8, conf))
 
   //"state" elements in npc core
   import npc.core.idu.Control._

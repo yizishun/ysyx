@@ -71,6 +71,7 @@ class IFU(val conf: npc.CoreConfig) extends Module{
   if(conf.useDPIC){
     import npc.EVENT._
     PerformanceProbe(clock, IFUGetInst, (io.imem.rvalid & io.imem.rready).asUInt, 0.U, io.imem.arvalid & io.imem.arready, io.imem.rvalid & io.imem.rready)
+    PerformanceProbe(clock, IFUNGetInst, io.imem.rvalid & io.imem.rready && stateF === s_WaitFlushEnd, 0.U)
   }
   //handshake
   //output logic
