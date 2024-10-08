@@ -75,7 +75,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
         import npc.EVENT._
         val hitState = RegEnable(hit, false.B, state === s_WaitUpV)
         PerformanceProbe(clock, ICacheHit, hit & io.in.arvalid, 0.U, io.in.arvalid & hit, io.in.rvalid && state === s_WaitUpV)
-        PerformanceProbe(clock, ICacheMiss, io.in.arvalid & ~hit && io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), 0.U, io.in.arvalid & ~hit & io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), io.in.rready && io.in.rvalid && state === s_WaitImemRV && inAddr >= "ha000_0000".U(32.W) && inAddr <= "hbfff_ffff".U(32.W))
+        PerformanceProbe(clock, ICacheMiss, io.in.arvalid & ~hit, 0.U, io.in.arvalid & ~hit, io.in.rready && io.in.rvalid && state === s_WaitImemRV)
     }
 //fence_i logic
     when(io.fencei.valid & io.fencei.bits.is_fencei){

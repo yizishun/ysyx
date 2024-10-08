@@ -21,13 +21,13 @@ extern Perf ICacheHit;
 extern Perf ICacheMiss;
 enum {
     t_IFUGetInst,
-    t_IFUNGetInst,
     t_LSUGetData,
-    t_LSUNGetData,
     t_EXUFinCal ,
     t_IDUFinDec ,
     t_ICacheHit ,
     t_ICacheMiss,
+    t_IFUNGetInst,
+    t_LSUNGetData,
 };
 enum {
     isJump,

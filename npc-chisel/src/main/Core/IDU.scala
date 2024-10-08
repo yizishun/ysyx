@@ -35,7 +35,7 @@ class IduIO(xlen: Int) extends Bundle{
   val csr = Flipped(new csrReadIO(xlen))
   val rs1ren = Output(Bool())
   val rs2ren = Output(Bool())
-  val isRaw = Input(Bool())
+  val isStall = Input(Bool())
   val isFlush = Input(Bool())
   val statCore = Input(new Stat)
 }
@@ -52,7 +52,7 @@ class IDU(val conf: npc.CoreConfig) extends Module{
   //if(conf.useDPIC) Strob()
   //default,it will error if no do this
   val ready_go = dontTouch(Wire(Bool()))
-  ready_go := ~io.isRaw
+  ready_go := ~io.isStall
   io.in.ready := !io.in.valid || (ready_go && io.out.ready)
   io.out.valid := io.in.valid && ready_go
 //-----------------------------------------------------------------------

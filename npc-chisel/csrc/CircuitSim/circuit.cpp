@@ -148,7 +148,7 @@ void cpu_exec(uint64_t n){
 		dnpc = cpu->rootp->V_PC;
 		get_reg();
 		waveCounter ++;
-		if(waveCounter >= 1000000){
+		if(waveCounter >= 100000000){
 			close_wave();
 			if(remove("builds/waveform.vcd") != 0) assert(0);
 			init_wave();

@@ -5,6 +5,7 @@ import chisel3.util._
 import npc.dev._
 import npc._
 import npc.bus._
+import npc.core.idu.Control._
 
 class Stat extends Bundle{
   val stat = Bool()
@@ -42,6 +43,7 @@ class Core(val conf : CoreConfig) extends Module {
   csr.io.irq_no := RegNext(wbu.io.statCoreW.statNum)
   csr.io.irq_pc := RegNext(wbu.io.in.bits.pc)
 
+  //pipline connect
   pipelineConnectIFU(ifu.io.pc , ifu.io.in)
   pipelineConnect(ifu.io.out, idu.io.in)
   pipelineConnect(idu.io.out, exu.io.in)
@@ -54,24 +56,66 @@ class Core(val conf : CoreConfig) extends Module {
   when(wbu.io.isFlush){ wbu.io.in.valid := false.B }
 
   //data conflict detection
-  def dataConflict(rs: UInt, rd: UInt) = (rs === rd)
-  def dataConflictWithStage(stageID: IduIO, rd: UInt, is_write: Bool, stageIsWorking: Bool) = {
-    val rs1 = stageID.gpr.raddr1
-    val rs2 = stageID.gpr.raddr2
-    val stagesIsWorking = (stageID.in.valid | ~stageID.in.ready) & stageIsWorking
-    val rs1IsNotZero = rs1 =/= 0.U
-    val rs2IsNotZero = rs2 =/= 0.U
-    val rs1ren = stageID.rs1ren
-    val rs2ren = stageID.rs2ren
-    ((rs1ren & rs1IsNotZero & dataConflict(rs1, rd)) || (rs2ren & rs2IsNotZero & dataConflict(rs2, rd))) && is_write && stageIsWorking
-  }
-  val isRAW = dataConflictWithStage(idu.io, exu.io.in.bits.rw, exu.io.in.bits.signals.wbu.RegwriteE, exu.io.in.valid | ~exu.io.in.ready) ||
-              dataConflictWithStage(idu.io, lsu.io.in.bits.rw, lsu.io.in.bits.signals.wbu.RegwriteE, lsu.io.in.valid | ~lsu.io.in.ready) ||
-              dataConflictWithStage(idu.io, wbu.io.in.bits.rw, wbu.io.in.bits.signals.wbu.RegwriteE, wbu.io.in.valid | ~wbu.io.in.ready)
-  idu.io.isRaw := isRAW
+  val exuIsRaw = Wire(Bool())
+  val lsuIsRaw = Wire(Bool())
+  val wbuIsRaw = Wire(Bool())
+  val isRAW =  exuIsRaw || lsuIsRaw || wbuIsRaw
+  val exuCanFwd2Rd1 = Wire(Bool())
+  val exuCanFwd2Rd2 = Wire(Bool())
+  val exuCanFwd = exuCanFwd2Rd1 || exuCanFwd2Rd2
+  val lsuCanFwd2Rd1 = Wire(Bool())
+  val lsuCanFwd2Rd2 = Wire(Bool())
+  val lsuCanFwd = lsuCanFwd2Rd1 || lsuCanFwd2Rd2
+  val wbuCanFwd2Rd1 = Wire(Bool())
+  val wbuCanFwd2Rd2 = Wire(Bool())
+  val wbuCanFwd = wbuCanFwd2Rd1 || wbuCanFwd2Rd2
+  val exuFwdData = Wire(UInt(32.W))
+  val lsuFwdData = Wire(UInt(32.W))
+  val wbuFwdData = Wire(UInt(32.W))
+  val rd1FwdEn = Wire(Bool())
+  val rd2FwdEn = Wire(Bool())
+  val rd1FwdData = Wire(UInt(32.W))
+  val rd2FwdData = Wire(UInt(32.W))
+  exuIsRaw := dataConflictWithStage(idu.io, exu.io.in.bits.rw, exu.io.in.bits.signals.wbu.RegwriteE, exu.io.in.valid) 
+  lsuIsRaw := dataConflictWithStage(idu.io, lsu.io.in.bits.rw, lsu.io.in.bits.signals.wbu.RegwriteE, lsu.io.in.valid)
+  wbuIsRaw := dataConflictWithStage(idu.io, wbu.io.in.bits.rw, wbu.io.in.bits.signals.wbu.RegwriteE, wbu.io.in.valid)
+  exuCanFwd2Rd1 := exuIsRaw && (exu.io.in.bits.signals.wbu.RegwriteD =/= RMemRD) && dataConflict(exu.io.in.bits.rw, idu.io.gpr.raddr1)
+  exuCanFwd2Rd2 := exuIsRaw && (exu.io.in.bits.signals.wbu.RegwriteD =/= RMemRD) && dataConflict(exu.io.in.bits.rw, idu.io.gpr.raddr2)
+  lsuCanFwd2Rd1 := lsuIsRaw && (lsu.io.in.bits.signals.wbu.RegwriteD =/= RMemRD || lsu.io.dmem.rvalid) && dataConflict(lsu.io.in.bits.rw, idu.io.gpr.raddr1)
+  lsuCanFwd2Rd2 := lsuIsRaw && (lsu.io.in.bits.signals.wbu.RegwriteD =/= RMemRD || lsu.io.dmem.rvalid) && dataConflict(lsu.io.in.bits.rw, idu.io.gpr.raddr2)
+  wbuCanFwd2Rd1 := wbuIsRaw && dataConflict(wbu.io.in.bits.rw, idu.io.gpr.raddr1)
+  wbuCanFwd2Rd2 := wbuIsRaw && dataConflict(wbu.io.in.bits.rw, idu.io.gpr.raddr2)
+  exuFwdData := MuxLookup(exu.io.in.bits.signals.wbu.RegwriteD, 0.U)(Seq(
+    RAluresult -> exu.io.out.bits.aluresult,
+    RImm       -> exu.io.out.bits.immext,
+    RPcPlus4   -> (exu.io.out.bits.pc + 4.U),
+    RCSR       -> exu.io.out.bits.crd1
+  ))
+  lsuFwdData := MuxLookup(lsu.io.in.bits.signals.wbu.RegwriteD, 0.U)(Seq(
+    RAluresult -> lsu.io.out.bits.aluresult,
+    RImm       -> lsu.io.out.bits.immext,
+    RPcPlus4   -> (lsu.io.out.bits.pc + 4.U),
+    RCSR       -> lsu.io.out.bits.crd1,
+    RMemRD     -> lsu.io.out.bits.MemR
+  ))
+  wbuFwdData := wbu.io.gpr.wdata
+  rd1FwdEn := exuCanFwd2Rd1 || lsuCanFwd2Rd1 || wbuCanFwd2Rd1
+  rd2FwdEn := exuCanFwd2Rd2 || lsuCanFwd2Rd2 || wbuCanFwd2Rd2
+  rd1FwdData := Mux(rd1FwdEn, MuxCase(0.U, Seq(
+      exuCanFwd2Rd1 -> exuFwdData,
+      lsuCanFwd2Rd1 -> lsuFwdData,
+      wbuCanFwd2Rd1 -> wbuFwdData
+    )), idu.io.out.bits.rd1)
+  rd2FwdData := Mux(rd2FwdEn, MuxCase(0.U, Seq(
+      exuCanFwd2Rd2 -> exuFwdData,
+      lsuCanFwd2Rd2 -> lsuFwdData,
+      wbuCanFwd2Rd2 -> wbuFwdData
+    )), idu.io.out.bits.rd2)
+  exu.io.in.bits.rd1 := RegEnable(rd1FwdData, idu.io.out.valid && exu.io.in.ready)
+  exu.io.in.bits.rd2 := RegEnable(rd2FwdData, idu.io.out.valid && exu.io.in.ready)
+  idu.io.isStall := isRAW && (!exuCanFwd && !lsuCanFwd && !wbuCanFwd)
   //control hazard detection
   //place mux
-  import npc.core.idu.Control._
   val correctedPC = Wire(UInt(32.W))
   val PCSrc = exu.io.pc.bits.PCSrc
   correctedPC := MuxLookup(PCSrc, exu.io.pc.bits.PcPlus4)(Seq(
@@ -119,6 +163,17 @@ class Core(val conf : CoreConfig) extends Module {
     prevOut.ready := thisIn.ready
     thisIn.bits := RegEnable(prevOut.bits, "h30000000".U.asTypeOf(new IfuPcIO), prevOut.valid && thisIn.ready)
     thisIn.valid := RegEnable(prevOut.valid, true.B, thisIn.ready);
+  }
+  def dataConflict(rs: UInt, rd: UInt) = (rs === rd)
+  def dataConflictWithStage(stageID: IduIO, rd: UInt, is_write: Bool, stageIsWorking: Bool) = {
+    val rs1 = stageID.gpr.raddr1
+    val rs2 = stageID.gpr.raddr2
+    val stagesIsWorking = (stageID.in.valid) & stageIsWorking
+    val rs1IsNotZero = rs1 =/= 0.U
+    val rs2IsNotZero = rs2 =/= 0.U
+    val rs1ren = stageID.rs1ren
+    val rs2ren = stageID.rs2ren
+    ((rs1ren & rs1IsNotZero & dataConflict(rs1, rd)) || (rs2ren & rs2IsNotZero & dataConflict(rs2, rd))) && is_write && stageIsWorking
   }
 }
 
