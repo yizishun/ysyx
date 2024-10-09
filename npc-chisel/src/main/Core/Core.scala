@@ -57,9 +57,23 @@ class Core(val conf : CoreConfig) extends Module {
 
   //data conflict detection
   val exuIsRaw = Wire(Bool())
+  val exuIsRawRs1 = dontTouch(Wire(Bool()))
+  val exuIsRawRs2 = dontTouch(Wire(Bool()))
+  exuIsRawRs1 := exuIsRaw && dataConflict(exu.io.in.bits.rw, idu.io.gpr.raddr1)
+  exuIsRawRs2 := exuIsRaw && dataConflict(exu.io.in.bits.rw, idu.io.gpr.raddr2)
   val lsuIsRaw = Wire(Bool())
+  val lsuIsRawRs1 = dontTouch(Wire(Bool()))
+  val lsuIsRawRs2 = dontTouch(Wire(Bool()))
+  lsuIsRawRs1 := lsuIsRaw && dataConflict(lsu.io.in.bits.rw, idu.io.gpr.raddr1)
+  lsuIsRawRs2 := lsuIsRaw && dataConflict(lsu.io.in.bits.rw, idu.io.gpr.raddr2)
   val wbuIsRaw = Wire(Bool())
+  val wbuIsRawRs1 = dontTouch(Wire(Bool()))
+  val wbuIsRawRs2 = dontTouch(Wire(Bool()))
+  wbuIsRawRs1 := wbuIsRaw && dataConflict(wbu.io.in.bits.rw, idu.io.gpr.raddr1)
+  wbuIsRawRs2 := wbuIsRaw && dataConflict(wbu.io.in.bits.rw, idu.io.gpr.raddr2)
   val isRAW =  exuIsRaw || lsuIsRaw || wbuIsRaw
+  val rs1IsRaw = exuIsRawRs1 || lsuIsRawRs1 || wbuIsRawRs1
+  val rs2IsRaw = exuIsRawRs2 || lsuIsRawRs2 || wbuIsRawRs2
   val exuCanFwd2Rd1 = Wire(Bool())
   val exuCanFwd2Rd2 = Wire(Bool())
   val exuCanFwd = exuCanFwd2Rd1 || exuCanFwd2Rd2
@@ -75,16 +89,33 @@ class Core(val conf : CoreConfig) extends Module {
   val rd1FwdEn = Wire(Bool())
   val rd2FwdEn = Wire(Bool())
   val rd1FwdData = Wire(UInt(32.W))
+  val rd1FwdData_r = RegEnable(rd1FwdData, rd1FwdEn)
   val rd2FwdData = Wire(UInt(32.W))
+  val rd2FwdData_r = RegEnable(rd2FwdData, rd2FwdEn)
+  val fwdCount1 = RegInit(0.U(1.W))
+  val fwdCount1_w = dontTouch(Wire(UInt(1.W)))
+  val fwdCount2 = RegInit(0.U(1.W))
+  val fwdCount2_w = dontTouch(Wire(UInt(1.W)))
+  fwdCount1_w := fwdCount1
+  fwdCount2_w := fwdCount2
+  when(RegNext(idu.io.in.ready) && idu.io.in.valid){
+    fwdCount1_w := (idu.io.rs1ren & rs1IsRaw).asUInt - rd1FwdEn.asUInt
+    fwdCount2_w := (idu.io.rs2ren & rs2IsRaw).asUInt - rd2FwdEn.asUInt
+    fwdCount1 := fwdCount1_w
+    fwdCount2 := fwdCount2_w
+  }.elsewhen(idu.io.in.valid){
+    when(rd1FwdEn && fwdCount1 =/= 0.U){fwdCount1 := fwdCount1 - 1.U}
+    when(rd2FwdEn && fwdCount2 =/= 0.U){fwdCount2 := fwdCount2 - 1.U}
+  }
   exuIsRaw := dataConflictWithStage(idu.io, exu.io.in.bits.rw, exu.io.in.bits.signals.wbu.RegwriteE, exu.io.in.valid) 
   lsuIsRaw := dataConflictWithStage(idu.io, lsu.io.in.bits.rw, lsu.io.in.bits.signals.wbu.RegwriteE, lsu.io.in.valid)
   wbuIsRaw := dataConflictWithStage(idu.io, wbu.io.in.bits.rw, wbu.io.in.bits.signals.wbu.RegwriteE, wbu.io.in.valid)
-  exuCanFwd2Rd1 := exuIsRaw && (exu.io.in.bits.signals.wbu.RegwriteD =/= RMemRD) && dataConflict(exu.io.in.bits.rw, idu.io.gpr.raddr1)
-  exuCanFwd2Rd2 := exuIsRaw && (exu.io.in.bits.signals.wbu.RegwriteD =/= RMemRD) && dataConflict(exu.io.in.bits.rw, idu.io.gpr.raddr2)
-  lsuCanFwd2Rd1 := lsuIsRaw && (lsu.io.in.bits.signals.wbu.RegwriteD =/= RMemRD || lsu.io.dmem.rvalid) && dataConflict(lsu.io.in.bits.rw, idu.io.gpr.raddr1)
-  lsuCanFwd2Rd2 := lsuIsRaw && (lsu.io.in.bits.signals.wbu.RegwriteD =/= RMemRD || lsu.io.dmem.rvalid) && dataConflict(lsu.io.in.bits.rw, idu.io.gpr.raddr2)
-  wbuCanFwd2Rd1 := wbuIsRaw && dataConflict(wbu.io.in.bits.rw, idu.io.gpr.raddr1)
-  wbuCanFwd2Rd2 := wbuIsRaw && dataConflict(wbu.io.in.bits.rw, idu.io.gpr.raddr2)
+  exuCanFwd2Rd1 := exuIsRawRs1 && (exu.io.in.bits.signals.wbu.RegwriteD =/= RMemRD)
+  exuCanFwd2Rd2 := exuIsRawRs2 && (exu.io.in.bits.signals.wbu.RegwriteD =/= RMemRD)
+  lsuCanFwd2Rd1 := lsuIsRawRs1 && (lsu.io.in.bits.signals.wbu.RegwriteD =/= RMemRD || lsu.io.dmem.rvalid)
+  lsuCanFwd2Rd2 := lsuIsRawRs2 && (lsu.io.in.bits.signals.wbu.RegwriteD =/= RMemRD || lsu.io.dmem.rvalid)
+  wbuCanFwd2Rd1 := wbuIsRawRs1
+  wbuCanFwd2Rd2 := wbuIsRawRs2
   exuFwdData := MuxLookup(exu.io.in.bits.signals.wbu.RegwriteD, 0.U)(Seq(
     RAluresult -> exu.io.out.bits.aluresult,
     RImm       -> exu.io.out.bits.immext,
@@ -99,8 +130,25 @@ class Core(val conf : CoreConfig) extends Module {
     RMemRD     -> lsu.io.out.bits.MemR
   ))
   wbuFwdData := wbu.io.gpr.wdata
-  rd1FwdEn := exuCanFwd2Rd1 || lsuCanFwd2Rd1 || wbuCanFwd2Rd1
-  rd2FwdEn := exuCanFwd2Rd2 || lsuCanFwd2Rd2 || wbuCanFwd2Rd2
+  when (exuIsRawRs1) {
+    rd1FwdEn := exuCanFwd2Rd1
+  }.elsewhen (lsuIsRawRs1) {
+    rd1FwdEn := lsuCanFwd2Rd1
+  }.elsewhen(wbuIsRawRs1) {
+    rd1FwdEn := wbuCanFwd2Rd1
+  }.otherwise {
+    rd1FwdEn := false.B
+  }
+  when (exuIsRawRs2) {
+    rd2FwdEn := exuCanFwd2Rd2
+  }.elsewhen (lsuIsRawRs2) {
+    rd2FwdEn := lsuCanFwd2Rd2
+  }.elsewhen(wbuIsRawRs2) {
+    rd2FwdEn := wbuCanFwd2Rd2
+  }.otherwise {
+    rd2FwdEn := false.B
+  }
+
   rd1FwdData := Mux(rd1FwdEn, MuxCase(0.U, Seq(
       exuCanFwd2Rd1 -> exuFwdData,
       lsuCanFwd2Rd1 -> lsuFwdData,
@@ -111,9 +159,9 @@ class Core(val conf : CoreConfig) extends Module {
       lsuCanFwd2Rd2 -> lsuFwdData,
       wbuCanFwd2Rd2 -> wbuFwdData
     )), idu.io.out.bits.rd2)
-  exu.io.in.bits.rd1 := RegEnable(rd1FwdData, idu.io.out.valid && exu.io.in.ready)
-  exu.io.in.bits.rd2 := RegEnable(rd2FwdData, idu.io.out.valid && exu.io.in.ready)
-  idu.io.isStall := isRAW && (!exuCanFwd && !lsuCanFwd && !wbuCanFwd)
+  exu.io.in.bits.rd1 := RegEnable(Mux(rd1FwdEn || ~rs1IsRaw, rd1FwdData, rd1FwdData_r), idu.io.out.valid && exu.io.in.ready) //rd1FwdData_r fwd
+  exu.io.in.bits.rd2 := RegEnable(Mux(rd2FwdEn || ~rs2IsRaw, rd2FwdData, rd2FwdData_r), idu.io.out.valid && exu.io.in.ready) //rd2FwdData_r fwd
+  idu.io.isStall := ~(~isRAW || (((fwdCount1_w === 0.U) || (fwdCount1 === 1.U && rd1FwdEn)) && ((fwdCount2_w === 0.U) || (fwdCount2 === 1.U && rd2FwdEn)))) // count fwd
   //control hazard detection
   //place mux
   val correctedPC = Wire(UInt(32.W))
