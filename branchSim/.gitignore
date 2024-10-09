@@ -1,0 +1,11 @@
+*.*
+*
+!*/
+!Makefile
+!*.mk
+!*.[cSh]
+!*.cpp
+!*.h
+!.gitignore
+!trace/btrace.log.bz2
+!README.md

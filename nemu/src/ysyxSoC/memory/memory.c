@@ -6,10 +6,13 @@ static uint8_t *psram = NULL;
 static uint8_t *sdram = NULL;
 static FILE *itrace_fp = NULL;
 static FILE *mtrace_fp = NULL;
+static FILE *btrace_fp = NULL;
 static char * itrace_file = "build/itrace.log";
 static char * mtrace_file = "build/mtrace.log";
+static char * btrace_file = "build/btrace.log";
 void init_icacheitrace();
 void init_mcacheitrace();
+void init_btrace();
 void init_mrom() {
   mrom = malloc(0xfff);
   assert(mrom);
@@ -47,7 +50,9 @@ void init_soc() {
     #ifndef CONFIG_TARGET_SHARE
     init_icacheitrace();
     init_mcacheitrace();
-    Log("cache trace init");    
+    Log("cache trace init");  
+    init_btrace();
+    Log("btrace init");  
     #endif
     Log("soc init");    
 }
@@ -176,6 +181,7 @@ void socDev_write(paddr_t addr, int len, word_t data){
 
 void init_icacheitrace(){
     itrace_fp = fopen(itrace_file, "w");
+    Log("icache trace file %s", itrace_file);
     assert(itrace_fp);
 }
 
@@ -191,4 +197,14 @@ void init_mcacheitrace(){
 
 void write_mcacheitrace(paddr_t addr){
     fprintf(mtrace_fp, "%u\n", addr);
+}
+
+void init_btrace(){
+    btrace_fp = fopen(btrace_file, "w");
+    Log("btrace file %s", btrace_file);
+    assert(btrace_fp);
+}
+
+void write_btrace(uint32_t inst, bool is_taken, paddr_t pc){
+    fprintf(btrace_fp, "%u %u %u\n", pc, inst, is_taken);
 }

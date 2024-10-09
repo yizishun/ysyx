@@ -16,4 +16,5 @@ word_t socDev_read(paddr_t addr, int len);
 void socDev_write(paddr_t addr, int len, word_t data);
 void write_icacheitrace(paddr_t addr);
 void write_mcacheitrace(paddr_t addr);
+void write_btrace(uint32_t inst, bool is_taken, paddr_t pc);
 #endif
