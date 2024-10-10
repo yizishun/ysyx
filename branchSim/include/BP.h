@@ -4,6 +4,11 @@
 #include <iostream>
 using std::string;
 
+typedef struct{
+    int tag;
+    uint32_t dest;
+}BTB;
+
 class BranchPredictor
 {
     private:
@@ -11,20 +16,30 @@ class BranchPredictor
         uint64_t count = 0;
         uint64_t correctCnt = 0;
         uint64_t incorrectCnt = 0;
-        bool parse_inst(uint32_t inst, uint32_t pc, string& op, uint32_t& dest);
+        int set;
+        int block_size = 4;
+        BTB* btb; //完全映射
+    protected:
+        bool parse_inst(uint32_t inst, uint32_t pc, string* op, uint32_t* dest);
+        inline int M(){return log2(set); }
+        inline int N(){ return log2(block_size); }
+        int getIndex(uint32_t pc);
+        int getTag(uint32_t pc);
     public:
-        BranchPredictor(const char* logFile) {
+        BranchPredictor(const char* logFile, int set):set(set) {
             logfp = fopen(logFile, "w");
             if (!logfp) {
                 std::cerr << "Failed to open log file: " << logFile << std::endl;
             }
+            btb = new BTB[set];
         }
         virtual ~BranchPredictor(){
             if(logfp){
                 fclose(logfp);
             }
+            delete[] btb;
         }
-        virtual bool predict(uint32_t inst) = 0;
+        virtual bool predict(uint32_t pc, uint32_t inst) = 0;
         inline bool check(bool pred, bool actual){
             count++;
             if(pred == actual){
@@ -45,14 +60,16 @@ class BranchPredictor
                 va_end(args);                   // 清理 va_list
                 fflush(logfp);                  // 确保数据立即写入文件
             }
-        } 
+        }
+        bool findInBTB(uint32_t pc);
+        void updateBTB(uint32_t pc, uint32_t dest);
 };
 
 class BTFNPredictor : public BranchPredictor
 {
     public:
-    BTFNPredictor(const char* logFile) : BranchPredictor(logFile){}
-    bool predict(uint32_t inst) override;
+    BTFNPredictor(const char* logFile, int set) : BranchPredictor(logFile, set){}
+    bool predict(uint32_t pc, uint32_t inst) override;
     void statistic() override{
         log("========== BTFN Predictor Statistic ==========\n");
         printf("========== BTFN Predictor Statistic ==========\n");
@@ -66,9 +83,14 @@ class BTFNPredictor : public BranchPredictor
 class AlwaysTakenPredictor : public BranchPredictor
 {
     public:
-    AlwaysTakenPredictor(const char* logFile) : BranchPredictor(logFile){}
-    bool predict(uint32_t inst) override{
-        return true;
+    AlwaysTakenPredictor(const char* logFile, int set) : BranchPredictor(logFile, set){}
+    bool predict(uint32_t pc, uint32_t inst) override{
+        if(findInBTB(pc)){
+            return true;
+        }else{
+            updateBTB(pc, 0); //dest dont care
+            return false;
+        }
     }
     void statistic() override{
         log("========== Always Taken Predictor Statistic ==========\n");
@@ -83,8 +105,8 @@ class AlwaysTakenPredictor : public BranchPredictor
 class AlwaysNotTakenPredictor : public BranchPredictor
 {
     public:
-    AlwaysNotTakenPredictor(const char* logFile) : BranchPredictor(logFile){}
-    bool predict(uint32_t inst) override{
+    AlwaysNotTakenPredictor(const char* logFile, int set) : BranchPredictor(logFile, set){}
+    bool predict(uint32_t pc, uint32_t inst) override{
         return false;
     }
     void statistic() override{

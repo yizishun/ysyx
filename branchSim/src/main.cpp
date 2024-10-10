@@ -20,8 +20,9 @@ FILE* parse_args(int argc, char **argv) {
 int main(int argc, char **argv) {
     fp = parse_args(argc, argv);
     if (!fp) assert(0);
-    AlwaysTakenPredictor *atbp = new AlwaysTakenPredictor("./build/alwaysTaken.log");
-    AlwaysNotTakenPredictor *antbp = new AlwaysNotTakenPredictor("./build/alwaysNotTaken.log");
+    BTFNPredictor *btfnbp = new BTFNPredictor("./build/btfn.log", 4);
+    AlwaysTakenPredictor *atbp = new AlwaysTakenPredictor("./build/alwaysTaken.log", 4);
+    AlwaysNotTakenPredictor *antbp = new AlwaysNotTakenPredictor("./build/alwaysNotTaken.log", 2);
     uint32_t inst;
     uint32_t pc;
     int temp;
@@ -31,14 +32,12 @@ int main(int argc, char **argv) {
         if(temp == 1){is_taken = true;}
         else if(temp == 0){is_taken = false;}
         else assert(0);
-//        #ifdef CONFIG_TRACE
-//        fprintf(logfp, "---------------\n");
-//        fprintf(logfp, "REF PC = %#x inst = %u %s\n", pc, inst, is_taken ? "taken" : "not taken");
-//        #endif
-        atbp->check(atbp->predict(inst), is_taken);
-        antbp->check(antbp->predict(inst), is_taken);
+        btfnbp->check(btfnbp->predict(pc, inst), is_taken);
+        atbp->check(atbp->predict(pc, inst), is_taken);
+        antbp->check(antbp->predict(pc, inst), is_taken);
     }
     delete atbp;
     delete antbp;
+    delete btfnbp;
     return 0;
 }
