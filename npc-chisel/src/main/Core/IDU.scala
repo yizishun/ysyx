@@ -37,6 +37,7 @@ class IduIO(xlen: Int) extends Bundle{
   val rs2ren = Output(Bool())
   val isStall = Input(Bool())
   val isFlush = Input(Bool())
+  val isFencei = Output(Bool())
   val statCore = Input(new Stat)
 }
 
@@ -51,8 +52,8 @@ class IDU(val conf: npc.CoreConfig) extends Module{
   io.out.bits.perfSubType := 0.U
   //if(conf.useDPIC) Strob()
   //default,it will error if no do this
-  val ready_go = dontTouch(Wire(Bool()))
-  ready_go := ~io.isStall
+  val ready_go = (Wire(Bool()))
+  ready_go := ~io.isStall && (~io.isFencei || io.ifuSignals.ready)
   io.in.ready := !io.in.valid || (ready_go && io.out.ready)
   io.out.valid := io.in.valid && ready_go
 //-----------------------------------------------------------------------
@@ -76,7 +77,10 @@ class IDU(val conf: npc.CoreConfig) extends Module{
     io.csr.raddr1 := io.in.bits.inst(31, 20)
   
     //Fence.i
-    io.ifuSignals <> controller.io.signals.ifu
+    io.isFencei := controller.io.signals.ifu.bits.is_fencei && io.in.valid
+    io.ifuSignals.valid := io.in.valid
+    io.ifuSignals.bits := controller.io.signals.ifu.bits
+    controller.io.signals.ifu.ready := io.ifuSignals.ready
       //out to EXU
     io.out.bits.signals := controller.io.signals
     io.out.bits.rd1 := io.gpr.rdata1

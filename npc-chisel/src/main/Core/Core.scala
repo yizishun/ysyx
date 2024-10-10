@@ -57,18 +57,18 @@ class Core(val conf : CoreConfig) extends Module {
 
   //data conflict detection
   val exuIsRaw = Wire(Bool())
-  val exuIsRawRs1 = dontTouch(Wire(Bool()))
-  val exuIsRawRs2 = dontTouch(Wire(Bool()))
+  val exuIsRawRs1 = (Wire(Bool()))
+  val exuIsRawRs2 = (Wire(Bool()))
   exuIsRawRs1 := exuIsRaw && dataConflict(exu.io.in.bits.rw, idu.io.gpr.raddr1)
   exuIsRawRs2 := exuIsRaw && dataConflict(exu.io.in.bits.rw, idu.io.gpr.raddr2)
   val lsuIsRaw = Wire(Bool())
-  val lsuIsRawRs1 = dontTouch(Wire(Bool()))
-  val lsuIsRawRs2 = dontTouch(Wire(Bool()))
+  val lsuIsRawRs1 = (Wire(Bool()))
+  val lsuIsRawRs2 = (Wire(Bool()))
   lsuIsRawRs1 := lsuIsRaw && dataConflict(lsu.io.in.bits.rw, idu.io.gpr.raddr1)
   lsuIsRawRs2 := lsuIsRaw && dataConflict(lsu.io.in.bits.rw, idu.io.gpr.raddr2)
   val wbuIsRaw = Wire(Bool())
-  val wbuIsRawRs1 = dontTouch(Wire(Bool()))
-  val wbuIsRawRs2 = dontTouch(Wire(Bool()))
+  val wbuIsRawRs1 = (Wire(Bool()))
+  val wbuIsRawRs2 = (Wire(Bool()))
   wbuIsRawRs1 := wbuIsRaw && dataConflict(wbu.io.in.bits.rw, idu.io.gpr.raddr1)
   wbuIsRawRs2 := wbuIsRaw && dataConflict(wbu.io.in.bits.rw, idu.io.gpr.raddr2)
   val isRAW =  exuIsRaw || lsuIsRaw || wbuIsRaw
@@ -93,9 +93,9 @@ class Core(val conf : CoreConfig) extends Module {
   val rd2FwdData = Wire(UInt(32.W))
   val rd2FwdData_r = RegEnable(rd2FwdData, rd2FwdEn)
   val fwdCount1 = RegInit(0.U(1.W))
-  val fwdCount1_w = dontTouch(Wire(UInt(1.W)))
+  val fwdCount1_w = Wire(UInt(1.W))
   val fwdCount2 = RegInit(0.U(1.W))
-  val fwdCount2_w = dontTouch(Wire(UInt(1.W)))
+  val fwdCount2_w = Wire(UInt(1.W))
   fwdCount1_w := fwdCount1
   fwdCount2_w := fwdCount2
   when(RegNext(idu.io.in.ready) && idu.io.in.valid){
@@ -175,14 +175,15 @@ class Core(val conf : CoreConfig) extends Module {
   ))
   val iduIsWorking = idu.io.in.valid
   val isJump = exu.io.in.bits.signals.exu.Jump =/= NJump & exu.io.pc.valid
-  val isCH = dontTouch(Wire(Bool()))
+  val isCH = Wire(Bool())
   exu.io.pc.ready := true.B
   val isCH_r = RegNext(isCH)
-  isCH := Mux(isJump, PCSrc =/= PcPlus4, 0.U)
+  isCH := isJump && PCSrc =/= PcPlus4
 
-  ifu.io.correctedPC := Mux(isIRQ, csr.io.read.mtvec, Mux(isCH_r, RegNext(correctedPC), 0.U))
+  val isFencei = RegNext(icache.io.fencei.valid & icache.io.fencei.ready)
+  ifu.io.correctedPC := Mux(isIRQ, csr.io.read.mtvec, Mux(isCH_r, RegNext(correctedPC), Mux(isFencei, ifu.io.in.bits.nextPC, 0.U)))
 
-  ifu.io.isFlush := isCH_r || isIRQ
+  ifu.io.isFlush := isCH_r || isIRQ || isFencei
   idu.io.isFlush := isCH_r || isIRQ
   exu.io.isFlush := isCH_r || isIRQ
   lsu.io.isFlush := isIRQ

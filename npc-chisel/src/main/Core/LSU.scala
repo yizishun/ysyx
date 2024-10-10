@@ -73,9 +73,9 @@ class LSU(val conf: npc.CoreConfig) extends Module{
   val delay = RegInit(lfsr)
 
   //state transition
-  val ready_go = dontTouch(Wire(Bool()))
-  val start = dontTouch(Wire(Bool()))
-  val end = dontTouch(Wire(Bool()))
+  val ready_go = (Wire(Bool()))
+  val start = (Wire(Bool()))
+  val end = (Wire(Bool()))
   val s_WaitStart :: s_WaitEnd :: s_WaitFlushEnd ::Nil = Enum(3)
   val stateM = RegInit(s_WaitStart)
   val nextStateM = WireDefault(stateM)

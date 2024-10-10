@@ -34,26 +34,26 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     println(tagSize + (block_sz/4)*32 + 1)
     //icache (use dff by default)
     val icache = Mem(set, new ICacheSet(tagSize, block_sz, way))
-    val rdata = dontTouch(RegEnable(io.in.rdata, io.in.rvalid))
-    val base_addr = dontTouch(Wire(UInt(32.W)))
-    val tagA = dontTouch(Wire(UInt(tagSize.W)))
-    val index = dontTouch(Wire(UInt(n.W)))
-    val offset = dontTouch(Wire(UInt(m.W)))
+    val rdata = (RegEnable(io.in.rdata, io.in.rvalid))
+    val base_addr = (Wire(UInt(32.W)))
+    val tagA = (Wire(UInt(tagSize.W)))
+    val index = (Wire(UInt(n.W)))
+    val offset = (Wire(UInt(m.W)))
 
-    val cacheSet = dontTouch(Wire(new ICacheSet(tagSize, block_sz, way)))
-    val cacheData = dontTouch(Wire(new ICacheBlock(tagSize, block_sz)))
-    val wayHit = dontTouch(Wire(UInt(w.W)))
-    val valid = dontTouch(Wire(Bool()))
-    val tagC = dontTouch(Wire(UInt(tagSize.W)))
-    val data_h = dontTouch(Wire(UInt((bus_w*8).W)))
-    val data_m = dontTouch(Wire(UInt((bus_w*8).W)))
-    val hit = dontTouch(Wire(Bool()))
+    val cacheSet = (Wire(new ICacheSet(tagSize, block_sz, way)))
+    val cacheData = (Wire(new ICacheBlock(tagSize, block_sz)))
+    val wayHit = (Wire(UInt(w.W)))
+    val valid = (Wire(Bool()))
+    val tagC = (Wire(UInt(tagSize.W)))
+    val data_h = (Wire(UInt((bus_w*8).W)))
+    val data_m = (Wire(UInt((bus_w*8).W)))
+    val hit = (Wire(Bool()))
     val fenceCnt = RegInit(0.U(n.W))
-    val fifoPtr = dontTouch(RegInit(0.U(w.W)))
+    val fifoPtr = (RegInit(0.U(w.W)))
     val inAddr = RegEnable(io.in.araddr, io.in.arvalid)
 
     //state transition
-    val is_sdram = dontTouch(RegEnable(io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), false.B, io.in.arready & io.in.arvalid))
+    val is_sdram = (RegEnable(io.in.araddr >= "ha000_0000".U(32.W) && io.in.araddr <= "hbfff_ffff".U(32.W), false.B, io.in.arready & io.in.arvalid))
     val s_WaitUpV :: s_WaitImemARR :: s_WaitImemRV :: s_WaitUpR :: s_fence_i :: Nil = Enum(5)
     val skip_UpR2V = Mux(io.in.rready, s_WaitUpV, s_WaitUpR)
     val skip_AR2V = Mux(io.out.arready, s_WaitImemRV, s_WaitImemARR)
@@ -69,7 +69,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
         s_fence_i -> Mux(fenceCnt === set.U - 1.U, s_WaitUpV, s_fence_i)
     ))
     state := nextState
-    dontTouch(nextState)
+    (nextState)
 
     if(conf.useDPIC){
         import npc.EVENT._
@@ -78,7 +78,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
         PerformanceProbe(clock, ICacheMiss, io.in.arvalid & ~hit, 0.U, io.in.arvalid & ~hit, io.in.rready && io.in.rvalid && state === s_WaitImemRV)
     }
 //fence_i logic
-    when(io.fencei.valid & io.fencei.bits.is_fencei){
+    when(io.fencei.valid & io.fencei.bits.is_fencei && fenceCnt =/= set.U - 1.U){
         fenceCnt := fenceCnt + 1.U
     } otherwise {
         fenceCnt := 0.U
@@ -104,9 +104,9 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     tagC := 0.U
     cacheSet := icache(index) //first read port
     for(i <- 0 until way){
-        val cacheDataTemp = dontTouch(Wire(new ICacheBlock(tagSize, block_sz)))
-        val validTemp = dontTouch(Wire(Bool()))
-        val tagCTemp = dontTouch(Wire(UInt(tagSize.W)))
+        val cacheDataTemp = (Wire(new ICacheBlock(tagSize, block_sz)))
+        val validTemp = (Wire(Bool()))
+        val tagCTemp = (Wire(UInt(tagSize.W)))
         cacheDataTemp := cacheSet.set(i)
         tagCTemp := cacheDataTemp.tag
         validTemp := cacheDataTemp.valid
@@ -171,7 +171,7 @@ class ICache(val set : Int, val way : Int, val block_sz : Int,val conf: CoreConf
     //data tag valid
 //miss logic
     data_m := 0.U
-    val wayMiss = dontTouch(Wire(UInt(w.W)))
+    val wayMiss = (Wire(UInt(w.W)))
     wayMiss := fifoPtr
     cacheData := cacheSet.set(wayMiss)
     when(io.out.rvalid) {

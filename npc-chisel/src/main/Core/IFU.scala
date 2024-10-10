@@ -49,9 +49,9 @@ class IFU(val conf: npc.CoreConfig) extends Module{
   PcPlus4 := Mux(io.in.valid, io.in.bits.nextPC + 4.U, pcReg + 4.U)
 
   //state transition(mearly)
-  val start = dontTouch(Wire(Bool()))
-  val end = dontTouch(Wire(Bool()))
-  val ready_go = dontTouch(Wire(Bool()))
+  val start = (Wire(Bool()))
+  val end = (Wire(Bool()))
+  val ready_go = (Wire(Bool()))
   val s_WaitStart :: s_WaitEnd :: s_WaitFlushEnd ::Nil = Enum(3)
   val stateF = RegInit(s_WaitStart)
   val nextStateF = WireDefault(stateF)
@@ -63,7 +63,7 @@ class IFU(val conf: npc.CoreConfig) extends Module{
   io.imem.arvalid := start && stateF === s_WaitStart
   io.imem.rready := end || (stateF === s_WaitFlushEnd)
   stateF := nextStateF
-  dontTouch(nextStateF)
+  (nextStateF)
 
   SetupIFU()
   SetupIRQ()
@@ -82,7 +82,7 @@ class IFU(val conf: npc.CoreConfig) extends Module{
   io.in.ready := (!io.in.valid || (ready_go && io.out.ready))
   io.out.valid := io.in.valid && ready_go
 
-  val ready_go_pc = dontTouch(Wire(Bool()))
+  val ready_go_pc = (Wire(Bool()))
   ready_go_pc := ~(reset.asBool)
   io.pc.valid := ready_go_pc && io.pc.ready
 

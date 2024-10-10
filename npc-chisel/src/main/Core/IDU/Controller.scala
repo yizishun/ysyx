@@ -302,8 +302,6 @@ class Controller(conf : npc.CoreConfig) extends Module{
   io.irq_no := controlsignals(14)
 
   io.signals.ifu.bits.is_fencei := controlsignals(15)
-  val fire = RegInit(false.B)
-  fire := io.signals.ifu.fire
-  io.signals.ifu.valid := Mux(fire, false.B, true.B)
+  io.signals.ifu.valid := false.B
 
 }
