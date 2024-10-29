@@ -1,0 +1,3 @@
+[submodule "nemu"]
+	path = nemu
+	url = git@github.com:yizishun/riscv-emu.git
