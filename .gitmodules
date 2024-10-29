@@ -1,3 +1,6 @@
 [submodule "nemu"]
 	path = nemu
 	url = git@github.com:yizishun/riscv-emu.git
+[submodule "npc-chisel"]
+	path = npc-chisel
+	url = git@github.com:yizishun/riscv-core.git
