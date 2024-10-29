@@ -28,6 +28,11 @@
 #define Mw vaddr_write
 #define XLEN 32
 
+#ifdef CONFIG_RVE
+#define GPR1 15
+#else
+#define GPR1 17
+#endif
 enum {
   TYPE_I, TYPE_U, TYPE_S,
   TYPE_N, TYPE_J, TYPE_R,

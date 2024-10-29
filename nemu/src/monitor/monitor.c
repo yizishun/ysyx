@@ -15,7 +15,11 @@
 
 #include <isa.h>
 #include <memory/paddr.h>
-
+#ifdef CONFIG_REF_DIFF
+const paddr_t RESET_VECTOR = 0x30000000;
+#else
+const paddr_t RESET_VECTOR = 0x80000000;
+#endif
 void init_rand();
 void init_log(const char *log_file);
 void init_mem();
