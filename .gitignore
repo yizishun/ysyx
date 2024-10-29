@@ -13,10 +13,10 @@
 !/docs/*
 !/cacheSim/*
 !/branchSim/*
+!/nvboard
 !Makefile
 !README.md
 !.gitignore
 !init.sh
 /am-kernels
-/nvboard
 /fceux-am

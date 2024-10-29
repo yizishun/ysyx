@@ -4,3 +4,6 @@
 [submodule "npc-chisel"]
 	path = npc-chisel
 	url = git@github.com:yizishun/riscv-core.git
+[submodule "nvboard"]
+	path = nvboard
+	url = git@github.com:NJU-ProjectN/nvboard.git
