@@ -10,6 +10,7 @@
 !/npc-chisel/*
 !/npc-chisel
 !/ysyxSoC/*
+!/ysyxSoC
 !/docs/*
 !/cacheSim/*
 !/branchSim/*

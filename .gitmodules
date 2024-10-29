@@ -7,3 +7,6 @@
 [submodule "nvboard"]
 	path = nvboard
 	url = git@github.com:NJU-ProjectN/nvboard.git
+[submodule "ysyxSoC"]
+	path = ysyxSoC
+	url = git@github.com:yizishun/ysyxSoC.git
