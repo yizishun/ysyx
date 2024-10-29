@@ -1,5 +1,0 @@
-build/
-out/
-rocket-chip/
-!src/*/*
-!src/*
