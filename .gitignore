@@ -19,5 +19,6 @@
 !README.md
 !.gitignore
 !init.sh
-/am-kernels
+!/am-kernels/*
+!/software/*
 /fceux-am

@@ -10,3 +10,6 @@
 [submodule "ysyxSoC"]
 	path = ysyxSoC
 	url = git@github.com:yizishun/ysyxSoC.git
+[submodule "software/fceux-am"]
+	path = software/fceux-am
+	url = git@github.com:NJU-ProjectN/fceux-am.git
