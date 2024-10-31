@@ -58,24 +58,26 @@ Nintendo Entertainment System模拟器
 
 ## TODO LIST
 ### Riscv-core
-* [ ] Opt the area to reach the B stage standard(2.5w)
-* [ ] RV64GC (IMACFA)
+* [ ] Opt the area to reach the B stage standard(2.5w)(25.1.1 ~ 25.1.10)
+* [ ] RV64GC (IMACFA) (25.1.11 ~ 25.2.30)
 * [ ] BPU,TLB,(virtually tagged)cache
 * [ ] CLINT + PLIC + UART
 * [ ] Porting xv6
 * [ ] Porting Linux
 * [ ] Out-of-Order!
+### Loong-core
+* [ ] NSCSCC 2025 (25.4 ~ 25.8)
 ### Riscv-core simulation/synthesis
-* [ ] vcs/iverilog
+* [ ] vcs/iverilog (25.1.1 ~ 25.1.10)
 * [ ] dc
 * [ ] FPGA
 ### Riscv-emu
-* [ ] Porting xv6
-* [ ] Porting Linux
+* [ ] Porting xv6 (25.2.30 ~ 25.3.15)
+* [ ] Porting Linux (25.3.15 ~ 25.3.30)
 ### software(mainly for os development)
-* [ ] Complete the PA4. **<= Focus**
-* [ ] Finish jyy lab
-* [ ] Finish the xv6 lab
+* [ ] Complete the PA4. ⭐️ **<= Focus** (1 week preview, 1 week PA4.1, 1 week PA4.2, 1 week PA4.3)(24.11.1 ~ 24.11.30)
+* [ ] Finish jyy lab ⭐️ **<= Focus** (1 video(include corresponding hw)/2 days) (24.11.1 ~ 25.1.10)
+* [ ] Finish the xv6 lab (25.1.11 ~ 25.3.30)
 ### Utils
 * [ ] Sdb: freely toggle DiffTest mode
 * [ ] Sdb: snapshot
